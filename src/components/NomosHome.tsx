@@ -220,7 +220,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
           </motion.div>
 
           {/* Tasks List */}
-          <div className="space-y-3">
+          <div className="space-y-4">
             <AnimatePresence mode="popLayout">
               {displayedTasks.length === 0 ? (
                 <motion.div
@@ -240,22 +240,38 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                 displayedTasks.map((task, index) => (
                   <motion.div
                     key={task.id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
                     animate={
                       completingTasks.has(task.id)
                         ? {
                             opacity: 0,
-                            y: -10,
-                            height: 0,
-                            transition: { duration: 0.4, ease: "easeOut" },
+                            scale: 0.9,
+                            x: 100,
+                            transition: { 
+                              duration: 0.5, 
+                              ease: [0.4, 0, 0.2, 1]
+                            },
                           }
-                        : { opacity: 1, y: 0, height: "auto" }
+                        : { 
+                            opacity: 1, 
+                            scale: 1, 
+                            y: 0,
+                            transition: {
+                              duration: 0.4,
+                              ease: [0.4, 0, 0.2, 1],
+                              delay: index * 0.03
+                            }
+                          }
                     }
-                    exit={{ opacity: 0, y: -10 }}
-                    transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="border-b border-border hover:bg-muted/30 transition-colors overflow-hidden group"
+                    exit={{ 
+                      opacity: 0, 
+                      scale: 0.9,
+                      x: 100,
+                      transition: { duration: 0.3 }
+                    }}
+                    className="hover:bg-muted/20 rounded-lg transition-all duration-200 overflow-hidden group"
                   >
-                    <div className="flex items-start gap-3 py-3 px-2">
+                    <div className="flex items-start gap-3 py-2 px-1">
                       <Checkbox
                         checked={completingTasks.has(task.id)}
                         onCheckedChange={() => completeTask(task.id)}
