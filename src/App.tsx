@@ -7,6 +7,7 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import Index from "./pages/Index";
+import Hoje from "./pages/Hoje";
 import EmBreve from "./pages/EmBreve";
 import Filtros from "./pages/Filtros";
 import Concluido from "./pages/Concluido";
@@ -31,7 +32,7 @@ const App = () => (
               <main className="flex-1">
                 <Routes>
                   <Route path="/" element={<Index />} />
-                  <Route path="/hoje" element={<Index />} />
+                  <Route path="/hoje" element={<Hoje />} />
                   <Route path="/em-breve" element={<EmBreve />} />
                   <Route path="/filtros" element={<Filtros />} />
                   <Route path="/concluido" element={<Concluido />} />
