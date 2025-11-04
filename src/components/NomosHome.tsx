@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface Task {
@@ -80,27 +79,13 @@ const NomosHome = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <header className="border-b border-border px-6 py-8 md:py-12">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="max-w-4xl mx-auto"
-        >
-          <h1 className="text-4xl md:text-5xl font-light tracking-tight text-foreground mb-2">
-            NOMOS
-          </h1>
-          <p className="text-sm md:text-base text-muted-foreground capitalize">
+    <div className="flex-1 bg-background flex flex-col">
+      {/* Main content */}
+      <div className="px-6 py-8 md:py-12 flex-1">
+        <div className="max-w-4xl mx-auto space-y-8">
+          <p className="text-sm text-muted-foreground capitalize">
             {today}
           </p>
-        </motion.div>
-      </header>
-
-      {/* Main Content */}
-      <main className="flex-1 px-6 py-8 md:py-12">
-        <div className="max-w-4xl mx-auto space-y-8">
           {/* Input Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -188,7 +173,7 @@ const NomosHome = () => {
             </AnimatePresence>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Footer */}
       <footer className="border-t border-border px-6 py-6">
