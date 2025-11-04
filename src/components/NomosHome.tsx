@@ -4,11 +4,13 @@ import { Plus, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Task {
   id: string;
   text: string;
   createdAt: string;
+  completed?: boolean;
 }
 
 const STORAGE_KEY = "nomos.tasks.today";
@@ -16,6 +18,7 @@ const STORAGE_KEY = "nomos.tasks.today";
 const NomosHome = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
 
   // Load tasks from localStorage on mount
   useEffect(() => {
@@ -54,6 +57,19 @@ const NomosHome = () => {
     if (e.key === "Enter") {
       addTask();
     }
+  };
+
+  const completeTask = (taskId: string) => {
+    setCompletingTasks((prev) => new Set(prev).add(taskId));
+
+    setTimeout(() => {
+      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      setCompletingTasks((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }, 600);
   };
 
   const today = new Date().toLocaleDateString("pt-BR", {
@@ -131,20 +147,43 @@ const NomosHome = () => {
                   <motion.div
                     key={task.id}
                     initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    animate={
+                      completingTasks.has(task.id)
+                        ? {
+                            opacity: 0,
+                            x: 100,
+                            scale: 0.95,
+                            transition: { duration: 0.5, ease: "easeInOut" },
+                          }
+                        : { opacity: 1, y: 0, x: 0, scale: 1 }
+                    }
                     exit={{ opacity: 0, x: -100 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                   >
                     <Card className="p-5 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start justify-between gap-4">
-                        <p className="text-base text-foreground flex-1 leading-relaxed">
-                          {task.text}
-                        </p>
-                        <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span className="text-xs font-light">
-                            {task.createdAt}
-                          </span>
+                      <div className="flex items-start gap-4">
+                        <Checkbox
+                          checked={completingTasks.has(task.id)}
+                          onCheckedChange={() => completeTask(task.id)}
+                          className="mt-1"
+                        />
+                        <div className="flex-1 flex items-start justify-between gap-4">
+                          <motion.p
+                            animate={{
+                              opacity: completingTasks.has(task.id) ? 0.4 : 1,
+                            }}
+                            className={`text-base text-foreground leading-relaxed flex-1 ${
+                              completingTasks.has(task.id) ? "line-through" : ""
+                            }`}
+                          >
+                            {task.text}
+                          </motion.p>
+                          <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
+                            <Clock className="h-3.5 w-3.5" />
+                            <span className="text-xs font-light">
+                              {task.createdAt}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </Card>
