@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Task } from '@/types/task';
-import { Clock, Star } from 'lucide-react';
+import { Clock } from 'lucide-react';
+import starIcon from "@/assets/star-priority.avif";
 
 interface Props {
   task: Task;
@@ -64,13 +65,15 @@ export function EditTaskDialog({ task, open, onOpenChange, onSave }: Props) {
                 variant="outline"
                 className="h-12 w-12"
               >
-                <Star
+                <img
+                  src={starIcon}
+                  alt="Prioridade"
                   className={`h-6 w-6 transition-all duration-300 ${
                     priority === 'alta'
-                      ? 'fill-destructive text-destructive'
+                      ? 'brightness-[0.4] hue-rotate-[-15deg] saturate-150'
                       : priority === 'media'
-                      ? 'fill-primary text-primary'
-                      : 'fill-secondary text-secondary'
+                      ? 'brightness-[0.6] hue-rotate-[180deg] saturate-150'
+                      : 'brightness-[0.5] hue-rotate-[60deg] saturate-150'
                   }`}
                 />
               </Button>

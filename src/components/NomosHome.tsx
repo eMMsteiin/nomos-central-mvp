@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Download, Clock, Pencil, Star } from "lucide-react";
+import { Plus, Calendar, Download, Clock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -9,6 +9,7 @@ import { ImportCalendarModal } from "@/components/ImportCalendarModal";
 import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 import { extractTimeFromText, formatDateToTime } from "@/services/timeExtractor";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
+import starIcon from "@/assets/star-priority.avif";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -190,13 +191,15 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                 className="shrink-0 h-8 w-8 relative group"
                 aria-label="Alternar prioridade"
               >
-                <Star
+                <img
+                  src={starIcon}
+                  alt="Prioridade"
                   className={`h-5 w-5 transition-all duration-300 ${
                     priority === 'alta'
-                      ? 'fill-destructive text-destructive'
+                      ? 'brightness-[0.4] hue-rotate-[-15deg] saturate-150'
                       : priority === 'media'
-                      ? 'fill-primary text-primary'
-                      : 'fill-secondary text-secondary'
+                      ? 'brightness-[0.6] hue-rotate-[180deg] saturate-150'
+                      : 'brightness-[0.5] hue-rotate-[60deg] saturate-150'
                   }`}
                 />
                 
