@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus } from "lucide-react";
+import { Plus, Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,6 +68,9 @@ const NomosHome = () => {
         next.delete(taskId);
         return next;
       });
+      
+      // Dispatch custom event for count updates
+      window.dispatchEvent(new Event("tasksUpdated"));
     }, 400);
   };
 
@@ -83,9 +86,7 @@ const NomosHome = () => {
       {/* Main content */}
       <div className="px-6 py-8 md:py-12 flex-1">
         <div className="max-w-4xl mx-auto space-y-8">
-          <p className="text-sm text-muted-foreground capitalize">
-            {today}
-          </p>
+          <h1 className="text-3xl font-semibold">Entrada</h1>
           {/* Input Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -146,25 +147,27 @@ const NomosHome = () => {
                     transition={{ duration: 0.3, delay: index * 0.05 }}
                     className="border-b border-border hover:bg-muted/30 transition-colors overflow-hidden"
                   >
-                    <div className="flex items-center gap-3 py-3 px-2">
+                    <div className="flex items-start gap-3 py-3 px-2">
                       <Checkbox
                         checked={completingTasks.has(task.id)}
                         onCheckedChange={() => completeTask(task.id)}
+                        className="mt-0.5"
                       />
-                      <div className="flex-1 flex items-center justify-between gap-4 min-w-0">
+                      <div className="flex-1 min-w-0">
                         <motion.p
                           animate={{
                             opacity: completingTasks.has(task.id) ? 0.4 : 1,
                           }}
-                          className={`text-sm text-foreground flex-1 ${
+                          className={`text-sm text-foreground leading-relaxed break-words ${
                             completingTasks.has(task.id) ? "line-through" : ""
                           }`}
                         >
                           {task.text}
                         </motion.p>
-                        <span className="text-xs text-muted-foreground shrink-0">
-                          {task.createdAt}
-                        </span>
+                        <div className="flex items-center gap-1 mt-1">
+                          <Calendar className="h-3 w-3 text-[hsl(var(--todoist-green))]" />
+                          <span className="text-xs text-[hsl(var(--todoist-green))]">Hoje</span>
+                        </div>
                       </div>
                     </div>
                   </motion.div>
