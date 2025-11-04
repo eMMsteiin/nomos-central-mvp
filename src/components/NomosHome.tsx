@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Download, Clock, Pencil } from "lucide-react";
+import { Plus, Calendar, Download, Clock, Pencil, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -21,7 +21,15 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [inputValue, setInputValue] = useState("");
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [importModalOpen, setImportModalOpen] = useState(false);
-  const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('media');
+  const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
+
+  const cyclePriority = () => {
+    setPriority((prev) => {
+      if (prev === 'baixa') return 'media';
+      if (prev === 'media') return 'alta';
+      return 'baixa';
+    });
+  };
   const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Load tasks from localStorage on mount
@@ -61,7 +69,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
 
     setTasks((prev) => [newTask, ...prev]);
     setInputValue("");
-    setPriority('media');
+    setPriority('baixa');
   };
 
   const handleImport = (events: ICSEvent[]) => {
@@ -156,42 +164,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
               Importar do AVA
             </Button>
           </div>
-          {/* Priority Selector */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.05 }}
-            className="flex items-center gap-2"
-          >
-            <span className="text-sm text-muted-foreground">Prioridade:</span>
-            <div className="flex gap-2">
-              <Button
-                size="sm"
-                variant={priority === 'alta' ? 'default' : 'outline'}
-                onClick={() => setPriority('alta')}
-                className={priority === 'alta' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : ''}
-              >
-                🔴 Alta
-              </Button>
-              <Button
-                size="sm"
-                variant={priority === 'media' ? 'default' : 'outline'}
-                onClick={() => setPriority('media')}
-                className={priority === 'media' ? 'bg-primary hover:bg-primary/90' : ''}
-              >
-                🔵 Média
-              </Button>
-              <Button
-                size="sm"
-                variant={priority === 'baixa' ? 'default' : 'outline'}
-                onClick={() => setPriority('baixa')}
-                className={priority === 'baixa' ? 'bg-secondary hover:bg-secondary/90' : ''}
-              >
-                🟢 Baixa
-              </Button>
-            </div>
-          </motion.div>
-
           {/* Input Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -209,6 +181,31 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
               >
                 <Plus className="h-5 w-5" />
               </Button>
+              
+              {/* Estrela de Prioridade */}
+              <Button
+                onClick={cyclePriority}
+                size="icon"
+                variant="ghost"
+                className="shrink-0 h-8 w-8 relative group"
+                aria-label="Alternar prioridade"
+              >
+                <Star
+                  className={`h-5 w-5 transition-all duration-300 ${
+                    priority === 'alta'
+                      ? 'fill-destructive text-destructive'
+                      : priority === 'media'
+                      ? 'fill-primary text-primary'
+                      : 'fill-secondary text-secondary'
+                  }`}
+                />
+                
+                {/* Tooltip minimalista */}
+                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                  {priority === 'alta' ? 'Alta' : priority === 'media' ? 'Média' : 'Baixa'}
+                </span>
+              </Button>
+              
               <Input
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}

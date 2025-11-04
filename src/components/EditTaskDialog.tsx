@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Task } from '@/types/task';
-import { Clock } from 'lucide-react';
+import { Clock, Star } from 'lucide-react';
 
 interface Props {
   task: Task;
@@ -53,31 +53,36 @@ export function EditTaskDialog({ task, open, onOpenChange, onSave }: Props) {
 
           <div className="space-y-2">
             <Label>Prioridade</Label>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
               <Button
-                size="sm"
-                variant={priority === 'alta' ? 'default' : 'outline'}
-                onClick={() => setPriority('alta')}
-                className={priority === 'alta' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : ''}
+                onClick={() => {
+                  if (priority === 'baixa') setPriority('media');
+                  else if (priority === 'media') setPriority('alta');
+                  else setPriority('baixa');
+                }}
+                size="icon"
+                variant="outline"
+                className="h-12 w-12"
               >
-                🔴 Alta
+                <Star
+                  className={`h-6 w-6 transition-all duration-300 ${
+                    priority === 'alta'
+                      ? 'fill-destructive text-destructive'
+                      : priority === 'media'
+                      ? 'fill-primary text-primary'
+                      : 'fill-secondary text-secondary'
+                  }`}
+                />
               </Button>
-              <Button
-                size="sm"
-                variant={priority === 'media' ? 'default' : 'outline'}
-                onClick={() => setPriority('media')}
-                className={priority === 'media' ? 'bg-primary hover:bg-primary/90' : ''}
-              >
-                🔵 Média
-              </Button>
-              <Button
-                size="sm"
-                variant={priority === 'baixa' ? 'default' : 'outline'}
-                onClick={() => setPriority('baixa')}
-                className={priority === 'baixa' ? 'bg-secondary hover:bg-secondary/90' : ''}
-              >
-                🟢 Baixa
-              </Button>
+              
+              <div className="text-sm">
+                <p className="font-medium">
+                  {priority === 'alta' ? 'Alta Prioridade' : priority === 'media' ? 'Média Prioridade' : 'Baixa Prioridade'}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Clique na estrela para alternar
+                </p>
+              </div>
             </div>
           </div>
 
