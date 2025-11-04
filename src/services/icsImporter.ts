@@ -10,7 +10,9 @@ export interface ICSEvent {
 }
 
 export async function fetchAndParseICS(url: string): Promise<ICSEvent[]> {
-  const response = await fetch(url);
+  // Usar proxy CORS público para contornar bloqueio do AVA
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+  const response = await fetch(proxyUrl);
   const icsText = await response.text();
   
   const jcalData = ICAL.parse(icsText);
