@@ -47,7 +47,7 @@ export async function fetchAndParseICS(url: string): Promise<ICSEvent[]> {
   return events.filter(e => e.end >= now);
 }
 
-export function categorizeByDate(eventDate: Date): 'hoje' | 'em-breve' | 'futuras' {
+export function categorizeByDate(eventDate: Date): 'hoje' | 'entrada' | 'em-breve' {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   
@@ -57,6 +57,6 @@ export function categorizeByDate(eventDate: Date): 'hoje' | 'em-breve' | 'futura
   const diffDays = Math.ceil((eventDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
   
   if (diffDays === 0) return 'hoje';
-  if (diffDays > 0 && diffDays <= 7) return 'em-breve';
-  return 'futuras';
+  if (diffDays > 0 && diffDays <= 7) return 'entrada';
+  return 'em-breve';
 }

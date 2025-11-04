@@ -25,15 +25,15 @@ export const useTaskCounts = () => {
           const activeTasks = Array.isArray(tasks) ? tasks.filter(t => !t.completed) : [];
           
           const hoje = activeTasks.filter(t => 
-            t.category === 'hoje' || (!t.category && !t.dueDate)
+            t.category === 'hoje'
           ).length;
           
-          const emBreve = activeTasks.filter(t => 
-            t.category === 'em-breve'
+          const entrada = activeTasks.filter(t => 
+            t.category === 'hoje' || t.category === 'entrada' || !t.category
           ).length;
           
           setCounts({
-            entrada: activeTasks.length,
+            entrada: entrada,
             hoje: hoje,
             "primeiros-passos": 14, // Mock count
           });

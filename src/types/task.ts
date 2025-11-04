@@ -5,7 +5,7 @@ export interface Task {
   createdAt: string;
   dueDate?: Date;
   course?: string;
-  category?: 'hoje' | 'em-breve' | 'futuras';
+  category?: 'hoje' | 'entrada' | 'em-breve';
   sourceType?: 'manual' | 'ava';
   completed?: boolean;
 }

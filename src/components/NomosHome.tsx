@@ -10,7 +10,11 @@ import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
-const NomosHome = () => {
+interface NomosHomeProps {
+  filterMode?: 'entrada' | 'hoje' | 'em-breve' | 'all';
+}
+
+const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
@@ -89,12 +93,26 @@ const NomosHome = () => {
     }, 400);
   };
 
-  const today = new Date().toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
+  // Filter tasks based on filterMode
+  const displayedTasks = tasks.filter(task => {
+    if (task.completed) return false;
+    
+    if (filterMode === 'all') return true;
+    if (filterMode === 'hoje') return task.category === 'hoje' || !task.category;
+    if (filterMode === 'entrada') {
+      return task.category === 'hoje' || task.category === 'entrada' || !task.category;
+    }
+    if (filterMode === 'em-breve') return task.category === 'em-breve';
+    
+    return false;
   });
+
+  const getTitle = () => {
+    if (filterMode === 'hoje') return 'Hoje';
+    if (filterMode === 'entrada') return 'Entrada';
+    if (filterMode === 'em-breve') return 'Em breve';
+    return 'Todas as tarefas';
+  };
 
   return (
     <div className="flex-1 bg-background flex flex-col">
@@ -102,7 +120,7 @@ const NomosHome = () => {
       <div className="px-6 py-8 md:py-12 flex-1">
         <div className="max-w-4xl mx-auto space-y-8">
           <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-semibold">Entrada</h1>
+            <h1 className="text-3xl font-semibold">{getTitle()}</h1>
             <Button 
               onClick={() => setImportModalOpen(true)}
               variant="outline"
@@ -143,7 +161,7 @@ const NomosHome = () => {
           {/* Tasks List */}
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
-              {tasks.length === 0 ? (
+              {displayedTasks.length === 0 ? (
                 <motion.div
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
@@ -151,11 +169,11 @@ const NomosHome = () => {
                   className="text-center py-16"
                 >
                   <p className="text-muted-foreground text-sm">
-                    Nenhuma tarefa adicionada ainda.
+                    Nenhuma tarefa nesta categoria.
                   </p>
                 </motion.div>
               ) : (
-                tasks.map((task, index) => (
+                displayedTasks.map((task, index) => (
                   <motion.div
                     key={task.id}
                     initial={{ opacity: 0, y: 20 }}
