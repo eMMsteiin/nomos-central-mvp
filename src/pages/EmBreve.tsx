@@ -3,14 +3,17 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Task } from "@/types/task";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Clock, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { EditTaskDialog } from "@/components/EditTaskDialog";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
 const EmBreve = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
   
   useEffect(() => {
     const loadTasks = () => {
@@ -59,6 +62,19 @@ const EmBreve = () => {
       const allTasks: Task[] = JSON.parse(stored);
       const updated = allTasks.map(t => 
         t.id === taskId ? { ...t, completed: true } : t
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      setTasks(updated.filter(t => !t.completed && t.category === 'em-breve'));
+      window.dispatchEvent(new Event('tasksUpdated'));
+    }
+  };
+
+  const handleEditTask = (updatedTask: Task) => {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const allTasks: Task[] = JSON.parse(stored);
+      const updated = allTasks.map(t => 
+        t.id === updatedTask.id ? updatedTask : t
       );
       localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
       setTasks(updated.filter(t => !t.completed && t.category === 'em-breve'));
@@ -122,7 +138,15 @@ const EmBreve = () => {
                       key={task.id}
                       initial={{ opacity: 0, y: 10 }}
                       animate={{ opacity: 1, y: 0 }}
-                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors group border-l-4"
+                      style={{
+                        borderLeftColor: 
+                          task.priority === 'alta' 
+                            ? 'hsl(var(--destructive))' 
+                            : task.priority === 'media'
+                            ? 'hsl(var(--primary))'
+                            : 'hsl(var(--secondary))'
+                      }}
                     >
                       <Checkbox
                         checked={false}
@@ -131,7 +155,27 @@ const EmBreve = () => {
                       />
                       
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium break-words">{task.text}</p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-sm font-medium break-words">{task.text}</p>
+                            
+                            {task.dueTime && (
+                              <span className="text-xs bg-muted px-2 py-0.5 rounded flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {task.dueTime}
+                              </span>
+                            )}
+                          </div>
+                          
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setEditingTask(task)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
                         
                         <div className="flex flex-wrap gap-2 mt-1">
                           {task.course && (
@@ -197,6 +241,15 @@ const EmBreve = () => {
           </Card>
         </div>
       </div>
+
+      {editingTask && (
+        <EditTaskDialog
+          task={editingTask}
+          open={!!editingTask}
+          onOpenChange={(open) => !open && setEditingTask(null)}
+          onSave={handleEditTask}
+        />
+      )}
     </div>
   );
 };

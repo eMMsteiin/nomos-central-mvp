@@ -1,12 +1,14 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Download } from "lucide-react";
+import { Plus, Calendar, Download, Clock, Pencil } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Task } from "@/types/task";
 import { ImportCalendarModal } from "@/components/ImportCalendarModal";
 import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
+import { extractTimeFromText, formatDateToTime } from "@/services/timeExtractor";
+import { EditTaskDialog } from "@/components/EditTaskDialog";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -19,6 +21,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [inputValue, setInputValue] = useState("");
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('media');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Load tasks from localStorage on mount
   useEffect(() => {
@@ -40,19 +44,24 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const addTask = () => {
     if (!inputValue.trim()) return;
 
+    const { cleanText, time } = extractTimeFromText(inputValue.trim());
+
     const newTask: Task = {
       id: Date.now().toString(),
-      text: inputValue.trim(),
+      text: cleanText,
       createdAt: new Date().toLocaleTimeString("pt-BR", {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      dueTime: time,
+      priority: priority,
       sourceType: 'manual',
       category: 'hoje',
     };
 
     setTasks((prev) => [newTask, ...prev]);
     setInputValue("");
+    setPriority('media');
   };
 
   const handleImport = (events: ICSEvent[]) => {
@@ -62,8 +71,10 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       description: event.description,
       createdAt: new Date().toISOString(),
       dueDate: event.end,
+      dueTime: formatDateToTime(event.start),
       course: event.location,
       category: categorizeByDate(event.end),
+      priority: 'media',
       sourceType: 'ava',
       completed: false,
     }));
@@ -92,6 +103,19 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       // Dispatch custom event for count updates
       window.dispatchEvent(new Event("tasksUpdated"));
     }, 400);
+  };
+
+  const handleEditTask = (updatedTask: Task) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+    );
+    
+    const allTasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    const updated = allTasks.map((t: Task) =>
+      t.id === updatedTask.id ? updatedTask : t
+    );
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    window.dispatchEvent(new Event("tasksUpdated"));
   };
 
   // Filter tasks based on filterMode
@@ -132,6 +156,42 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
               Importar do AVA
             </Button>
           </div>
+          {/* Priority Selector */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.05 }}
+            className="flex items-center gap-2"
+          >
+            <span className="text-sm text-muted-foreground">Prioridade:</span>
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant={priority === 'alta' ? 'default' : 'outline'}
+                onClick={() => setPriority('alta')}
+                className={priority === 'alta' ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' : ''}
+              >
+                🔴 Alta
+              </Button>
+              <Button
+                size="sm"
+                variant={priority === 'media' ? 'default' : 'outline'}
+                onClick={() => setPriority('media')}
+                className={priority === 'media' ? 'bg-primary hover:bg-primary/90' : ''}
+              >
+                🔵 Média
+              </Button>
+              <Button
+                size="sm"
+                variant={priority === 'baixa' ? 'default' : 'outline'}
+                onClick={() => setPriority('baixa')}
+                className={priority === 'baixa' ? 'bg-secondary hover:bg-secondary/90' : ''}
+              >
+                🟢 Baixa
+              </Button>
+            </div>
+          </motion.div>
+
           {/* Input Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -153,7 +213,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Adicionar tarefa"
+                placeholder="Adicionar tarefa (ex: Estudar 14:30)"
                 className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-0"
               />
             </div>
@@ -193,7 +253,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                     }
                     exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
-                    className="border-b border-border hover:bg-muted/30 transition-colors overflow-hidden"
+                    className="border-b border-border hover:bg-muted/30 transition-colors overflow-hidden group"
                   >
                     <div className="flex items-start gap-3 py-3 px-2">
                       <Checkbox
@@ -201,17 +261,57 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                         onCheckedChange={() => completeTask(task.id)}
                         className="mt-0.5"
                       />
+                      
+                      {/* Priority Bar */}
+                      <div
+                        className={`w-1 h-full rounded-full self-stretch ${
+                          task.priority === 'alta' 
+                            ? 'bg-destructive' 
+                            : task.priority === 'media'
+                            ? 'bg-primary'
+                            : 'bg-secondary'
+                        }`}
+                      />
+                      
                       <div className="flex-1 min-w-0">
-                        <motion.p
-                          animate={{
-                            opacity: completingTasks.has(task.id) ? 0.4 : 1,
-                          }}
-                          className={`text-sm text-foreground leading-relaxed break-words ${
-                            completingTasks.has(task.id) ? "line-through" : ""
-                          }`}
-                        >
-                          {task.text}
-                        </motion.p>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <motion.p
+                              animate={{
+                                opacity: completingTasks.has(task.id) ? 0.4 : 1,
+                              }}
+                              className={`text-sm text-foreground leading-relaxed break-words ${
+                                completingTasks.has(task.id) ? "line-through" : ""
+                              }`}
+                            >
+                              {task.text}
+                            </motion.p>
+                            
+                            {/* Priority Badge */}
+                            <span
+                              className={`text-xs px-2 py-0.5 rounded-full ${
+                                task.priority === 'alta'
+                                  ? 'bg-destructive/10 text-destructive'
+                                  : task.priority === 'media'
+                                  ? 'bg-primary/10 text-primary'
+                                  : 'bg-secondary/10 text-secondary'
+                              }`}
+                            >
+                              {task.priority === 'alta' ? 'Alta' : task.priority === 'media' ? 'Média' : 'Baixa'}
+                            </span>
+                          </div>
+                          
+                          {/* Edit Button */}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => setEditingTask(task)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
                         <div className="flex items-center gap-2 mt-1 flex-wrap">
                           <div className="flex items-center gap-1">
                             <Calendar className="h-3 w-3 text-[hsl(var(--todoist-green))]" />
@@ -222,15 +322,35 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                               }
                             </span>
                           </div>
-                          {task.course && (
-                            <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                              {task.course}
-                            </span>
+                          
+                          {task.dueTime && (
+                            <>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">
+                                  {task.dueTime}
+                                </span>
+                              </div>
+                            </>
                           )}
+                          
+                          {task.course && (
+                            <>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                                {task.course}
+                              </span>
+                            </>
+                          )}
+                          
                           {task.sourceType === 'ava' && (
-                            <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
-                              AVA
-                            </span>
+                            <>
+                              <span className="text-xs text-muted-foreground">•</span>
+                              <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
+                                AVA
+                              </span>
+                            </>
                           )}
                         </div>
                       </div>
@@ -262,6 +382,15 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         onOpenChange={setImportModalOpen}
         onImportSuccess={handleImport}
       />
+
+      {editingTask && (
+        <EditTaskDialog
+          task={editingTask}
+          open={!!editingTask}
+          onOpenChange={(open) => !open && setEditingTask(null)}
+          onSave={handleEditTask}
+        />
+      )}
     </div>
   );
 };
