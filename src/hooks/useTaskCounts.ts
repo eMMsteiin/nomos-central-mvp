@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Task } from "@/types/task";
 
 interface TaskCounts {
   entrada: number;
@@ -20,12 +21,20 @@ export const useTaskCounts = () => {
       try {
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
-          const tasks = JSON.parse(stored);
-          const taskCount = Array.isArray(tasks) ? tasks.filter((t: any) => !t.completed).length : 0;
+          const tasks: Task[] = JSON.parse(stored);
+          const activeTasks = Array.isArray(tasks) ? tasks.filter(t => !t.completed) : [];
+          
+          const hoje = activeTasks.filter(t => 
+            t.category === 'hoje' || (!t.category && !t.dueDate)
+          ).length;
+          
+          const emBreve = activeTasks.filter(t => 
+            t.category === 'em-breve'
+          ).length;
           
           setCounts({
-            entrada: taskCount,
-            hoje: taskCount,
+            entrada: activeTasks.length,
+            hoje: hoje,
             "primeiros-passos": 14, // Mock count
           });
         }

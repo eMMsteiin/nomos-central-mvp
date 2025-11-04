@@ -1,16 +1,12 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar } from "lucide-react";
+import { Plus, Calendar, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-
-interface Task {
-  id: string;
-  text: string;
-  createdAt: string;
-  completed?: boolean;
-}
+import { Task } from "@/types/task";
+import { ImportCalendarModal } from "@/components/ImportCalendarModal";
+import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -18,6 +14,7 @@ const NomosHome = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
+  const [importModalOpen, setImportModalOpen] = useState(false);
 
   // Load tasks from localStorage on mount
   useEffect(() => {
@@ -46,10 +43,28 @@ const NomosHome = () => {
         hour: "2-digit",
         minute: "2-digit",
       }),
+      sourceType: 'manual',
     };
 
     setTasks((prev) => [newTask, ...prev]);
     setInputValue("");
+  };
+
+  const handleImport = (events: ICSEvent[]) => {
+    const importedTasks: Task[] = events.map(event => ({
+      id: event.id,
+      text: event.title,
+      description: event.description,
+      createdAt: new Date().toISOString(),
+      dueDate: event.end,
+      course: event.location,
+      category: categorizeByDate(event.end),
+      sourceType: 'ava',
+      completed: false,
+    }));
+    
+    setTasks((prev) => [...importedTasks, ...prev]);
+    window.dispatchEvent(new Event('tasksUpdated'));
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -86,7 +101,18 @@ const NomosHome = () => {
       {/* Main content */}
       <div className="px-6 py-8 md:py-12 flex-1">
         <div className="max-w-4xl mx-auto space-y-8">
-          <h1 className="text-3xl font-semibold">Entrada</h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-3xl font-semibold">Entrada</h1>
+            <Button 
+              onClick={() => setImportModalOpen(true)}
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Importar do AVA
+            </Button>
+          </div>
           {/* Input Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -164,9 +190,26 @@ const NomosHome = () => {
                         >
                           {task.text}
                         </motion.p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Calendar className="h-3 w-3 text-[hsl(var(--todoist-green))]" />
-                          <span className="text-xs text-[hsl(var(--todoist-green))]">Hoje</span>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3 text-[hsl(var(--todoist-green))]" />
+                            <span className="text-xs text-[hsl(var(--todoist-green))]">
+                              {task.dueDate 
+                                ? new Date(task.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
+                                : 'Hoje'
+                              }
+                            </span>
+                          </div>
+                          {task.course && (
+                            <span className="text-xs bg-muted px-2 py-0.5 rounded">
+                              {task.course}
+                            </span>
+                          )}
+                          {task.sourceType === 'ava' && (
+                            <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
+                              AVA
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -191,6 +234,12 @@ const NomosHome = () => {
           </p>
         </motion.div>
       </footer>
+
+      <ImportCalendarModal
+        open={importModalOpen}
+        onOpenChange={setImportModalOpen}
+        onImportSuccess={handleImport}
+      />
     </div>
   );
 };
