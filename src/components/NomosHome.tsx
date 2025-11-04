@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Clock } from "lucide-react";
+import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -69,7 +69,7 @@ const NomosHome = () => {
         next.delete(taskId);
         return next;
       });
-    }, 600);
+    }, 400);
   };
 
   const today = new Date().toLocaleDateString("pt-BR", {
@@ -106,26 +106,26 @@ const NomosHome = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
+            className="border-b border-border pb-3"
           >
-            <Card className="p-6 shadow-sm">
-              <div className="flex gap-3">
-                <Input
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  placeholder="Adicionar nova tarefa..."
-                  className="flex-1 border-border focus-visible:ring-ring text-base"
-                />
-                <Button
-                  onClick={addTask}
-                  size="icon"
-                  className="shrink-0"
-                  aria-label="Adicionar tarefa"
-                >
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </div>
-            </Card>
+            <div className="flex gap-3 items-center">
+              <Button
+                onClick={addTask}
+                size="icon"
+                variant="ghost"
+                className="shrink-0 h-8 w-8"
+                aria-label="Adicionar tarefa"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+              <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyPress={handleKeyPress}
+                placeholder="Adicionar tarefa"
+                className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-0"
+              />
+            </div>
           </motion.div>
 
           {/* Tasks List */}
@@ -151,42 +151,37 @@ const NomosHome = () => {
                       completingTasks.has(task.id)
                         ? {
                             opacity: 0,
-                            x: 100,
-                            scale: 0.95,
-                            transition: { duration: 0.5, ease: "easeInOut" },
+                            y: -10,
+                            height: 0,
+                            transition: { duration: 0.4, ease: "easeOut" },
                           }
-                        : { opacity: 1, y: 0, x: 0, scale: 1 }
+                        : { opacity: 1, y: 0, height: "auto" }
                     }
-                    exit={{ opacity: 0, x: -100 }}
+                    exit={{ opacity: 0, y: -10 }}
                     transition={{ duration: 0.3, delay: index * 0.05 }}
+                    className="border-b border-border hover:bg-muted/30 transition-colors overflow-hidden"
                   >
-                    <Card className="p-5 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="flex items-start gap-4">
-                        <Checkbox
-                          checked={completingTasks.has(task.id)}
-                          onCheckedChange={() => completeTask(task.id)}
-                          className="mt-1"
-                        />
-                        <div className="flex-1 flex items-start justify-between gap-4">
-                          <motion.p
-                            animate={{
-                              opacity: completingTasks.has(task.id) ? 0.4 : 1,
-                            }}
-                            className={`text-base text-foreground leading-relaxed flex-1 ${
-                              completingTasks.has(task.id) ? "line-through" : ""
-                            }`}
-                          >
-                            {task.text}
-                          </motion.p>
-                          <div className="flex items-center gap-1.5 text-muted-foreground shrink-0">
-                            <Clock className="h-3.5 w-3.5" />
-                            <span className="text-xs font-light">
-                              {task.createdAt}
-                            </span>
-                          </div>
-                        </div>
+                    <div className="flex items-center gap-3 py-3 px-2">
+                      <Checkbox
+                        checked={completingTasks.has(task.id)}
+                        onCheckedChange={() => completeTask(task.id)}
+                      />
+                      <div className="flex-1 flex items-center justify-between gap-4 min-w-0">
+                        <motion.p
+                          animate={{
+                            opacity: completingTasks.has(task.id) ? 0.4 : 1,
+                          }}
+                          className={`text-sm text-foreground flex-1 ${
+                            completingTasks.has(task.id) ? "line-through" : ""
+                          }`}
+                        >
+                          {task.text}
+                        </motion.p>
+                        <span className="text-xs text-muted-foreground shrink-0">
+                          {task.createdAt}
+                        </span>
                       </div>
-                    </Card>
+                    </div>
                   </motion.div>
                 ))
               )}
