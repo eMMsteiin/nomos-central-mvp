@@ -8,98 +8,94 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 5%;
+    /* Paleta Mediterrânea NOMOS */
+    --background: 40 25% 95%;              /* Areia de Delos */
+    --foreground: 210 8% 20%;              /* Antracito Nomos */
 
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 5%;
+    --card: 0 0% 100%;                     /* Branco puro */
+    --card-foreground: 210 8% 20%;         /* Antracito Nomos */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 5%;
+    --popover-foreground: 210 8% 20%;
 
-    --primary: 0 0% 5%;
-    --primary-foreground: 0 0% 98%;
+    --primary: 210 28% 50%;                /* Azul Egeu */
+    --primary-foreground: 40 25% 95%;      /* Areia de Delos */
 
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 5%;
+    --secondary: 150 20% 60%;              /* Verde Oliveira */
+    --secondary-foreground: 210 8% 20%;    /* Antracito Nomos */
 
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
+    --muted: 30 12% 88%;                   /* Cinza Mármara claro */
+    --muted-foreground: 30 12% 50%;        /* Cinza Mármara escuro */
 
-    --accent: 0 0% 10%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 150 20% 60%;                 /* Verde Oliveira */
+    --accent-foreground: 210 8% 20%;       /* Antracito Nomos */
 
-    --destructive: 0 0% 20%;
-    --destructive-foreground: 0 0% 98%;
+    --destructive: 15 45% 59%;             /* Terracota Ática */
+    --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 0 0% 20%;
+    --border: 30 12% 82%;                  /* Cinza Mármara */
+    --input: 30 12% 82%;
+    --ring: 210 28% 50%;                   /* Azul Egeu */
 
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
+    --sidebar-background: 0 0% 100%;       /* Branco puro */
+    --sidebar-foreground: 210 8% 20%;      /* Antracito Nomos */
+    --sidebar-primary: 210 28% 50%;        /* Azul Egeu */
+    --sidebar-primary-foreground: 40 25% 95%;
+    --sidebar-accent: 45 67% 92%;          /* Areia Dourada claro */
+    --sidebar-accent-foreground: 210 8% 20%;
+    --sidebar-border: 30 12% 82%;          /* Cinza Mármara */
+    --sidebar-ring: 210 28% 50%;           /* Azul Egeu */
 
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
-    --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
-
-    /* Todoist colors */
-    --todoist-red: 0 85% 60%;
-    --todoist-red-bg: 0 100% 97%;
-    --todoist-red-hover: 0 100% 95%;
-    --todoist-orange-bg: 33 100% 96%;
-    --todoist-green: 142 71% 45%;
-    --todoist-count-bg: 0 0% 90%;
-    --todoist-count-text: 0 0% 40%;
+    /* Todoist colors - Paleta Mediterrânea */
+    --todoist-red: 15 45% 59%;             /* Terracota Ática */
+    --todoist-red-bg: 15 45% 95%;
+    --todoist-red-hover: 15 45% 90%;
+    --todoist-orange-bg: 45 67% 92%;       /* Areia Dourada claro */
+    --todoist-green: 150 20% 60%;          /* Verde Oliveira */
+    --todoist-count-bg: 250 25% 85%;       /* Lavanda Cretense claro */
+    --todoist-count-text: 210 8% 30%;      /* Antracito */
   }
 
   .dark {
-    --background: 0 0% 5%;
-    --foreground: 0 0% 98%;
+    /* Dark Mode - Paleta Mediterrânea */
+    --background: 210 8% 15%;              /* Antracito mais escuro */
+    --foreground: 40 25% 95%;              /* Areia de Delos */
 
-    --card: 0 0% 8%;
-    --card-foreground: 0 0% 98%;
+    --card: 210 8% 18%;                    /* Antracito card */
+    --card-foreground: 40 25% 95%;
 
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 210 8% 18%;
+    --popover-foreground: 40 25% 95%;
 
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 5%;
+    --primary: 210 28% 60%;                /* Azul Egeu mais claro */
+    --primary-foreground: 210 8% 15%;
 
-    --secondary: 0 0% 15%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 150 20% 70%;              /* Verde Oliveira mais claro */
+    --secondary-foreground: 210 8% 15%;
 
-    --muted: 0 0% 15%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 210 8% 22%;
+    --muted-foreground: 30 12% 70%;
 
-    --accent: 0 0% 90%;
-    --accent-foreground: 0 0% 5%;
+    --accent: 150 20% 70%;                 /* Verde Oliveira mais claro */
+    --accent-foreground: 210 8% 15%;
 
-    --destructive: 0 0% 80%;
-    --destructive-foreground: 0 0% 5%;
+    --destructive: 15 45% 65%;             /* Terracota mais claro */
+    --destructive-foreground: 210 8% 15%;
 
-    --border: 0 0% 20%;
-    --input: 0 0% 20%;
-    --ring: 0 0% 80%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --border: 210 8% 25%;
+    --input: 210 8% 25%;
+    --ring: 210 28% 60%;
+    
+    --sidebar-background: 210 8% 18%;
+    --sidebar-foreground: 40 25% 95%;
+    --sidebar-primary: 210 28% 60%;
+    --sidebar-primary-foreground: 210 8% 15%;
+    --sidebar-accent: 210 8% 22%;
+    --sidebar-accent-foreground: 40 25% 95%;
+    --sidebar-border: 210 8% 25%;
+    --sidebar-ring: 210 28% 60%;
   }
 }
 
