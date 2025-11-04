@@ -1,0 +1,4 @@
+project_id = "bvqbnhisnwzqshkuucam"
+
+[functions.fetch-ics]
+verify_jwt = false

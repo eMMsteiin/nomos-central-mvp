@@ -1,4 +1,5 @@
 import ICAL from 'ical.js';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ICSEvent {
   id: string;
@@ -10,10 +11,21 @@ export interface ICSEvent {
 }
 
 export async function fetchAndParseICS(url: string): Promise<ICSEvent[]> {
-  // Usar proxy CORS público para contornar bloqueio do AVA
-  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
-  const response = await fetch(proxyUrl);
-  const icsText = await response.text();
+  // Chamar Edge Function para evitar problemas de CORS
+  const { data, error } = await supabase.functions.invoke('fetch-ics', {
+    body: { url }
+  });
+  
+  if (error) {
+    console.error('Erro na Edge Function:', error);
+    throw new Error('Erro ao buscar calendário');
+  }
+  
+  if (!data?.icsText) {
+    throw new Error('Calendário vazio ou inválido');
+  }
+  
+  const icsText = data.icsText;
   
   const jcalData = ICAL.parse(icsText);
   const comp = new ICAL.Component(jcalData);
