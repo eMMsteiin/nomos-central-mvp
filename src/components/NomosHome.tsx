@@ -48,6 +48,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         minute: "2-digit",
       }),
       sourceType: 'manual',
+      category: 'hoje',
     };
 
     setTasks((prev) => [newTask, ...prev]);
@@ -98,7 +99,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     if (task.completed) return false;
     
     if (filterMode === 'all') return true;
-    if (filterMode === 'hoje') return task.category === 'hoje' || !task.category;
+    if (filterMode === 'hoje') return task.category === 'hoje';
     if (filterMode === 'entrada') {
       return task.category === 'hoje' || task.category === 'entrada' || !task.category;
     }
@@ -168,9 +169,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                   exit={{ opacity: 0 }}
                   className="text-center py-16"
                 >
-                  <p className="text-muted-foreground text-sm">
-                    Nenhuma tarefa nesta categoria.
-                  </p>
+            <p className="text-muted-foreground text-sm">
+              {filterMode === 'hoje' 
+                ? "Ops nenhuma tarefa para hoje. Vida fácil em!!!" 
+                : "Nenhuma tarefa nesta categoria."
+              }
+            </p>
                 </motion.div>
               ) : (
                 displayedTasks.map((task, index) => (
