@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { PostItSimple } from './PostItSimple';
+import { useEffect, useState } from 'react';
+import { PostIt as PostItComponent } from './PostIt';
 import { PostIt as PostItType } from '@/types/postit';
 import { usePostIts } from '@/hooks/usePostIts';
 
@@ -9,51 +9,59 @@ interface PostItOverlayProps {
 
 export const PostItOverlay = ({ tab }: PostItOverlayProps) => {
   const { postIts, updatePostIt, deletePostIt, movePostItToTab } = usePostIts(tab);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
 
-  if (postIts.length === 0) return null;
+  useEffect(() => {
+    const initialPositions: Record<string, { x: number; y: number }> = {};
+    postIts.forEach((postIt) => {
+      initialPositions[postIt.id] = postIt.position;
+    });
+    setPositions(initialPositions);
+  }, [postIts]);
 
-  const handleDragStart = (postItId: string) => (e: React.DragEvent) => {
-    setDraggedId(postItId);
+  const handleDragStart = (e: React.DragEvent, postItId: string) => {
     e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('postit-id', postItId);
   };
 
-  const handleDrag = (postItId: string) => (e: React.DragEvent) => {
-    if (e.clientX === 0 && e.clientY === 0) return;
-    
+  const handleDragEnd = (e: React.DragEvent, postItId: string) => {
+    const rect = e.currentTarget.getBoundingClientRect();
     const newPosition = {
-      x: Math.max(0, e.clientX - 100),
-      y: Math.max(0, e.clientY - 100),
+      x: e.clientX - rect.width / 2,
+      y: e.clientY - rect.height / 2,
     };
+    
+    setPositions((prev) => ({
+      ...prev,
+      [postItId]: newPosition,
+    }));
     
     updatePostIt(postItId, { position: newPosition });
   };
 
-  const handleDragEnd = () => {
-    setDraggedId(null);
-  };
+  if (postIts.length === 0) return null;
 
   return (
-    <div className="absolute inset-0 pointer-events-none z-10">
+    <div className="absolute inset-0 pointer-events-none">
       {postIts.map((postIt) => (
         <div
           key={postIt.id}
+          className="pointer-events-auto"
           style={{
             position: 'absolute',
-            left: `${postIt.position.x}px`,
-            top: `${postIt.position.y}px`,
+            left: `${positions[postIt.id]?.x || postIt.position.x}px`,
+            top: `${positions[postIt.id]?.y || postIt.position.y}px`,
           }}
-          className="pointer-events-auto"
+          draggable
+          onDragStart={(e) => handleDragStart(e, postIt.id)}
+          onDragEnd={(e) => handleDragEnd(e, postIt.id)}
         >
-          <PostItSimple
+          <PostItComponent
             postIt={postIt}
             onDelete={deletePostIt}
             onMove={movePostItToTab}
             onUpdateText={(id, text) => updatePostIt(id, { text })}
-            onDragStart={handleDragStart(postIt.id)}
-            onDrag={handleDrag(postIt.id)}
-            onDragEnd={handleDragEnd}
-            isDragging={draggedId === postIt.id}
+            isDraggable={false}
           />
         </div>
       ))}

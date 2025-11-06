@@ -3,31 +3,36 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Move, GripVertical } from 'lucide-react';
 import { PostIt as PostItType, POST_IT_COLORS } from '@/types/postit';
 import { MovePostItDialog } from './MovePostItDialog';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
-interface PostItSimpleProps {
+interface PostItProps {
   postIt: PostItType;
   onDelete: (id: string) => void;
   onMove: (id: string, tab: PostItType['tab']) => void;
   onUpdateText: (id: string, text: string) => void;
-  onDragStart?: (e: React.DragEvent) => void;
-  onDrag?: (e: React.DragEvent) => void;
-  onDragEnd?: () => void;
-  isDragging?: boolean;
+  isDraggable?: boolean;
 }
 
-export const PostItSimple = ({ 
-  postIt, 
-  onDelete, 
-  onMove, 
-  onUpdateText,
-  onDragStart,
-  onDrag,
-  onDragEnd,
-  isDragging 
-}: PostItSimpleProps) => {
+export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = true }: PostItProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [text, setText] = useState(postIt.text);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: postIt.id, disabled: !isDraggable });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   const handleTextBlur = () => {
     setIsEditing(false);
@@ -39,18 +44,17 @@ export const PostItSimple = ({
   return (
     <>
       <div
-        draggable
-        onDragStart={onDragStart}
-        onDrag={onDrag}
-        onDragEnd={onDragEnd}
+        ref={setNodeRef}
         style={{
+          ...style,
           backgroundColor: POST_IT_COLORS[postIt.color],
-          transform: `rotate(${postIt.rotation}deg)`,
+          transform: `${style.transform} rotate(${postIt.rotation}deg)`,
           width: `${postIt.width}px`,
           minHeight: `${postIt.height}px`,
-          opacity: isDragging ? 0.5 : 1,
         }}
-        className="cursor-move shadow-lg rounded-sm p-4 group hover:shadow-xl transition-shadow"
+        className="absolute cursor-move shadow-lg rounded-sm p-4 group hover:shadow-xl transition-shadow"
+        {...attributes}
+        {...listeners}
       >
         {/* Drag Handle */}
         <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-50 transition-opacity">
@@ -90,7 +94,6 @@ export const PostItSimple = ({
               src={postIt.imageUrl}
               alt="Post-it"
               className="w-full h-32 object-cover rounded mb-2"
-              draggable={false}
             />
           )}
           

@@ -1,5 +1,7 @@
-import { useState } from 'react';
-import { PostItSimple } from './PostItSimple';
+import { useEffect, useState } from 'react';
+import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
+import { PostIt as PostItComponent } from './PostIt';
 import { PostIt as PostItType } from '@/types/postit';
 
 interface PostItBoardProps {
@@ -11,73 +13,82 @@ interface PostItBoardProps {
 }
 
 export const PostItBoard = ({ postIts, onUpdatePosition, onDelete, onMove, onUpdateText }: PostItBoardProps) => {
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    })
+  );
 
-  const handleDragStart = (postItId: string, startX: number, startY: number) => (e: React.DragEvent) => {
-    setDraggedId(postItId);
-    const postIt = postIts.find(p => p.id === postItId);
-    if (postIt) {
-      setDragOffset({
-        x: e.clientX - postIt.position.x,
-        y: e.clientY - postIt.position.y,
-      });
+  useEffect(() => {
+    const initialPositions: Record<string, { x: number; y: number }> = {};
+    postIts.forEach((postIt) => {
+      initialPositions[postIt.id] = postIt.position;
+    });
+    setPositions(initialPositions);
+  }, [postIts]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, delta } = event;
+    const postItId = active.id as string;
+    
+    if (delta.x !== 0 || delta.y !== 0) {
+      const currentPos = positions[postItId] || { x: 0, y: 0 };
+      const newPosition = {
+        x: Math.max(0, currentPos.x + delta.x),
+        y: Math.max(0, currentPos.y + delta.y),
+      };
+      
+      setPositions((prev) => ({
+        ...prev,
+        [postItId]: newPosition,
+      }));
+      
+      onUpdatePosition(postItId, newPosition);
     }
-  };
-
-  const handleDrag = (postItId: string) => (e: React.DragEvent) => {
-    if (e.clientX === 0 && e.clientY === 0) return;
-    
-    const newPosition = {
-      x: Math.max(0, e.clientX - dragOffset.x),
-      y: Math.max(0, e.clientY - dragOffset.y),
-    };
-    
-    onUpdatePosition(postItId, newPosition);
-  };
-
-  const handleDragEnd = () => {
-    setDraggedId(null);
   };
 
   return (
     <div className="flex-1 relative bg-gradient-to-br from-background to-muted/20 rounded-lg overflow-auto">
-      <div className="relative min-h-[600px] w-full">
-        {/* Grid Pattern */}
-        <div
-          className="absolute inset-0 opacity-5"
-          style={{
-            backgroundImage: `
-              linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-              linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-            `,
-            backgroundSize: '20px 20px',
-          }}
-        />
-
-        {/* Post-its */}
-        {postIts.map((postIt) => (
-          <div
-            key={postIt.id}
-            style={{
-              position: 'absolute',
-              left: `${postIt.position.x}px`,
-              top: `${postIt.position.y}px`,
-            }}
-          >
-            <PostItSimple
-              postIt={postIt}
-              onDelete={onDelete}
-              onMove={onMove}
-              onUpdateText={onUpdateText}
-              onDragStart={handleDragStart(postIt.id, postIt.position.x, postIt.position.y)}
-              onDrag={handleDrag(postIt.id)}
-              onDragEnd={handleDragEnd}
-              isDragging={draggedId === postIt.id}
+      <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
+        <SortableContext items={postIts.map((p) => p.id)} strategy={rectSortingStrategy}>
+          <div className="relative min-h-[600px] w-full">
+            {/* Grid Pattern */}
+            <div
+              className="absolute inset-0 opacity-5"
+              style={{
+                backgroundImage: `
+                  linear-gradient(hsl(var(--border)) 1px, transparent 1px),
+                  linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
+                `,
+                backgroundSize: '20px 20px',
+              }}
             />
+
+            {/* Post-its */}
+            {postIts.map((postIt) => (
+              <div
+                key={postIt.id}
+                style={{
+                  position: 'absolute',
+                  left: `${positions[postIt.id]?.x || postIt.position.x}px`,
+                  top: `${positions[postIt.id]?.y || postIt.position.y}px`,
+                }}
+              >
+                <PostItComponent
+                  postIt={postIt}
+                  onDelete={onDelete}
+                  onMove={onMove}
+                  onUpdateText={onUpdateText}
+                />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </SortableContext>
+      </DndContext>
     </div>
   );
 };
