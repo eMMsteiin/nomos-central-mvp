@@ -32,7 +32,6 @@ const menuItems = [
   { title: "Entrada", url: "/", icon: Inbox, color: "red" },
   { title: "Hoje", url: "/hoje", icon: Calendar },
   { title: "Em breve", url: "/em-breve", icon: CalendarClock },
-  { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote },
   { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2 },
 ];

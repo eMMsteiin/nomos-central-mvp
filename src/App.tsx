@@ -11,7 +11,6 @@ import Hoje from "./pages/Hoje";
 import EmBreve from "./pages/EmBreve";
 import Filtros from "./pages/Filtros";
 import Concluido from "./pages/Concluido";
-import LembretesRapidos from "./pages/LembretesRapidos";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import NotFound from "./pages/NotFound";
 
@@ -37,7 +36,6 @@ const App = () => (
                   <Route path="/em-breve" element={<EmBreve />} />
                   <Route path="/filtros" element={<Filtros />} />
                   <Route path="/concluido" element={<Concluido />} />
-                  <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
                   <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
