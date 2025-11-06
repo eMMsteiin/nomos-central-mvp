@@ -9,6 +9,7 @@ import { ImportCalendarModal } from "@/components/ImportCalendarModal";
 import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 import { extractTimeFromText, formatDateToTime } from "@/services/timeExtractor";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
+import { PostItOverlay } from "@/components/PostItOverlay";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -148,7 +149,10 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   };
 
   return (
-    <div className="flex-1 bg-background flex flex-col">
+    <div className="flex-1 bg-background flex flex-col relative">
+      {/* Post-its Overlay */}
+      {filterMode !== 'all' && <PostItOverlay tab={filterMode} />}
+      
       {/* Main content */}
       <div className="px-6 py-8 md:py-12 flex-1">
         <div className="max-w-4xl mx-auto space-y-8">

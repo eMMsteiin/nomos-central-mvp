@@ -108,3 +108,12 @@ All colors MUST be HSL.
     @apply bg-background text-foreground;
   }
 }
+
+/* Handwriting font for post-its */
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
+
+.font-handwriting {
+  font-family: 'Caveat', cursive;
+  font-size: 1.1rem;
+  line-height: 1.5;
+}
