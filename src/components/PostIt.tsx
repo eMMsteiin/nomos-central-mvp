@@ -52,7 +52,7 @@ export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = t
           width: `${postIt.width}px`,
           minHeight: `${postIt.height}px`,
         }}
-        className="absolute cursor-move shadow-lg rounded-sm p-4 group hover:shadow-xl transition-shadow"
+        className="absolute cursor-move shadow-[0_4px_6px_rgba(0,0,0,0.15),0_8px_15px_rgba(0,0,0,0.1)] rounded-sm p-4 group hover:shadow-[0_8px_12px_rgba(0,0,0,0.2),0_16px_30px_rgba(0,0,0,0.15)] transition-shadow"
         {...attributes}
         {...listeners}
       >

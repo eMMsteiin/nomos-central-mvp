@@ -3,17 +3,22 @@ import { DndContext, DragEndEvent, PointerSensor, useSensor, useSensors } from '
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { PostIt as PostItComponent } from './PostIt';
 import { PostIt as PostItType } from '@/types/postit';
+import { PostItCreatorDialog } from './PostItCreatorDialog';
+import { Button } from './ui/button';
+import { Plus } from 'lucide-react';
 
 interface PostItBoardProps {
   postIts: PostItType[];
+  onAddPostIt: (postIt: PostItType) => void;
   onUpdatePosition: (id: string, position: { x: number; y: number }) => void;
   onDelete: (id: string) => void;
   onMove: (id: string, tab: PostItType['tab']) => void;
   onUpdateText: (id: string, text: string) => void;
 }
 
-export const PostItBoard = ({ postIts, onUpdatePosition, onDelete, onMove, onUpdateText }: PostItBoardProps) => {
+export const PostItBoard = ({ postIts, onAddPostIt, onUpdatePosition, onDelete, onMove, onUpdateText }: PostItBoardProps) => {
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -52,22 +57,23 @@ export const PostItBoard = ({ postIts, onUpdatePosition, onDelete, onMove, onUpd
   };
 
   return (
-    <div className="flex-1 relative bg-gradient-to-br from-background to-muted/20 rounded-lg overflow-auto">
+    <div className="flex-1 relative rounded-lg overflow-hidden cork-board">
+      {/* Add Post-it Button - Fixed at top */}
+      <div className="sticky top-0 z-10 p-4 flex justify-center">
+        <Button
+          onClick={() => setIsDialogOpen(true)}
+          size="lg"
+          className="shadow-lg hover:shadow-xl transition-all gap-2 bg-primary hover:bg-primary/90"
+        >
+          <Plus className="w-5 h-5" />
+          Adicionar Lembrete
+        </Button>
+      </div>
+
+      {/* Cork Board */}
       <DndContext sensors={sensors} onDragEnd={handleDragEnd}>
         <SortableContext items={postIts.map((p) => p.id)} strategy={rectSortingStrategy}>
-          <div className="relative min-h-[600px] w-full">
-            {/* Grid Pattern */}
-            <div
-              className="absolute inset-0 opacity-5"
-              style={{
-                backgroundImage: `
-                  linear-gradient(hsl(var(--border)) 1px, transparent 1px),
-                  linear-gradient(90deg, hsl(var(--border)) 1px, transparent 1px)
-                `,
-                backgroundSize: '20px 20px',
-              }}
-            />
-
+          <div className="relative min-h-[600px] w-full pb-8">
             {/* Post-its */}
             {postIts.map((postIt) => (
               <div
@@ -89,6 +95,13 @@ export const PostItBoard = ({ postIts, onUpdatePosition, onDelete, onMove, onUpd
           </div>
         </SortableContext>
       </DndContext>
+
+      {/* Creator Dialog */}
+      <PostItCreatorDialog
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        onCreatePostIt={onAddPostIt}
+      />
     </div>
   );
 };
