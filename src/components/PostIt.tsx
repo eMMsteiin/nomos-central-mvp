@@ -12,9 +12,10 @@ interface PostItProps {
   onMove: (id: string, tab: PostItType['tab']) => void;
   onUpdateText: (id: string, text: string) => void;
   isDraggable?: boolean;
+  isBeingDragged?: boolean;
 }
 
-export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = true }: PostItProps) => {
+export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = true, isBeingDragged = false }: PostItProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [text, setText] = useState(postIt.text);
@@ -46,13 +47,17 @@ export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = t
       <div
         ref={setNodeRef}
         style={{
-          ...style,
           backgroundColor: POST_IT_COLORS[postIt.color],
-          transform: `${style.transform} rotate(${postIt.rotation}deg)`,
+          transform: `${style.transform} rotate(${isBeingDragged ? 0 : postIt.rotation}deg)`,
+          transition: isBeingDragged ? undefined : 'all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)',
           width: `${postIt.width}px`,
           minHeight: `${postIt.height}px`,
         }}
-        className="absolute cursor-move shadow-[0_4px_6px_rgba(0,0,0,0.15),0_8px_15px_rgba(0,0,0,0.1)] rounded-sm p-4 group hover:shadow-[0_8px_12px_rgba(0,0,0,0.2),0_16px_30px_rgba(0,0,0,0.15)] transition-shadow"
+        className={`absolute cursor-move rounded-sm p-4 group ${
+          isBeingDragged 
+            ? 'shadow-[0_12px_35px_rgba(0,0,0,0.4)] scale-105 z-50' 
+            : 'shadow-[0_4px_6px_rgba(0,0,0,0.15),0_8px_15px_rgba(0,0,0,0.1)] hover:shadow-[0_8px_12px_rgba(0,0,0,0.2),0_16px_30px_rgba(0,0,0,0.15)] transition-shadow'
+        }`}
         {...attributes}
         {...listeners}
       >
