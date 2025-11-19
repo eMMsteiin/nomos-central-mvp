@@ -9,7 +9,8 @@ import {
   Search,
   LifeBuoy,
   Users,
-  StickyNote
+  StickyNote,
+  Book
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -33,6 +34,7 @@ const menuItems = [
   { title: "Hoje", url: "/hoje", icon: Calendar },
   { title: "Em breve", url: "/em-breve", icon: CalendarClock },
   { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote },
+  { title: "Caderno Digital", url: "/caderno", icon: Book },
   { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2 },
 ];

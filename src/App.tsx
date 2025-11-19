@@ -12,6 +12,7 @@ import EmBreve from "./pages/EmBreve";
 import Filtros from "./pages/Filtros";
 import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
+import Caderno from "./pages/Caderno";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import NotFound from "./pages/NotFound";
 
@@ -38,6 +39,7 @@ const App = () => (
                   <Route path="/filtros" element={<Filtros />} />
                   <Route path="/concluido" element={<Concluido />} />
                   <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
+                  <Route path="/caderno" element={<Caderno />} />
                   <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
