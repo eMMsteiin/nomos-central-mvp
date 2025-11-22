@@ -1,5 +1,5 @@
 import { Task } from '@/types/task';
-import { parseISO, isToday, isTomorrow, addDays, parse, isValid, startOfDay, isBefore, isAfter } from 'date-fns';
+import { parseISO, isToday, isTomorrow, addDays, parse, isValid, startOfDay, isBefore, isAfter, differenceInCalendarDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface DateExtractionResult {
@@ -121,23 +121,20 @@ function categorizeByDetectedDate(date?: Date): 'entrada' | 'hoje' | 'em-breve' 
 }
 
 export function formatDetectedDate(date: Date): string {
-  // Normalizar todas as datas para início do dia (00:00:00)
   const today = startOfDay(new Date());
   const dateStart = startOfDay(date);
   
-  // Verificar amanhã PRIMEIRO (ordem importante!)
-  if (isTomorrow(date)) {
-    return 'Amanhã';
-  }
-  
-  // Depois verificar hoje
-  if (isToday(date)) {
+  const diff = differenceInCalendarDays(dateStart, today);
+
+  if (diff === 0) {
     return 'Hoje';
   }
-  
-  // Verificar depois de amanhã usando comparação de timestamps
-  const dayAfterTomorrow = startOfDay(addDays(new Date(), 2));
-  if (dateStart.getTime() === dayAfterTomorrow.getTime()) {
+
+  if (diff === 1) {
+    return 'Amanhã';
+  }
+
+  if (diff === 2) {
     return 'Depois de amanhã';
   }
   
