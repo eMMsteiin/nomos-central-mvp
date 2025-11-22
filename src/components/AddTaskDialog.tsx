@@ -16,7 +16,7 @@ interface AddTaskDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const STORAGE_KEY = "nomos-tasks";
+const STORAGE_KEY = "nomos.tasks.today";
 
 export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
   const [inputValue, setInputValue] = useState('');
@@ -72,9 +72,9 @@ export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
   };
 
   const getPriorityColor = () => {
-    if (priority === 'alta') return 'text-[hsl(var(--todoist-red))]';
-    if (priority === 'media') return 'text-yellow-500';
-    return 'text-muted-foreground';
+    if (priority === 'alta') return 'fill-destructive text-destructive';
+    if (priority === 'media') return 'fill-primary text-primary';
+    return 'fill-secondary text-secondary';
   };
 
   return (
@@ -90,13 +90,17 @@ export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
               onClick={togglePriority}
               size="icon"
               variant="ghost"
-              className="shrink-0 h-8 w-8"
+              className="shrink-0 h-8 w-8 relative group"
               aria-label="Definir prioridade"
             >
               <Star 
-                className={`h-5 w-5 transition-colors ${getPriorityColor()}`}
-                fill={priority !== 'baixa' ? 'currentColor' : 'none'}
+                className={`h-5 w-5 transition-all duration-300 ${getPriorityColor()}`}
               />
+              
+              {/* Tooltip minimalista */}
+              <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                {priority === 'alta' ? 'Alta' : priority === 'media' ? 'Média' : 'Baixa'}
+              </span>
             </Button>
 
             <Input
