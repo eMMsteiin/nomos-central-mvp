@@ -9,6 +9,7 @@ export interface PostIt {
   width: number;
   height: number;
   rotation: number;
+  blockId?: string; // ID do bloco ao qual o post-it pertence (opcional)
 }
 
 export const POST_IT_COLORS = {
