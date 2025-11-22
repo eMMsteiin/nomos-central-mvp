@@ -29,18 +29,24 @@ export const useNotebooks = () => {
     window.dispatchEvent(new Event('notebooks-updated'));
   };
 
-  const createNotebook = (title: string, subject?: string) => {
+  const createNotebook = (
+    title: string, 
+    template: 'blank' | 'lined' | 'grid' | 'dotted' = 'blank',
+    discipline?: string,
+    subject?: string
+  ) => {
     const newNotebook: Notebook = {
       id: crypto.randomUUID(),
       title,
       subject,
+      discipline,
       color: '#FFD700',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       pages: [
         {
           id: crypto.randomUUID(),
-          template: 'blank',
+          template,
           strokes: [],
           createdAt: new Date().toISOString(),
         }
