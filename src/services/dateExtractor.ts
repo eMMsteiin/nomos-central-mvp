@@ -123,18 +123,19 @@ function categorizeByDetectedDate(date?: Date): 'entrada' | 'hoje' | 'em-breve' 
 export function formatDetectedDate(date: Date): string {
   const today = startOfDay(new Date());
   const dateStart = startOfDay(date);
-  
-  const diff = differenceInCalendarDays(dateStart, today);
 
-  if (diff === 0) {
+  const tomorrow = addDays(today, 1);
+  const dayAfterTomorrow = addDays(today, 2);
+
+  if (dateStart.getTime() === today.getTime()) {
     return 'Hoje';
   }
 
-  if (diff === 1) {
+  if (dateStart.getTime() === tomorrow.getTime()) {
     return 'Amanhã';
   }
 
-  if (diff === 2) {
+  if (dateStart.getTime() === dayAfterTomorrow.getTime()) {
     return 'Depois de amanhã';
   }
   
