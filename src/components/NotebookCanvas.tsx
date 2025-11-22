@@ -7,9 +7,10 @@ interface NotebookCanvasProps {
   strokes: Stroke[];
   onStrokesChange: (strokes: Stroke[]) => void;
   template?: 'blank' | 'lined' | 'grid' | 'dotted';
+  backgroundImage?: string;
 }
 
-export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank' }: NotebookCanvasProps) => {
+export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', backgroundImage }: NotebookCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
@@ -22,7 +23,7 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank' }:
 
   useEffect(() => {
     drawCanvas();
-  }, [strokes, template]);
+  }, [strokes, template, backgroundImage]);
 
   const drawCanvas = () => {
     const canvas = canvasRef.current;
@@ -34,13 +35,27 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank' }:
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw template
-    drawTemplate(ctx, canvas.width, canvas.height);
+    // Draw background image (PDF page) if present
+    if (backgroundImage) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        // Draw template and strokes after background
+        drawTemplate(ctx, canvas.width, canvas.height);
+        strokes.forEach(stroke => {
+          drawStroke(ctx, stroke);
+        });
+      };
+      img.src = backgroundImage;
+    } else {
+      // Draw template
+      drawTemplate(ctx, canvas.width, canvas.height);
 
-    // Draw strokes
-    strokes.forEach(stroke => {
-      drawStroke(ctx, stroke);
-    });
+      // Draw strokes
+      strokes.forEach(stroke => {
+        drawStroke(ctx, stroke);
+      });
+    }
   };
 
   const drawTemplate = (ctx: CanvasRenderingContext2D, width: number, height: number) => {

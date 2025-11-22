@@ -2,10 +2,12 @@ export interface Notebook {
   id: string;
   title: string;
   subject?: string;
+  discipline?: string;
   color: string;
   createdAt: string;
   updatedAt: string;
   pages: NotebookPage[];
+  isPdf?: boolean;
 }
 
 export interface NotebookPage {
@@ -13,6 +15,7 @@ export interface NotebookPage {
   template: 'blank' | 'lined' | 'grid' | 'dotted';
   strokes: Stroke[];
   createdAt: string;
+  backgroundImage?: string;
 }
 
 export interface Stroke {
