@@ -7,7 +7,6 @@ import { Calendar as CalendarIcon, Clock, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
-import { PostItOverlay } from "@/components/PostItOverlay";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -85,7 +84,6 @@ const EmBreve = () => {
   
   return (
     <div className="px-6 py-8 relative">
-      <PostItOverlay tab="em-breve" />
       <div className="max-w-7xl mx-auto">
         <h2 className="text-3xl font-semibold mb-6 flex items-center gap-2">
           <CalendarIcon className="h-8 w-8" />
