@@ -3,17 +3,27 @@ import { DndContext, DragEndEvent, DragStartEvent, PointerSensor, useSensor, use
 import { SortableContext, rectSortingStrategy } from '@dnd-kit/sortable';
 import { PostIt as PostItComponent } from './PostIt';
 import { PostIt as PostItType } from '@/types/postit';
+import { Block } from '@/types/block';
 import { PostItCreatorDialog } from './PostItCreatorDialog';
+import { CreateBlockDialog } from './blocks/CreateBlockDialog';
+import { WeekBlock } from './blocks/WeekBlock';
+import { DayBlock } from './blocks/DayBlock';
 import { Button } from './ui/button';
-import { Plus } from 'lucide-react';
+import { Plus, CalendarDays } from 'lucide-react';
 
 interface PostItBoardProps {
   postIts: PostItType[];
+  blocks: Block[];
   onAddPostIt: (postIt: PostItType) => void;
   onUpdatePosition: (id: string, position: { x: number; y: number }) => void;
   onDelete: (id: string) => void;
   onMove: (id: string, tab: PostItType['tab']) => void;
   onUpdateText: (id: string, text: string) => void;
+  onCreateBlock: (title: string) => void;
+  onDeleteBlock: (id: string) => void;
+  onExpandBlock: (id: string) => void;
+  onCollapseBlock: (id: string) => void;
+  onUpdateBlockTitle: (id: string, title: string) => void;
 }
 
 const SNAP_GRID = 20; // Snap points a cada 20px
@@ -48,19 +58,47 @@ const applyEdgeMagnetism = (x: number, y: number, containerWidth: number, contai
   return { x: newX, y: newY };
 };
 
-export const PostItBoard = ({ postIts, onAddPostIt, onUpdatePosition, onDelete, onMove, onUpdateText }: PostItBoardProps) => {
+export const PostItBoard = ({ 
+  postIts, 
+  blocks,
+  onAddPostIt, 
+  onUpdatePosition, 
+  onDelete, 
+  onMove, 
+  onUpdateText,
+  onCreateBlock,
+  onDeleteBlock,
+  onExpandBlock,
+  onCollapseBlock,
+  onUpdateBlockTitle
+}: PostItBoardProps) => {
   const [positions, setPositions] = useState<Record<string, { x: number; y: number }>>({});
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isBlockDialogOpen, setIsBlockDialogOpen] = useState(false);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const boardRef = useRef<HTMLDivElement>(null);
   
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
-        distance: 15, // Aumentado para reduzir sensibilidade
+        distance: 15,
       },
     })
   );
+
+  const handleCreateBlock = (title: string) => {
+    // Criar bloco no centro do quadro visível
+    const boardWidth = boardRef.current?.clientWidth || 1200;
+    const boardHeight = boardRef.current?.clientHeight || 800;
+    const centerX = (boardWidth - 800) / 2;
+    const centerY = (boardHeight - 400) / 2 + 100; // Offset para baixo do botão
+    
+    onCreateBlock(title);
+  };
+
+  // Separar post-its livres e post-its em blocos
+  const freePostIts = postIts.filter(p => !p.blockId);
+  const visibleBlocks = blocks.filter(b => !b.weekId || b.isExpanded); // Mostrar blocos que não são diários, ou diários expandidos
 
   useEffect(() => {
     const initialPositions: Record<string, { x: number; y: number }> = {};
@@ -114,8 +152,17 @@ export const PostItBoard = ({ postIts, onAddPostIt, onUpdatePosition, onDelete, 
 
   return (
     <div className="flex-1 relative rounded-lg overflow-hidden cork-board">
-      {/* Add Post-it Button - Fixed at top */}
-      <div className="sticky top-0 z-10 p-4 flex justify-center">
+      {/* Action Buttons - Fixed at top */}
+      <div className="sticky top-0 z-10 p-4 flex justify-center gap-3">
+        <Button
+          onClick={() => setIsBlockDialogOpen(true)}
+          size="lg"
+          variant="outline"
+          className="shadow-lg hover:shadow-xl transition-all gap-2"
+        >
+          <CalendarDays className="w-5 h-5" />
+          Criar Bloco Semanal
+        </Button>
         <Button
           onClick={() => setIsDialogOpen(true)}
           size="lg"
@@ -128,10 +175,29 @@ export const PostItBoard = ({ postIts, onAddPostIt, onUpdatePosition, onDelete, 
 
       {/* Cork Board */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-        <SortableContext items={postIts.map((p) => p.id)} strategy={rectSortingStrategy}>
+        <SortableContext items={[...freePostIts.map(p => p.id), ...visibleBlocks.map(b => b.id)]} strategy={rectSortingStrategy}>
           <div ref={boardRef} className="relative min-h-[600px] w-full pb-8">
-            {/* Post-its */}
-            {postIts.map((postIt) => (
+            {/* Blocos */}
+            {visibleBlocks.map((block) => (
+              block.type === 'week' ? (
+                <WeekBlock
+                  key={block.id}
+                  block={block}
+                  onDelete={onDeleteBlock}
+                  onExpand={onExpandBlock}
+                  onCollapse={onCollapseBlock}
+                  onUpdateTitle={onUpdateBlockTitle}
+                />
+              ) : (
+                <DayBlock
+                  key={block.id}
+                  block={block}
+                />
+              )
+            ))}
+
+            {/* Post-its livres (sem bloco) */}
+            {freePostIts.map((postIt) => (
               <div
                 key={postIt.id}
                 className={`postit-landing ${draggingId === postIt.id ? 'dragging' : ''}`}
@@ -154,11 +220,17 @@ export const PostItBoard = ({ postIts, onAddPostIt, onUpdatePosition, onDelete, 
         </SortableContext>
       </DndContext>
 
-      {/* Creator Dialog */}
+      {/* Creator Dialogs */}
       <PostItCreatorDialog
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
         onCreatePostIt={onAddPostIt}
+      />
+      
+      <CreateBlockDialog
+        open={isBlockDialogOpen}
+        onOpenChange={setIsBlockDialogOpen}
+        onCreateBlock={handleCreateBlock}
       />
     </div>
   );
