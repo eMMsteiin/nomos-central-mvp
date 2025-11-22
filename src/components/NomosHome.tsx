@@ -8,6 +8,7 @@ import { Task } from "@/types/task";
 import { ImportCalendarModal } from "@/components/ImportCalendarModal";
 import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 import { extractTimeFromText, formatDateToTime } from "@/services/timeExtractor";
+import { extractDateFromText } from "@/services/dateExtractor";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
 
 const STORAGE_KEY = "nomos.tasks.today";
@@ -52,7 +53,11 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const addTask = () => {
     if (!inputValue.trim()) return;
 
-    const { cleanText, time } = extractTimeFromText(inputValue.trim());
+    // Primeiro extrair data
+    const { cleanText: textWithoutDate, detectedDate, category } = extractDateFromText(inputValue.trim());
+    
+    // Depois extrair horário do texto restante
+    const { cleanText, time } = extractTimeFromText(textWithoutDate);
 
     const newTask: Task = {
       id: Date.now().toString(),
@@ -62,14 +67,18 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         minute: "2-digit",
       }),
       dueTime: time,
+      dueDate: detectedDate,
       priority: priority,
       sourceType: 'manual',
-      category: 'hoje',
+      category: category,
     };
 
     setTasks((prev) => [newTask, ...prev]);
     setInputValue("");
     setPriority('baixa');
+    
+    // Dispatch event to update counts
+    window.dispatchEvent(new Event('tasksUpdated'));
   };
 
   const handleImport = (events: ICSEvent[]) => {

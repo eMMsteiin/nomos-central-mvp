@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus, Star } from 'lucide-react';
+import { Plus, Star, Calendar } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Task } from '@/types/task';
 import { extractTimeFromText } from '@/services/timeExtractor';
+import { extractDateFromText, formatDetectedDate } from '@/services/dateExtractor';
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -25,7 +26,11 @@ export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
   const addTask = () => {
     if (!inputValue.trim()) return;
 
-    const { cleanText, time } = extractTimeFromText(inputValue.trim());
+    // Primeiro extrair data
+    const { cleanText: textWithoutDate, detectedDate, category } = extractDateFromText(inputValue.trim());
+    
+    // Depois extrair horário do texto restante
+    const { cleanText, time } = extractTimeFromText(textWithoutDate);
 
     const newTask: Task = {
       id: Date.now().toString(),
@@ -35,9 +40,10 @@ export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
         minute: "2-digit",
       }),
       dueTime: time,
+      dueDate: detectedDate,
       priority: priority,
       sourceType: 'manual',
-      category: 'entrada',
+      category: category,
     };
 
     // Get existing tasks from localStorage
@@ -77,6 +83,9 @@ export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
     return 'fill-secondary text-secondary';
   };
 
+  // Extrair data para preview
+  const { detectedDate, category } = extractDateFromText(inputValue);
+  
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
@@ -114,9 +123,22 @@ export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
             />
           </div>
 
+          {/* Preview de data detectada */}
+          {detectedDate && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-md">
+              <Calendar className="h-4 w-4" />
+              <span>
+                {formatDetectedDate(detectedDate)} • 
+                <span className="ml-1 font-medium">
+                  {category === 'hoje' ? 'Hoje' : category === 'em-breve' ? 'Em breve' : 'Entrada'}
+                </span>
+              </span>
+            </div>
+          )}
+
           <div className="text-xs text-muted-foreground space-y-1">
-            <p>💡 Dica: Use horários no texto para definir lembretes automáticos</p>
-            <p className="text-[10px]">Exemplos: "às 14h", "14:30", "amanhã às 10h"</p>
+            <p>💡 Dica: Use datas e horários para organizar automaticamente</p>
+            <p className="text-[10px]">Exemplos: "amanhã às 14h", "22/11 às 10h", "15 de dezembro"</p>
           </div>
         </div>
 
