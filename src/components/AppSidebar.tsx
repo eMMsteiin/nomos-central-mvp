@@ -1,4 +1,5 @@
-import { 
+import { useState } from "react";
+import {
   Inbox, 
   Calendar, 
   CalendarClock, 
@@ -37,6 +38,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { AddTaskDialog } from "@/components/AddTaskDialog";
+
 
 const menuItems = [
   { title: "Entrada", url: "/", icon: Inbox, color: "red", canHide: false },
@@ -57,6 +60,7 @@ const projects = [
 ];
 
 export function AppSidebar() {
+  const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
   const { open } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
@@ -78,6 +82,7 @@ export function AppSidebar() {
         {/* Top Actions */}
         <div className="p-2 space-y-2">
           <Button 
+            onClick={() => setIsAddTaskDialogOpen(true)}
             className="w-full justify-start gap-2 bg-[hsl(var(--todoist-red-bg))] text-[hsl(var(--todoist-red))] hover:bg-[hsl(var(--todoist-red-hover))] font-medium border-0"
             size={open ? "default" : "icon"}
           >
@@ -232,6 +237,11 @@ export function AppSidebar() {
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
+
+      <AddTaskDialog 
+        open={isAddTaskDialogOpen} 
+        onOpenChange={setIsAddTaskDialogOpen} 
+      />
     </Sidebar>
   );
 }
