@@ -1,23 +1,21 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Trash2, Move, GripVertical } from 'lucide-react';
+import { Trash2, GripVertical } from 'lucide-react';
 import { PostIt as PostItType, POST_IT_COLORS } from '@/types/postit';
-import { MovePostItDialog } from './MovePostItDialog';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 
 interface PostItProps {
   postIt: PostItType;
   onDelete: (id: string) => void;
-  onMove: (id: string, tab: PostItType['tab']) => void;
+  onMove?: (id: string, blockId: string) => void;
   onUpdateText: (id: string, text: string) => void;
   isDraggable?: boolean;
   isBeingDragged?: boolean;
 }
 
-export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = true, isBeingDragged = false }: PostItProps) => {
+export const PostIt = ({ postIt, onDelete, onUpdateText, isDraggable = true, isBeingDragged = false }: PostItProps) => {
   const [isEditing, setIsEditing] = useState(false);
-  const [moveDialogOpen, setMoveDialogOpen] = useState(false);
   const [text, setText] = useState(postIt.text);
 
   const {
@@ -67,18 +65,7 @@ export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = t
         </div>
 
         {/* Action Buttons */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1">
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6 bg-background/80 hover:bg-background"
-            onClick={(e) => {
-              e.stopPropagation();
-              setMoveDialogOpen(true);
-            }}
-          >
-            <Move className="w-3 h-3" />
-          </Button>
+        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
           <Button
             size="icon"
             variant="ghost"
@@ -121,16 +108,6 @@ export const PostIt = ({ postIt, onDelete, onMove, onUpdateText, isDraggable = t
           )}
         </div>
       </div>
-
-      <MovePostItDialog
-        open={moveDialogOpen}
-        onOpenChange={setMoveDialogOpen}
-        currentTab={postIt.tab}
-        onMove={(tab) => {
-          onMove(postIt.id, tab);
-          setMoveDialogOpen(false);
-        }}
-      />
     </>
   );
 };

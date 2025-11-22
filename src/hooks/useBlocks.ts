@@ -82,6 +82,21 @@ export const useBlocks = (tab?: string) => {
   };
 
   const collapseWeekBlock = (weekId: string) => {
+    // Mover post-its dos blocos diários de volta para o bloco semanal
+    const dayBlockIds = blocks.filter(b => b.weekId === weekId).map(b => b.id);
+    
+    // Atualizar post-its
+    const postitsKey = 'nomos-postits';
+    const saved = localStorage.getItem(postitsKey);
+    if (saved) {
+      const allPostIts = JSON.parse(saved);
+      const updatedPostIts = allPostIts.map((p: any) => 
+        dayBlockIds.includes(p.blockId) ? { ...p, blockId: weekId } : p
+      );
+      localStorage.setItem(postitsKey, JSON.stringify(updatedPostIts));
+      window.dispatchEvent(new Event('postits-updated'));
+    }
+
     // Remover blocos diários e marcar semanal como não expandido
     const updated = blocks
       .filter(b => b.weekId !== weekId)

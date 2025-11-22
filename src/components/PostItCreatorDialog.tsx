@@ -16,7 +16,7 @@ import { toast } from 'sonner';
 interface PostItCreatorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onCreatePostIt: (postIt: PostIt) => void;
+  onCreatePostIt: (postIt: Omit<PostIt, 'blockId'>) => void;
 }
 
 export const PostItCreatorDialog = ({ open, onOpenChange, onCreatePostIt }: PostItCreatorDialogProps) => {
@@ -50,13 +50,12 @@ export const PostItCreatorDialog = ({ open, onOpenChange, onCreatePostIt }: Post
     const randomX = Math.floor(Math.random() * 400) + 50;
     const randomY = Math.floor(Math.random() * 300) + 50;
 
-    const newPostIt: PostIt = {
+    const newPostIt: Omit<PostIt, 'blockId'> = {
       id: `postit-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       text: text.trim(),
       color: selectedColor,
       imageUrl,
       position: { x: randomX, y: randomY },
-      tab: 'lembretes',
       createdAt: new Date().toISOString(),
       width: 200,
       height: 200,

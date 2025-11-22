@@ -3,13 +3,12 @@ export interface PostIt {
   text: string;
   color: 'verde' | 'azul' | 'terracota' | 'areia' | 'lavanda';
   imageUrl?: string;
-  position: { x: number; y: number };
-  tab: 'entrada' | 'hoje' | 'em-breve' | 'filtros' | 'concluido' | 'lembretes';
+  position: { x: number; y: number }; // Posição relativa ao bloco
+  blockId: string; // ID do bloco ao qual o post-it pertence (obrigatório)
   createdAt: string;
   width: number;
   height: number;
   rotation: number;
-  blockId?: string; // ID do bloco ao qual o post-it pertence (opcional)
 }
 
 export const POST_IT_COLORS = {

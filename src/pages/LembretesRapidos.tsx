@@ -1,10 +1,13 @@
-import { PostItBoard } from '@/components/PostItBoard';
+import { useState } from 'react';
 import { usePostIts } from '@/hooks/usePostIts';
 import { useBlocks } from '@/hooks/useBlocks';
-import { StickyNote } from 'lucide-react';
+import { WeekBlock } from '@/components/blocks/WeekBlock';
+import { CreateBlockDialog } from '@/components/blocks/CreateBlockDialog';
+import { Button } from '@/components/ui/button';
+import { StickyNote, CalendarDays } from 'lucide-react';
 
 const LembretesRapidos = () => {
-  const { postIts, addPostIt, updatePostIt, deletePostIt, movePostItToTab } = usePostIts('lembretes');
+  const { addPostIt, updatePostIt, deletePostIt, getPostItsByBlock } = usePostIts();
   const { 
     blocks, 
     createWeekBlock, 
@@ -14,41 +17,85 @@ const LembretesRapidos = () => {
     updateBlockTitle 
   } = useBlocks();
 
+  const [isCreateBlockDialogOpen, setIsCreateBlockDialogOpen] = useState(false);
+
   const handleCreateBlock = (title: string) => {
-    // Criar bloco no centro aproximado
-    const centerX = 300;
-    const centerY = 200;
-    createWeekBlock({ x: centerX, y: centerY }, title);
+    createWeekBlock({ x: 0, y: 0 }, title);
   };
+
+  const weekBlocks = blocks.filter(b => b.type === 'week');
 
   return (
     <div className="flex flex-col h-screen px-6 py-8">
       <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
         {/* Header */}
-        <div className="mb-4">
-          <div className="flex items-center gap-3 mb-1">
-            <StickyNote className="w-7 h-7 text-primary" />
-            <h2 className="text-2xl font-semibold">Lembretes Rápidos</h2>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3 mb-1">
+              <StickyNote className="w-7 h-7 text-primary" />
+              <h2 className="text-2xl font-semibold">Lembretes Rápidos</h2>
+            </div>
+            <p className="text-muted-foreground text-sm">
+              Organize seus lembretes em blocos semanais
+            </p>
           </div>
-          <p className="text-muted-foreground text-sm">
-            Adicione lembretes coloridos e organize-os livremente pelo quadro
-          </p>
+          
+          <Button onClick={() => setIsCreateBlockDialogOpen(true)} size="lg" className="gap-2">
+            <CalendarDays className="w-5 h-5" />
+            Criar Bloco Semanal
+          </Button>
         </div>
 
-        {/* Board */}
-        <PostItBoard
-          postIts={postIts}
-          blocks={blocks}
-          onAddPostIt={addPostIt}
-          onUpdatePosition={(id, position) => updatePostIt(id, { position })}
-          onDelete={deletePostIt}
-          onMove={movePostItToTab}
-          onUpdateText={(id, text) => updatePostIt(id, { text })}
+        {/* Blocks List */}
+        <div className="flex-1 overflow-auto">
+          {weekBlocks.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center gap-4">
+              <div className="text-muted-foreground">
+                <CalendarDays className="w-16 h-16 mx-auto mb-4 opacity-50" />
+                <h3 className="text-lg font-medium mb-2">Nenhum bloco criado ainda</h3>
+                <p className="text-sm">Crie seu primeiro bloco semanal para começar a organizar lembretes</p>
+              </div>
+              <Button onClick={() => setIsCreateBlockDialogOpen(true)} size="lg" className="gap-2">
+                <CalendarDays className="w-5 h-5" />
+                Criar Primeiro Bloco
+              </Button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {weekBlocks.map((weekBlock) => {
+                const dayBlocks = blocks.filter(b => b.weekId === weekBlock.id);
+                const postIts = getPostItsByBlock(weekBlock.id);
+                
+                const dayPostIts: Record<string, any[]> = {};
+                dayBlocks.forEach(dayBlock => {
+                  dayPostIts[dayBlock.id] = getPostItsByBlock(dayBlock.id);
+                });
+
+                return (
+                  <WeekBlock
+                    key={weekBlock.id}
+                    block={weekBlock}
+                    postIts={postIts}
+                    dayBlocks={dayBlocks}
+                    dayPostIts={dayPostIts}
+                    onAddPostIt={addPostIt}
+                    onUpdatePostIt={updatePostIt}
+                    onDeletePostIt={deletePostIt}
+                    onExpand={expandWeekBlock}
+                    onCollapse={collapseWeekBlock}
+                    onDelete={deleteBlock}
+                    onUpdateTitle={updateBlockTitle}
+                  />
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <CreateBlockDialog
+          open={isCreateBlockDialogOpen}
+          onOpenChange={setIsCreateBlockDialogOpen}
           onCreateBlock={handleCreateBlock}
-          onDeleteBlock={deleteBlock}
-          onExpandBlock={expandWeekBlock}
-          onCollapseBlock={collapseWeekBlock}
-          onUpdateBlockTitle={updateBlockTitle}
         />
       </div>
     </div>

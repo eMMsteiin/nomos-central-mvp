@@ -3,7 +3,7 @@ import { PostIt } from '@/types/postit';
 
 const STORAGE_KEY = 'nomos-postits';
 
-export const usePostIts = (tab?: string) => {
+export const usePostIts = (blockId?: string) => {
   const [postIts, setPostIts] = useState<PostIt[]>([]);
 
   useEffect(() => {
@@ -15,13 +15,13 @@ export const usePostIts = (tab?: string) => {
     
     window.addEventListener('postits-updated', handleStorageChange);
     return () => window.removeEventListener('postits-updated', handleStorageChange);
-  }, [tab]);
+  }, [blockId]);
 
   const loadPostIts = () => {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved) {
       const all = JSON.parse(saved) as PostIt[];
-      setPostIts(tab ? all.filter(p => p.tab === tab) : all);
+      setPostIts(blockId ? all.filter(p => p.blockId === blockId) : all);
     }
   };
 
@@ -55,10 +55,10 @@ export const usePostIts = (tab?: string) => {
     savePostIts(updated);
   };
 
-  const movePostItToTab = (id: string, newTab: PostIt['tab']) => {
+  const movePostItToBlock = (id: string, newBlockId: string) => {
     const postIt = postIts.find(p => p.id === id);
     if (postIt) {
-      const updated = { ...postIt, tab: newTab };
+      const updated = { ...postIt, blockId: newBlockId };
       
       // Update in global storage
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -68,9 +68,18 @@ export const usePostIts = (tab?: string) => {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(newAll));
       window.dispatchEvent(new Event('postits-updated'));
       
-      // Remove from current tab
+      // Remove from current block view
       setPostIts(postIts.filter(p => p.id !== id));
     }
+  };
+
+  const getPostItsByBlock = (blockId: string): PostIt[] => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      const all = JSON.parse(saved) as PostIt[];
+      return all.filter(p => p.blockId === blockId);
+    }
+    return [];
   };
 
   return {
@@ -78,7 +87,8 @@ export const usePostIts = (tab?: string) => {
     addPostIt,
     updatePostIt,
     deletePostIt,
-    movePostItToTab,
+    movePostItToBlock,
+    getPostItsByBlock,
     refreshPostIts: loadPostIts
   };
 };
