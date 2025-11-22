@@ -11,7 +11,8 @@ import {
   Users,
   StickyNote,
   Book,
-  EyeOff
+  EyeOff,
+  MoreVertical
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -30,7 +31,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTaskCounts } from "@/hooks/useTaskCounts";
 import { useHiddenTabs } from "@/hooks/useHiddenTabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const menuItems = [
   { title: "Entrada", url: "/", icon: Inbox, color: "red", canHide: false },
@@ -128,26 +134,35 @@ export function AppSidebar() {
                         </NavLink>
                       </SidebarMenuButton>
                       
-                      {/* Hide button (appears on hover) */}
+                      {/* Three dots menu (appears on hover) */}
                       {open && item.canHide && (
-                        <Tooltip>
-                          <TooltipTrigger asChild>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                            >
+                              <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-40">
+                            <DropdownMenuItem
                               onClick={(e) => {
                                 e.preventDefault();
                                 hideTab(item.url, item.title);
                               }}
+                              className="gap-2 text-sm cursor-pointer"
                             >
-                              <EyeOff className="h-3 w-3" />
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent side="right">
-                            <p>Ocultar aba</p>
-                          </TooltipContent>
-                        </Tooltip>
+                              <EyeOff className="h-3.5 w-3.5" />
+                              <span>Ocultar aba</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       )}
                     </SidebarMenuItem>
                   );
