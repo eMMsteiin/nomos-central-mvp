@@ -5,12 +5,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Upload, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { getDocument } from 'pdfjs-dist';
+import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
+import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Notebook, NotebookPage } from '@/types/notebook';
 
 // Configure PDF.js worker
-import * as pdfjsLib from 'pdfjs-dist';
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ImportPdfDialogProps {
   open: boolean;
