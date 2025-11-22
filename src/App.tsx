@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
+import { HiddenTabsProvider } from "@/contexts/HiddenTabsContext";
 import Index from "./pages/Index";
 import Hoje from "./pages/Hoje";
 import EmBreve from "./pages/EmBreve";
@@ -24,9 +25,10 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <SidebarProvider>
-          <div className="flex min-h-screen w-full">
-            <AppSidebar />
+        <HiddenTabsProvider>
+          <SidebarProvider>
+            <div className="flex min-h-screen w-full">
+              <AppSidebar />
             
             <div className="flex-1 flex flex-col w-full">
               <AppHeader />
@@ -47,6 +49,7 @@ const App = () => (
             </div>
           </div>
         </SidebarProvider>
+      </HiddenTabsProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>
