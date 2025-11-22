@@ -121,20 +121,22 @@ function categorizeByDetectedDate(date?: Date): 'entrada' | 'hoje' | 'em-breve' 
 }
 
 export function formatDetectedDate(date: Date): string {
+  // Normalizar todas as datas para início do dia (00:00:00)
   const today = startOfDay(new Date());
   const dateStart = startOfDay(date);
   
-  if (isToday(date)) {
-    return 'Hoje';
-  }
-  
+  // Verificar amanhã PRIMEIRO (ordem importante!)
   if (isTomorrow(date)) {
     return 'Amanhã';
   }
   
-  const tomorrow = addDays(today, 1);
-  const dayAfterTomorrow = addDays(today, 2);
+  // Depois verificar hoje
+  if (isToday(date)) {
+    return 'Hoje';
+  }
   
+  // Verificar depois de amanhã usando comparação de timestamps
+  const dayAfterTomorrow = startOfDay(addDays(new Date(), 2));
   if (dateStart.getTime() === dayAfterTomorrow.getTime()) {
     return 'Depois de amanhã';
   }
