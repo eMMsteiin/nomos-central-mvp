@@ -10,7 +10,8 @@ import {
   LifeBuoy,
   Users,
   StickyNote,
-  Book
+  Book,
+  EyeOff
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -28,15 +29,17 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTaskCounts } from "@/hooks/useTaskCounts";
+import { useHiddenTabs } from "@/hooks/useHiddenTabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const menuItems = [
-  { title: "Entrada", url: "/", icon: Inbox, color: "red" },
-  { title: "Hoje", url: "/hoje", icon: Calendar },
-  { title: "Em breve", url: "/em-breve", icon: CalendarClock },
-  { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote },
-  { title: "Caderno Digital", url: "/caderno", icon: Book },
-  { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag },
-  { title: "Concluído", url: "/concluido", icon: CheckCircle2 },
+  { title: "Entrada", url: "/", icon: Inbox, color: "red", canHide: false },
+  { title: "Hoje", url: "/hoje", icon: Calendar, canHide: true },
+  { title: "Em breve", url: "/em-breve", icon: CalendarClock, canHide: true },
+  { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
+  { title: "Caderno Digital", url: "/caderno", icon: Book, canHide: true },
+  { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag, canHide: true },
+  { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
 ];
 
 const projects = [
@@ -52,6 +55,7 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const counts = useTaskCounts();
+  const { isTabHidden, hideTab } = useHiddenTabs();
 
   const isActive = (path: string) => currentPath === path;
 
@@ -90,40 +94,64 @@ export function AppSidebar() {
         <SidebarGroup className="px-2">
           <SidebarGroupContent>
             <SidebarMenu>
-              {menuItems.map((item) => {
-                const active = isActive(item.url);
-                const count = getCount(item.url);
-                return (
-                  <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={
-                          active
-                            ? "bg-[hsl(var(--todoist-orange-bg))] text-foreground font-medium border-l-2 border-[hsl(var(--todoist-red))] rounded-l-none"
-                            : "hover:bg-muted/50"
-                        }
-                      >
-                        <item.icon 
-                          className="h-4 w-4" 
-                          style={item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : undefined}
-                        />
-                        {open && (
-                          <>
-                            <span className="flex-1">{item.title}</span>
-                            {count > 0 && (
-                              <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[hsl(var(--todoist-count-bg))] text-[hsl(var(--todoist-count-text))]">
-                                {count}
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </NavLink>
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {menuItems
+                .filter(item => !isTabHidden(item.url))
+                .map((item) => {
+                  const active = isActive(item.url);
+                  const count = getCount(item.url);
+                  return (
+                    <SidebarMenuItem key={item.title} className="group relative">
+                      <SidebarMenuButton asChild>
+                        <NavLink
+                          to={item.url}
+                          end
+                          className={
+                            active
+                              ? "bg-[hsl(var(--todoist-orange-bg))] text-foreground font-medium border-l-2 border-[hsl(var(--todoist-red))] rounded-l-none"
+                              : "hover:bg-muted/50"
+                          }
+                        >
+                          <item.icon 
+                            className="h-4 w-4" 
+                            style={item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : undefined}
+                          />
+                          {open && (
+                            <>
+                              <span className="flex-1">{item.title}</span>
+                              {count > 0 && (
+                                <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[hsl(var(--todoist-count-bg))] text-[hsl(var(--todoist-count-text))]">
+                                  {count}
+                                </span>
+                              )}
+                            </>
+                          )}
+                        </NavLink>
+                      </SidebarMenuButton>
+                      
+                      {/* Hide button (appears on hover) */}
+                      {open && item.canHide && (
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                hideTab(item.url, item.title);
+                              }}
+                            >
+                              <EyeOff className="h-3 w-3" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            <p>Ocultar aba</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      )}
+                    </SidebarMenuItem>
+                  );
+                })}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
