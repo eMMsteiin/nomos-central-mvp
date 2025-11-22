@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react';
 import { Button } from './ui/button';
-import { Pen, Eraser, Highlighter, Undo, Redo } from 'lucide-react';
+import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Slider } from './ui/slider';
 import { Stroke, Point } from '@/types/notebook';
 
 interface NotebookCanvasProps {
@@ -12,12 +13,17 @@ interface NotebookCanvasProps {
 
 export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', backgroundImage }: NotebookCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const [tool, setTool] = useState<'pen' | 'eraser' | 'highlighter'>('pen');
   const [color, setColor] = useState('#000000');
   const [history, setHistory] = useState<Stroke[][]>([strokes]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [isPanning, setIsPanning] = useState(false);
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
   const colors = ['#000000', '#FF0000', '#0000FF', '#00FF00'];
 
@@ -135,12 +141,23 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
 
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: (clientX - rect.left) / zoom,
+      y: (clientY - rect.top) / zoom,
     };
   };
 
   const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    // Check if middle mouse button or space key for panning
+    if ('button' in e && e.button === 1) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({
+        x: e.clientX - pan.x,
+        y: e.clientY - pan.y,
+      });
+      return;
+    }
+
     e.preventDefault();
     setIsDrawing(true);
 
@@ -157,6 +174,15 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   };
 
   const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (isPanning && 'clientX' in e) {
+      e.preventDefault();
+      setPan({
+        x: e.clientX - panStart.x,
+        y: e.clientY - panStart.y,
+      });
+      return;
+    }
+
     if (!isDrawing || !currentStroke) return;
     e.preventDefault();
 
@@ -175,6 +201,11 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   };
 
   const stopDrawing = () => {
+    if (isPanning) {
+      setIsPanning(false);
+      return;
+    }
+
     if (!isDrawing || !currentStroke) return;
 
     const newStrokes = [...strokes, currentStroke];
@@ -205,10 +236,38 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     }
   };
 
+  const handleZoomIn = () => {
+    setZoom(prev => Math.min(prev + 0.1, 2));
+  };
+
+  const handleZoomOut = () => {
+    setZoom(prev => Math.max(prev - 0.1, 0.5));
+  };
+
+  const handleFitToScreen = () => {
+    if (!canvasRef.current || !containerRef.current) return;
+    
+    const containerWidth = containerRef.current.clientWidth;
+    const containerHeight = containerRef.current.clientHeight;
+    const canvasWidth = 800;
+    const canvasHeight = 1200;
+    
+    const scaleX = (containerWidth - 40) / canvasWidth;
+    const scaleY = (containerHeight - 40) / canvasHeight;
+    const newZoom = Math.min(scaleX, scaleY, 1);
+    
+    setZoom(newZoom);
+    setPan({ x: 0, y: 0 });
+  };
+
+  const handleZoomChange = (value: number[]) => {
+    setZoom(value[0]);
+  };
+
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-4 bg-background border-b">
+      <div className="flex items-center gap-2 p-4 bg-background border-b flex-wrap">
         <Button
           variant={tool === 'pen' ? 'default' : 'outline'}
           size="icon"
@@ -236,7 +295,7 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
         {colors.map(c => (
           <button
             key={c}
-            className={`w-8 h-8 rounded-full border-2 ${color === c ? 'border-primary scale-110' : 'border-border'}`}
+            className={`w-8 h-8 rounded-full border-2 transition-transform ${color === c ? 'border-primary scale-110' : 'border-border'}`}
             style={{ backgroundColor: c }}
             onClick={() => setColor(c)}
           />
@@ -260,23 +319,71 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
         >
           <Redo className="h-4 w-4" />
         </Button>
+
+        <div className="w-px h-6 bg-border mx-2" />
+
+        {/* Zoom Controls */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleZoomOut}
+          disabled={zoom <= 0.5}
+        >
+          <ZoomOut className="h-4 w-4" />
+        </Button>
+        <div className="flex items-center gap-2 min-w-[120px]">
+          <Slider
+            value={[zoom]}
+            onValueChange={handleZoomChange}
+            min={0.5}
+            max={2}
+            step={0.1}
+            className="w-20"
+          />
+          <span className="text-xs text-muted-foreground w-10 text-right">
+            {Math.round(zoom * 100)}%
+          </span>
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={handleZoomIn}
+          disabled={zoom >= 2}
+        >
+          <ZoomIn className="h-4 w-4" />
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleFitToScreen}
+          className="gap-2"
+        >
+          <Maximize2 className="h-4 w-4" />
+          Ajustar
+        </Button>
       </div>
 
       {/* Canvas */}
-      <div className="flex-1 overflow-auto bg-white">
-        <canvas
-          ref={canvasRef}
-          width={800}
-          height={1200}
-          className="border shadow-sm mx-auto cursor-crosshair touch-none"
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-        />
+      <div ref={containerRef} className="flex-1 overflow-auto bg-muted p-4">
+        <div className="inline-block min-w-full min-h-full">
+          <canvas
+            ref={canvasRef}
+            width={800}
+            height={1200}
+            className="border shadow-sm cursor-crosshair touch-none transition-transform"
+            style={{
+              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
+              transformOrigin: 'top left',
+            }}
+            onMouseDown={startDrawing}
+            onMouseMove={draw}
+            onMouseUp={stopDrawing}
+            onMouseLeave={stopDrawing}
+            onTouchStart={startDrawing}
+            onTouchMove={draw}
+            onTouchEnd={stopDrawing}
+          />
+        </div>
       </div>
     </div>
   );

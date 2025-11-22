@@ -6,13 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Book, Plus, Trash2, ArrowLeft, Search, Upload, FileText } from 'lucide-react';
+import { Book, Plus, Trash2, ArrowLeft, Search, Upload, FileText, ChevronLeft, ChevronRight, FilePlus } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 import { Notebook } from '@/types/notebook';
 
 const Caderno = () => {
-  const { notebooks, createNotebook, deleteNotebook, updateNotebook } = useNotebooks();
+  const { notebooks, createNotebook, deleteNotebook, updateNotebook, addPage } = useNotebooks();
   const [selectedNotebook, setSelectedNotebook] = useState<Notebook | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -22,6 +22,8 @@ const Caderno = () => {
   const [selectedDiscipline, setSelectedDiscipline] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterDiscipline, setFilterDiscipline] = useState<string>('all');
+  const [isAddPageDialogOpen, setIsAddPageDialogOpen] = useState(false);
+  const [newPageTemplate, setNewPageTemplate] = useState<'blank' | 'lined' | 'grid' | 'dotted'>('blank');
 
   // Get unique disciplines
   const disciplines = useMemo(() => {
@@ -110,6 +112,36 @@ const Caderno = () => {
     setSelectedNotebook(updatedNotebook);
   };
 
+  const handleAddPage = () => {
+    if (!selectedNotebook) return;
+    
+    addPage(selectedNotebook.id, newPageTemplate);
+    
+    // Reload the notebook to get the new page
+    const updatedNotebooks = JSON.parse(localStorage.getItem('nomos-notebooks') || '[]');
+    const updatedNotebook = updatedNotebooks.find((n: Notebook) => n.id === selectedNotebook.id);
+    if (updatedNotebook) {
+      setSelectedNotebook(updatedNotebook);
+      setCurrentPageIndex(updatedNotebook.pages.length - 1); // Navigate to the new page
+    }
+    
+    setIsAddPageDialogOpen(false);
+    setNewPageTemplate('blank');
+    toast.success('Página adicionada!');
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPageIndex > 0) {
+      setCurrentPageIndex(currentPageIndex - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (selectedNotebook && currentPageIndex < selectedNotebook.pages.length - 1) {
+      setCurrentPageIndex(currentPageIndex + 1);
+    }
+  };
+
   if (selectedNotebook) {
     const currentPage = selectedNotebook.pages[currentPageIndex];
 
@@ -119,7 +151,10 @@ const Caderno = () => {
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSelectedNotebook(null)}
+            onClick={() => {
+              setSelectedNotebook(null);
+              setCurrentPageIndex(0);
+            }}
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
@@ -129,9 +164,38 @@ const Caderno = () => {
               <p className="text-sm text-muted-foreground">{selectedNotebook.discipline}</p>
             )}
           </div>
-          <span className="text-sm text-muted-foreground">
-            Página {currentPageIndex + 1} de {selectedNotebook.pages.length}
-          </span>
+          
+          {/* Page Navigation */}
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handlePreviousPage}
+              disabled={currentPageIndex === 0}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm text-muted-foreground min-w-[100px] text-center">
+              Página {currentPageIndex + 1} de {selectedNotebook.pages.length}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleNextPage}
+              disabled={currentPageIndex === selectedNotebook.pages.length - 1}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsAddPageDialogOpen(true)}
+              className="gap-2"
+            >
+              <FilePlus className="h-4 w-4" />
+              Adicionar Página
+            </Button>
+          </div>
         </div>
 
         <NotebookCanvas
@@ -323,6 +387,37 @@ const Caderno = () => {
           onImport={handleImportPdf}
           discipline={filterDiscipline !== 'all' ? filterDiscipline : undefined}
         />
+
+        {/* Add Page Dialog */}
+        <Dialog open={isAddPageDialogOpen} onOpenChange={setIsAddPageDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Nova Página</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Template da página</Label>
+                <Select value={newPageTemplate} onValueChange={(val: any) => setNewPageTemplate(val)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blank">Em branco</SelectItem>
+                    <SelectItem value="lined">Pautado</SelectItem>
+                    <SelectItem value="grid">Quadriculado</SelectItem>
+                    <SelectItem value="dotted">Pontilhado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddPageDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAddPage}>Adicionar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
