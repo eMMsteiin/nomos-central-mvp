@@ -5,12 +5,12 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Upload, FileText } from 'lucide-react';
 import { toast } from 'sonner';
-import { GlobalWorkerOptions, getDocument } from 'pdfjs-dist';
+import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import workerSrc from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Notebook, NotebookPage } from '@/types/notebook';
 
 // Configure PDF.js worker
-GlobalWorkerOptions.workerSrc = workerSrc;
+pdfjsLib.GlobalWorkerOptions.workerSrc = workerSrc;
 
 interface ImportPdfDialogProps {
   open: boolean;
@@ -45,7 +45,7 @@ export const ImportPdfDialog = ({ open, onOpenChange, onImport, discipline }: Im
     setIsProcessing(true);
     try {
       const arrayBuffer = await file.arrayBuffer();
-      const pdf = await getDocument({ data: arrayBuffer }).promise;
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
       const numPages = Math.min(pdf.numPages, 200); // Limit to 200 pages
 
       const pages: NotebookPage[] = [];
