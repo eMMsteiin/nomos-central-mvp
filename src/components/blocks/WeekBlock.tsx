@@ -29,6 +29,7 @@ interface WeekBlockProps {
   onAddPostIt: (postIt: PostIt) => void;
   onUpdatePostIt: (id: string, updates: Partial<PostIt>) => void;
   onDeletePostIt: (id: string) => void;
+  isFirstBlock?: boolean;
 }
 
 export const WeekBlock = ({
@@ -43,6 +44,7 @@ export const WeekBlock = ({
   onAddPostIt,
   onUpdatePostIt,
   onDeletePostIt,
+  isFirstBlock = false,
 }: WeekBlockProps) => {
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(block.title);
@@ -57,7 +59,7 @@ export const WeekBlock = ({
 
   return (
     <>
-      <div className="bg-card border-2 border-primary/30 rounded-lg shadow-lg overflow-hidden mb-4">
+      <div className={`bg-card border-2 border-primary/30 rounded-lg shadow-lg overflow-hidden h-full flex flex-col ${!isFirstBlock ? 'mt-4' : ''}`}>
         {/* Header */}
         <div className="bg-muted/20 border-b border-primary/20 p-3 flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1">
@@ -116,7 +118,7 @@ export const WeekBlock = ({
         </div>
 
         {/* Content Area */}
-        <div className="relative" style={{ minHeight: '400px' }}>
+        <div className="relative flex-1" style={{ minHeight: '500px' }}>
           {block.isExpanded ? (
             <div className="grid grid-cols-7 h-full">
               {dayBlocks.map((dayBlock) => (

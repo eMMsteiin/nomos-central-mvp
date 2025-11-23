@@ -27,7 +27,7 @@ const LembretesRapidos = () => {
 
   return (
     <div className="flex flex-col h-screen px-6 py-8">
-      <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
+      <div className="w-full flex flex-col h-full">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
           <div>
@@ -61,8 +61,8 @@ const LembretesRapidos = () => {
               </Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {weekBlocks.map((weekBlock) => {
+            <div className="h-full">
+              {weekBlocks.map((weekBlock, index) => {
                 const dayBlocks = blocks.filter(b => b.weekId === weekBlock.id);
                 const postIts = getPostItsByBlock(weekBlock.id);
                 
@@ -85,6 +85,7 @@ const LembretesRapidos = () => {
                     onCollapse={collapseWeekBlock}
                     onDelete={deleteBlock}
                     onUpdateTitle={updateBlockTitle}
+                    isFirstBlock={index === 0}
                   />
                 );
               })}
