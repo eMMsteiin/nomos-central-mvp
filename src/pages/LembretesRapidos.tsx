@@ -26,7 +26,7 @@ const LembretesRapidos = () => {
   const weekBlocks = blocks.filter(b => b.type === 'week');
 
   return (
-    <div className="flex flex-col h-screen px-6 py-8">
+    <div className="flex flex-col h-full p-6">
       <div className="w-full flex flex-col h-full">
         {/* Header */}
         <div className="mb-6 flex items-center justify-between">
@@ -47,7 +47,7 @@ const LembretesRapidos = () => {
         </div>
 
         {/* Blocks List */}
-        <div className="flex-1 overflow-auto">
+        <div className="flex-1">
           {weekBlocks.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center gap-4">
               <div className="text-muted-foreground">
@@ -61,7 +61,7 @@ const LembretesRapidos = () => {
               </Button>
             </div>
           ) : (
-            <div className="h-full">
+            <div className="flex flex-col gap-4">
               {weekBlocks.map((weekBlock, index) => {
                 const dayBlocks = blocks.filter(b => b.weekId === weekBlock.id);
                 const postIts = getPostItsByBlock(weekBlock.id);
