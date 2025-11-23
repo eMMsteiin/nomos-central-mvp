@@ -113,7 +113,7 @@ export const PostItBoard = ({
   };
 
   return (
-    <div className="flex-1 relative rounded-lg overflow-hidden cork-board">
+    <div className="relative w-full h-full min-h-[600px] rounded-lg overflow-hidden cork-board">
       {/* Add Button */}
       <div className="absolute top-4 right-4 z-10">
         <Button
@@ -129,7 +129,7 @@ export const PostItBoard = ({
       {/* Cork Board */}
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
         <SortableContext items={postIts.map(p => p.id)} strategy={rectSortingStrategy}>
-          <div ref={boardRef} className="relative min-h-full w-full p-4">
+          <div ref={boardRef} className="relative w-full h-full p-4">
             {postIts.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center text-muted-foreground text-sm">
                 Clique em "Adicionar" para criar seu primeiro lembrete
