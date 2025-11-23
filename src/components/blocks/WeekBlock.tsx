@@ -118,7 +118,7 @@ export const WeekBlock = ({
         </div>
 
         {/* Content Area */}
-        <div className="relative flex-1" style={{ minHeight: '500px' }}>
+        <div className="relative flex-1" style={{ minHeight: '600px' }}>
           {block.isExpanded ? (
             <div className="grid grid-cols-7 h-full">
               {dayBlocks.map((dayBlock) => (
