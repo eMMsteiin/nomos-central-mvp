@@ -5,7 +5,7 @@ import { PostItBoard } from '../PostItBoard';
 import { DayBlock } from './DayBlock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Trash2, ChevronDown, ChevronRight, Edit2 } from 'lucide-react';
+import { Trash2, ChevronDown, ChevronRight, ChevronLeft, Edit2, Maximize2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,6 +49,7 @@ export const WeekBlock = ({
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(block.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [expandedDayId, setExpandedDayId] = useState<string | null>(null);
 
   const handleTitleSave = () => {
     setIsEditing(false);
@@ -120,18 +121,48 @@ export const WeekBlock = ({
         {/* Content Area */}
         <div className="relative" style={{ minHeight: '600px' }}>
           {block.isExpanded ? (
-            <div className="grid grid-cols-7 h-full">
-              {dayBlocks.map((dayBlock) => (
-                <DayBlock
-                  key={dayBlock.id}
-                  block={dayBlock}
-                  postIts={dayPostIts[dayBlock.id] || []}
-                  onAddPostIt={onAddPostIt}
-                  onUpdatePostIt={onUpdatePostIt}
-                  onDeletePostIt={onDeletePostIt}
-                />
-              ))}
-            </div>
+            expandedDayId ? (
+              // Dia individual expandido
+              <>
+                <div className="flex items-center gap-2 p-3 border-b border-primary/20 bg-muted/10">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setExpandedDayId(null)}
+                    className="gap-1"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Voltar para visão semanal
+                  </Button>
+                  <h4 className="font-medium">{dayBlocks.find(d => d.id === expandedDayId)?.title}</h4>
+                </div>
+                <div className="relative" style={{ minHeight: '550px' }}>
+                  <PostItBoard
+                    blockId={expandedDayId}
+                    postIts={dayPostIts[expandedDayId] || []}
+                    onAddPostIt={onAddPostIt}
+                    onUpdatePosition={(id, position) => onUpdatePostIt(id, { position })}
+                    onDelete={onDeletePostIt}
+                    onUpdateText={(id, text) => onUpdatePostIt(id, { text })}
+                  />
+                </div>
+              </>
+            ) : (
+              // Visão dos 7 dias em grade
+              <div className="grid grid-cols-7 h-full">
+                {dayBlocks.map((dayBlock) => (
+                  <DayBlock
+                    key={dayBlock.id}
+                    block={dayBlock}
+                    postIts={dayPostIts[dayBlock.id] || []}
+                    onAddPostIt={onAddPostIt}
+                    onUpdatePostIt={onUpdatePostIt}
+                    onDeletePostIt={onDeletePostIt}
+                    onExpand={() => setExpandedDayId(dayBlock.id)}
+                  />
+                ))}
+              </div>
+            )
           ) : (
             <PostItBoard
               blockId={block.id}
