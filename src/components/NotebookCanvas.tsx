@@ -1,8 +1,12 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
 import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
 import { Slider } from './ui/slider';
-import { Stroke, Point } from '@/types/notebook';
+import { Stroke, Point, PenStyle, ToolType, PEN_STYLES, HIGHLIGHTER_COLORS } from '@/types/notebook';
+import { ColorPicker } from './notebook/ColorPicker';
+import { PenStyleSelector } from './notebook/PenStyleSelector';
+import { StrokeWidthSlider } from './notebook/StrokeWidthSlider';
+import { catmullRomSpline, smoothPoints, calculateVelocityPressure } from '@/utils/strokeSmoothing';
 
 interface NotebookCanvasProps {
   strokes: Stroke[];
@@ -11,90 +15,138 @@ interface NotebookCanvasProps {
   backgroundImage?: string;
 }
 
+// Canvas dimensions (logical)
+const CANVAS_WIDTH = 1600;
+const CANVAS_HEIGHT = 2400;
+
 export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', backgroundImage }: NotebookCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  
+  // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
-  const [tool, setTool] = useState<'pen' | 'eraser' | 'highlighter'>('pen');
+  const lastPointRef = useRef<Point | null>(null);
+  const lastTimeRef = useRef<number>(0);
+  
+  // Tool state
+  const [tool, setTool] = useState<ToolType>('pen');
+  const [penStyle, setPenStyle] = useState<PenStyle>('fountain');
   const [color, setColor] = useState('#000000');
+  const [highlighterColor, setHighlighterColor] = useState(HIGHLIGHTER_COLORS[0]);
+  const [strokeWidth, setStrokeWidth] = useState(3);
+  const [highlighterWidth, setHighlighterWidth] = useState(20);
+  const [eraserWidth, setEraserWidth] = useState(30);
+  
+  // History
   const [history, setHistory] = useState<Stroke[][]>([strokes]);
   const [historyIndex, setHistoryIndex] = useState(0);
-  const [zoom, setZoom] = useState(1);
+  
+  // Zoom and pan
+  const [zoom, setZoom] = useState(0.5);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
 
-  const colors = ['#000000', '#FF0000', '#0000FF', '#00FF00'];
+  // Device pixel ratio for HiDPI
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+
+  // Initialize offscreen canvas for better performance
+  useEffect(() => {
+    offscreenCanvasRef.current = document.createElement('canvas');
+    offscreenCanvasRef.current.width = CANVAS_WIDTH * dpr;
+    offscreenCanvasRef.current.height = CANVAS_HEIGHT * dpr;
+  }, [dpr]);
+
+  // Setup canvas with HiDPI support
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Set display size
+    canvas.style.width = `${CANVAS_WIDTH}px`;
+    canvas.style.height = `${CANVAS_HEIGHT}px`;
+
+    // Set actual size in memory (scaled for HiDPI)
+    canvas.width = CANVAS_WIDTH * dpr;
+    canvas.height = CANVAS_HEIGHT * dpr;
+
+    // Scale context for HiDPI
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.scale(dpr, dpr);
+    }
+
+    drawCanvas();
+  }, [dpr]);
 
   useEffect(() => {
     drawCanvas();
   }, [strokes, template, backgroundImage]);
 
-  const drawCanvas = () => {
+  const drawCanvas = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Clear canvas
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Reset transform and clear
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw background image (PDF page) if present
+    // Fill white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Draw background image if present
     if (backgroundImage) {
       const img = new Image();
       img.onload = () => {
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        // Draw template and strokes after background
-        drawTemplate(ctx, canvas.width, canvas.height);
-        strokes.forEach(stroke => {
-          drawStroke(ctx, stroke);
-        });
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        drawTemplate(ctx);
+        strokes.forEach(stroke => drawStroke(ctx, stroke));
       };
       img.src = backgroundImage;
     } else {
-      // Draw template
-      drawTemplate(ctx, canvas.width, canvas.height);
-
-      // Draw strokes
-      strokes.forEach(stroke => {
-        drawStroke(ctx, stroke);
-      });
+      drawTemplate(ctx);
+      strokes.forEach(stroke => drawStroke(ctx, stroke));
     }
-  };
+  }, [strokes, template, backgroundImage, dpr]);
 
-  const drawTemplate = (ctx: CanvasRenderingContext2D, width: number, height: number) => {
+  const drawTemplate = (ctx: CanvasRenderingContext2D) => {
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
 
     if (template === 'lined') {
-      const lineSpacing = 30;
-      for (let y = lineSpacing; y < height; y += lineSpacing) {
+      const lineSpacing = 40;
+      for (let y = lineSpacing; y < CANVAS_HEIGHT; y += lineSpacing) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        ctx.lineTo(CANVAS_WIDTH, y);
         ctx.stroke();
       }
     } else if (template === 'grid') {
-      const gridSize = 30;
-      for (let x = gridSize; x < width; x += gridSize) {
+      const gridSize = 40;
+      ctx.strokeStyle = '#e5e7eb';
+      for (let x = gridSize; x < CANVAS_WIDTH; x += gridSize) {
         ctx.beginPath();
         ctx.moveTo(x, 0);
-        ctx.lineTo(x, height);
+        ctx.lineTo(x, CANVAS_HEIGHT);
         ctx.stroke();
       }
-      for (let y = gridSize; y < height; y += gridSize) {
+      for (let y = gridSize; y < CANVAS_HEIGHT; y += gridSize) {
         ctx.beginPath();
         ctx.moveTo(0, y);
-        ctx.lineTo(width, y);
+        ctx.lineTo(CANVAS_WIDTH, y);
         ctx.stroke();
       }
     } else if (template === 'dotted') {
-      const dotSpacing = 20;
-      ctx.fillStyle = '#e5e7eb';
-      for (let x = dotSpacing; x < width; x += dotSpacing) {
-        for (let y = dotSpacing; y < height; y += dotSpacing) {
+      const dotSpacing = 30;
+      ctx.fillStyle = '#d1d5db';
+      for (let x = dotSpacing; x < CANVAS_WIDTH; x += dotSpacing) {
+        for (let y = dotSpacing; y < CANVAS_HEIGHT; y += dotSpacing) {
           ctx.beginPath();
           ctx.arc(x, y, 1.5, 0, 2 * Math.PI);
           ctx.fill();
@@ -106,80 +158,147 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (stroke.points.length < 2) return;
 
-    ctx.strokeStyle = stroke.color;
-    ctx.lineWidth = stroke.width;
+    const styleConfig = stroke.penStyle ? PEN_STYLES[stroke.penStyle] : PEN_STYLES.ballpoint;
+    
+    // Apply smoothing
+    const smoothedPoints = stroke.tool === 'pen' 
+      ? catmullRomSpline(smoothPoints(stroke.points, 3), styleConfig.smoothing)
+      : stroke.points;
+
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
     if (stroke.tool === 'eraser') {
       ctx.globalCompositeOperation = 'destination-out';
-    } else if (stroke.tool === 'highlighter') {
-      ctx.globalAlpha = 0.3;
-    } else {
+      ctx.strokeStyle = 'rgba(255,255,255,1)';
+      ctx.lineWidth = stroke.width;
+      
+      ctx.beginPath();
+      ctx.moveTo(smoothedPoints[0].x, smoothedPoints[0].y);
+      for (let i = 1; i < smoothedPoints.length; i++) {
+        ctx.lineTo(smoothedPoints[i].x, smoothedPoints[i].y);
+      }
+      ctx.stroke();
       ctx.globalCompositeOperation = 'source-over';
+      return;
+    }
+
+    if (stroke.tool === 'highlighter') {
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = stroke.color;
+      ctx.lineWidth = stroke.width;
+      
+      ctx.beginPath();
+      ctx.moveTo(smoothedPoints[0].x, smoothedPoints[0].y);
+      for (let i = 1; i < smoothedPoints.length; i++) {
+        ctx.lineTo(smoothedPoints[i].x, smoothedPoints[i].y);
+      }
+      ctx.stroke();
       ctx.globalAlpha = 1;
+      return;
     }
 
-    ctx.beginPath();
-    ctx.moveTo(stroke.points[0].x, stroke.points[0].y);
+    // Draw pen strokes with variable width based on pressure
+    ctx.strokeStyle = stroke.color;
+    ctx.globalAlpha = styleConfig.opacity;
 
-    for (let i = 1; i < stroke.points.length; i++) {
-      ctx.lineTo(stroke.points[i].x, stroke.points[i].y);
+    // Draw each segment with variable width for pressure sensitivity
+    for (let i = 1; i < smoothedPoints.length; i++) {
+      const p0 = smoothedPoints[i - 1];
+      const p1 = smoothedPoints[i];
+      
+      // Calculate width based on pressure
+      const pressure0 = p0.pressure ?? 0.5;
+      const pressure1 = p1.pressure ?? 0.5;
+      const avgPressure = (pressure0 + pressure1) / 2;
+      
+      const widthMultiplier = styleConfig.minWidth + 
+        (styleConfig.maxWidth - styleConfig.minWidth) * 
+        Math.pow(avgPressure, styleConfig.pressureSensitivity);
+      
+      const segmentWidth = stroke.width * widthMultiplier;
+      
+      ctx.lineWidth = segmentWidth;
+      ctx.beginPath();
+      ctx.moveTo(p0.x, p0.y);
+      
+      // Use quadratic curve for smoother lines
+      if (i < smoothedPoints.length - 1) {
+        const p2 = smoothedPoints[i + 1];
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
+      } else {
+        ctx.lineTo(p1.x, p1.y);
+      }
+      
+      ctx.stroke();
     }
 
-    ctx.stroke();
-    ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
   };
 
-  const getCanvasPoint = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>): Point => {
+  const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
 
     const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const scaleX = CANVAS_WIDTH / rect.width;
+    const scaleY = CANVAS_HEIGHT / rect.height;
 
-    return {
-      x: (clientX - rect.left) / zoom,
-      y: (clientY - rect.top) / zoom,
-    };
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
+    
+    // Get pressure from pointer event (0-1 range)
+    let pressure = e.pressure;
+    
+    // If no pressure (mouse), simulate based on velocity
+    if (pressure === 0 || pressure === 0.5) {
+      const now = performance.now();
+      const currentPoint = { x, y };
+      pressure = calculateVelocityPressure(currentPoint, lastPointRef.current, now - lastTimeRef.current);
+      lastTimeRef.current = now;
+    }
+
+    return { x, y, pressure, timestamp: performance.now() };
   };
 
-  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    // Check if middle mouse button or space key for panning
-    if ('button' in e && e.button === 1) {
+  const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    // Middle mouse button for panning
+    if (e.button === 1) {
       e.preventDefault();
       setIsPanning(true);
-      setPanStart({
-        x: e.clientX - pan.x,
-        y: e.clientY - pan.y,
-      });
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
       return;
     }
 
+    if (e.button !== 0) return;
     e.preventDefault();
-    setIsDrawing(true);
-
+    
     const point = getCanvasPoint(e);
+    lastPointRef.current = point;
+    lastTimeRef.current = performance.now();
+
+    const currentWidth = tool === 'highlighter' ? highlighterWidth : tool === 'eraser' ? eraserWidth : strokeWidth;
+    const currentColor = tool === 'highlighter' ? highlighterColor : tool === 'eraser' ? '#ffffff' : color;
+
     const newStroke: Stroke = {
       id: crypto.randomUUID(),
       tool,
-      color: tool === 'eraser' ? '#ffffff' : color,
-      width: tool === 'highlighter' ? 20 : tool === 'eraser' ? 30 : 2,
+      penStyle: tool === 'pen' ? penStyle : undefined,
+      color: currentColor,
+      width: currentWidth,
       points: [point],
     };
 
     setCurrentStroke(newStroke);
+    setIsDrawing(true);
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
-    if (isPanning && 'clientX' in e) {
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (isPanning) {
       e.preventDefault();
-      setPan({
-        x: e.clientX - panStart.x,
-        y: e.clientY - panStart.y,
-      });
+      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
       return;
     }
 
@@ -187,6 +306,8 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     e.preventDefault();
 
     const point = getCanvasPoint(e);
+    lastPointRef.current = point;
+
     const updatedStroke = {
       ...currentStroke,
       points: [...currentStroke.points, point],
@@ -194,9 +315,49 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
 
     setCurrentStroke(updatedStroke);
 
+    // Real-time drawing
     const ctx = canvasRef.current?.getContext('2d');
     if (ctx) {
-      drawStroke(ctx, updatedStroke);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      
+      // Draw just the new segment for performance
+      const points = updatedStroke.points;
+      if (points.length >= 2) {
+        const p0 = points[points.length - 2];
+        const p1 = points[points.length - 1];
+        
+        const styleConfig = updatedStroke.penStyle ? PEN_STYLES[updatedStroke.penStyle] : PEN_STYLES.ballpoint;
+        
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        if (updatedStroke.tool === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.strokeStyle = 'rgba(255,255,255,1)';
+          ctx.lineWidth = updatedStroke.width;
+        } else if (updatedStroke.tool === 'highlighter') {
+          ctx.globalAlpha = 0.35;
+          ctx.strokeStyle = updatedStroke.color;
+          ctx.lineWidth = updatedStroke.width;
+        } else {
+          const pressure = (p0.pressure ?? 0.5 + (p1.pressure ?? 0.5)) / 2;
+          const widthMultiplier = styleConfig.minWidth + 
+            (styleConfig.maxWidth - styleConfig.minWidth) * 
+            Math.pow(pressure, styleConfig.pressureSensitivity);
+          
+          ctx.strokeStyle = updatedStroke.color;
+          ctx.lineWidth = updatedStroke.width * widthMultiplier;
+          ctx.globalAlpha = styleConfig.opacity;
+        }
+
+        ctx.beginPath();
+        ctx.moveTo(p0.x, p0.y);
+        ctx.lineTo(p1.x, p1.y);
+        ctx.stroke();
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      }
     }
   };
 
@@ -208,16 +369,23 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
 
     if (!isDrawing || !currentStroke) return;
 
-    const newStrokes = [...strokes, currentStroke];
-    onStrokesChange(newStrokes);
+    // Only save if we have enough points
+    if (currentStroke.points.length > 1) {
+      const newStrokes = [...strokes, currentStroke];
+      onStrokesChange(newStrokes);
 
-    const newHistory = history.slice(0, historyIndex + 1);
-    newHistory.push(newStrokes);
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
+      const newHistory = history.slice(0, historyIndex + 1);
+      newHistory.push(newStrokes);
+      setHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
 
     setIsDrawing(false);
     setCurrentStroke(null);
+    lastPointRef.current = null;
+
+    // Redraw for smooth final result
+    requestAnimationFrame(drawCanvas);
   };
 
   const undo = () => {
@@ -236,152 +404,172 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     }
   };
 
-  const handleZoomIn = () => {
-    setZoom(prev => Math.min(prev + 0.1, 2));
-  };
-
-  const handleZoomOut = () => {
-    setZoom(prev => Math.max(prev - 0.1, 0.5));
-  };
-
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 2));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.3));
+  
   const handleFitToScreen = () => {
-    if (!canvasRef.current || !containerRef.current) return;
-    
-    const containerWidth = containerRef.current.clientWidth;
-    const containerHeight = containerRef.current.clientHeight;
-    const canvasWidth = 800;
-    const canvasHeight = 1200;
-    
-    const scaleX = (containerWidth - 40) / canvasWidth;
-    const scaleY = (containerHeight - 40) / canvasHeight;
-    const newZoom = Math.min(scaleX, scaleY, 1);
-    
-    setZoom(newZoom);
+    if (!containerRef.current) return;
+    const containerWidth = containerRef.current.clientWidth - 40;
+    const containerHeight = containerRef.current.clientHeight - 40;
+    const scaleX = containerWidth / CANVAS_WIDTH;
+    const scaleY = containerHeight / CANVAS_HEIGHT;
+    setZoom(Math.min(scaleX, scaleY, 1));
     setPan({ x: 0, y: 0 });
   };
 
-  const handleZoomChange = (value: number[]) => {
-    setZoom(value[0]);
-  };
+  const handleZoomChange = (value: number[]) => setZoom(value[0]);
 
   return (
     <div className="flex flex-col h-full">
       {/* Toolbar */}
-      <div className="flex items-center gap-2 p-4 bg-background border-b flex-wrap">
-        <Button
-          variant={tool === 'pen' ? 'default' : 'outline'}
-          size="icon"
-          onClick={() => setTool('pen')}
-        >
-          <Pen className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={tool === 'highlighter' ? 'default' : 'outline'}
-          size="icon"
-          onClick={() => setTool('highlighter')}
-        >
-          <Highlighter className="h-4 w-4" />
-        </Button>
-        <Button
-          variant={tool === 'eraser' ? 'default' : 'outline'}
-          size="icon"
-          onClick={() => setTool('eraser')}
-        >
-          <Eraser className="h-4 w-4" />
-        </Button>
+      <div className="flex items-center gap-2 p-3 bg-background border-b flex-wrap">
+        {/* Tools */}
+        <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+          <Button
+            variant={tool === 'pen' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setTool('pen')}
+            className="h-8"
+          >
+            <Pen className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={tool === 'highlighter' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setTool('highlighter')}
+            className="h-8"
+          >
+            <Highlighter className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={tool === 'eraser' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setTool('eraser')}
+            className="h-8"
+          >
+            <Eraser className="h-4 w-4" />
+          </Button>
+        </div>
 
-        <div className="w-px h-6 bg-border mx-2" />
+        <div className="w-px h-6 bg-border" />
 
-        {colors.map(c => (
-          <button
-            key={c}
-            className={`w-8 h-8 rounded-full border-2 transition-transform ${color === c ? 'border-primary scale-110' : 'border-border'}`}
-            style={{ backgroundColor: c }}
-            onClick={() => setColor(c)}
+        {/* Pen Style (only for pen tool) */}
+        {tool === 'pen' && (
+          <>
+            <PenStyleSelector penStyle={penStyle} onChange={setPenStyle} />
+            <div className="w-px h-6 bg-border" />
+          </>
+        )}
+
+        {/* Color Picker */}
+        {tool !== 'eraser' && (
+          <ColorPicker
+            color={tool === 'highlighter' ? highlighterColor : color}
+            onChange={tool === 'highlighter' ? setHighlighterColor : setColor}
+            isHighlighter={tool === 'highlighter'}
           />
-        ))}
+        )}
 
-        <div className="w-px h-6 bg-border mx-2" />
+        {/* Stroke Width */}
+        <StrokeWidthSlider
+          width={tool === 'highlighter' ? highlighterWidth : tool === 'eraser' ? eraserWidth : strokeWidth}
+          onChange={tool === 'highlighter' ? setHighlighterWidth : tool === 'eraser' ? setEraserWidth : setStrokeWidth}
+          min={tool === 'highlighter' ? 10 : tool === 'eraser' ? 10 : 1}
+          max={tool === 'highlighter' ? 50 : tool === 'eraser' ? 80 : 30}
+          color={tool === 'highlighter' ? highlighterColor : tool === 'eraser' ? '#9CA3AF' : color}
+        />
 
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={undo}
-          disabled={historyIndex === 0}
-        >
-          <Undo className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={redo}
-          disabled={historyIndex === history.length - 1}
-        >
-          <Redo className="h-4 w-4" />
-        </Button>
+        <div className="w-px h-6 bg-border" />
 
-        <div className="w-px h-6 bg-border mx-2" />
+        {/* Undo/Redo */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={undo}
+            disabled={historyIndex === 0}
+            className="h-8"
+          >
+            <Undo className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={redo}
+            disabled={historyIndex === history.length - 1}
+            className="h-8"
+          >
+            <Redo className="h-4 w-4" />
+          </Button>
+        </div>
+
+        <div className="w-px h-6 bg-border" />
 
         {/* Zoom Controls */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleZoomOut}
-          disabled={zoom <= 0.5}
-        >
-          <ZoomOut className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-2 min-w-[120px]">
-          <Slider
-            value={[zoom]}
-            onValueChange={handleZoomChange}
-            min={0.5}
-            max={2}
-            step={0.1}
-            className="w-20"
-          />
-          <span className="text-xs text-muted-foreground w-10 text-right">
-            {Math.round(zoom * 100)}%
-          </span>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleZoomOut}
+            disabled={zoom <= 0.3}
+            className="h-8"
+          >
+            <ZoomOut className="h-4 w-4" />
+          </Button>
+          <div className="flex items-center gap-2 min-w-[100px]">
+            <Slider
+              value={[zoom]}
+              onValueChange={handleZoomChange}
+              min={0.3}
+              max={2}
+              step={0.1}
+              className="w-16"
+            />
+            <span className="text-xs text-muted-foreground w-10 text-right">
+              {Math.round(zoom * 100)}%
+            </span>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleZoomIn}
+            disabled={zoom >= 2}
+            className="h-8"
+          >
+            <ZoomIn className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleFitToScreen}
+            className="h-8 gap-1"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={handleZoomIn}
-          disabled={zoom >= 2}
-        >
-          <ZoomIn className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleFitToScreen}
-          className="gap-2"
-        >
-          <Maximize2 className="h-4 w-4" />
-          Ajustar
-        </Button>
       </div>
 
-      {/* Canvas */}
-      <div ref={containerRef} className="flex-1 overflow-auto bg-muted p-4">
-        <div className="inline-block min-w-full min-h-full">
+      {/* Canvas Container */}
+      <div ref={containerRef} className="flex-1 overflow-auto bg-muted/50 p-4">
+        <div 
+          className="inline-block"
+          style={{
+            transform: `scale(${zoom})`,
+            transformOrigin: 'top left',
+          }}
+        >
           <canvas
             ref={canvasRef}
-            width={800}
-            height={1200}
-            className="border shadow-sm cursor-crosshair touch-none transition-transform"
+            className="border shadow-lg cursor-crosshair touch-none bg-white rounded-sm"
             style={{
-              transform: `scale(${zoom}) translate(${pan.x}px, ${pan.y}px)`,
-              transformOrigin: 'top left',
+              width: CANVAS_WIDTH,
+              height: CANVAS_HEIGHT,
             }}
-            onMouseDown={startDrawing}
-            onMouseMove={draw}
-            onMouseUp={stopDrawing}
-            onMouseLeave={stopDrawing}
-            onTouchStart={startDrawing}
-            onTouchMove={draw}
-            onTouchEnd={stopDrawing}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerLeave={stopDrawing}
+            onPointerCancel={stopDrawing}
           />
         </div>
       </div>
