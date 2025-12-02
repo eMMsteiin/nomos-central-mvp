@@ -28,6 +28,12 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const lastPointRef = useRef<Point | null>(null);
   const lastTimeRef = useRef<number>(0);
+  const strokesRef = useRef<Stroke[]>(strokes); // Track strokes for eraser
+  
+  // Keep strokesRef in sync
+  useEffect(() => {
+    strokesRef.current = strokes;
+  }, [strokes]);
   
   // Tool state
   const [tool, setTool] = useState<ToolType>('pen');
@@ -234,52 +240,103 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     ctx.restore();
   };
 
-  // Check if a point is within eraser radius
-  const isPointInEraser = useCallback((strokePoint: Point, eraserPoint: Point, radius: number, strokeWidth: number): boolean => {
-    const dx = strokePoint.x - eraserPoint.x;
-    const dy = strokePoint.y - eraserPoint.y;
-    const distance = Math.sqrt(dx * dx + dy * dy);
-    return distance < radius + strokeWidth / 2;
+  // Check distance from point to line segment (for precise erasing)
+  const pointToSegmentDistance = useCallback((point: Point, segStart: Point, segEnd: Point): number => {
+    const dx = segEnd.x - segStart.x;
+    const dy = segEnd.y - segStart.y;
+    const lengthSq = dx * dx + dy * dy;
+    
+    if (lengthSq === 0) {
+      // Segment is a point
+      return Math.sqrt((point.x - segStart.x) ** 2 + (point.y - segStart.y) ** 2);
+    }
+    
+    // Project point onto line segment
+    let t = ((point.x - segStart.x) * dx + (point.y - segStart.y) * dy) / lengthSq;
+    t = Math.max(0, Math.min(1, t));
+    
+    const projX = segStart.x + t * dx;
+    const projY = segStart.y + t * dy;
+    
+    return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
   }, []);
 
+  // Check if a segment intersects with eraser circle
+  const isSegmentInEraser = useCallback((p1: Point, p2: Point, eraserPoint: Point, radius: number, strokeWidth: number): boolean => {
+    const effectiveRadius = radius + strokeWidth / 2;
+    return pointToSegmentDistance(eraserPoint, p1, p2) < effectiveRadius;
+  }, [pointToSegmentDistance]);
+
   // Erase strokes at point (splits strokes, keeping parts outside eraser)
-  const eraseStrokesAtPoint = useCallback((point: Point, radius: number): Stroke[] => {
+  const eraseStrokesAtPoint = useCallback((currentStrokes: Stroke[], point: Point, radius: number): Stroke[] => {
     const newStrokes: Stroke[] = [];
+    let hasChanges = false;
     
-    strokes.forEach(stroke => {
-      // Find segments that are outside the eraser
-      let currentSegment: Point[] = [];
+    currentStrokes.forEach(stroke => {
+      if (stroke.points.length < 2) {
+        newStrokes.push(stroke);
+        return;
+      }
       
-      stroke.points.forEach((strokePoint, index) => {
-        const isInEraser = isPointInEraser(strokePoint, point, radius, stroke.width);
+      let currentSegment: Point[] = [];
+      let strokeModified = false;
+      
+      for (let i = 0; i < stroke.points.length; i++) {
+        const currentPoint = stroke.points[i];
+        const nextPoint = stroke.points[i + 1];
         
-        if (!isInEraser) {
-          currentSegment.push(strokePoint);
+        // Check if current point or segment to next point is in eraser
+        let shouldErase = false;
+        
+        // Check point distance
+        const pointDist = Math.sqrt((currentPoint.x - point.x) ** 2 + (currentPoint.y - point.y) ** 2);
+        if (pointDist < radius + stroke.width / 2) {
+          shouldErase = true;
+        }
+        
+        // Check segment to next point
+        if (!shouldErase && nextPoint) {
+          shouldErase = isSegmentInEraser(currentPoint, nextPoint, point, radius, stroke.width);
+        }
+        
+        if (!shouldErase) {
+          currentSegment.push(currentPoint);
         } else {
-          // If we have accumulated points, save them as a new stroke segment
+          strokeModified = true;
+          // Save accumulated segment as new stroke
           if (currentSegment.length >= 2) {
             newStrokes.push({
               ...stroke,
-              id: `${stroke.id}-${index}`,
+              id: `${stroke.id}-${Date.now()}-${i}`,
               points: [...currentSegment],
             });
           }
           currentSegment = [];
         }
-      });
-      
-      // Don't forget the last segment
-      if (currentSegment.length >= 2) {
-        newStrokes.push({
-          ...stroke,
-          id: `${stroke.id}-end`,
-          points: [...currentSegment],
-        });
       }
+      
+      // Save the last segment
+      if (currentSegment.length >= 2) {
+        if (strokeModified) {
+          newStrokes.push({
+            ...stroke,
+            id: `${stroke.id}-${Date.now()}-end`,
+            points: [...currentSegment],
+          });
+        } else {
+          // Stroke wasn't modified, keep original
+          newStrokes.push(stroke);
+        }
+      } else if (!strokeModified && stroke.points.length >= 2) {
+        // Stroke wasn't modified at all
+        newStrokes.push(stroke);
+      }
+      
+      if (strokeModified) hasChanges = true;
     });
     
-    return newStrokes;
-  }, [strokes, isPointInEraser]);
+    return hasChanges ? newStrokes : currentStrokes;
+  }, [isSegmentInEraser]);
 
   const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current;
@@ -325,8 +382,9 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     // Handle eraser - immediately try to erase
     if (tool === 'eraser') {
       setIsDrawing(true);
-      const newStrokes = eraseStrokesAtPoint(point, eraserWidth / 2);
-      if (newStrokes.length !== strokes.length) {
+      const newStrokes = eraseStrokesAtPoint(strokesRef.current, point, eraserWidth / 2);
+      if (newStrokes !== strokesRef.current) {
+        strokesRef.current = newStrokes; // Update ref immediately
         onStrokesChange(newStrokes);
         // Update history
         const newHistory = history.slice(0, historyIndex + 1);
@@ -370,9 +428,10 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
       
       if (isDrawing) {
         e.preventDefault();
-        // Erase strokes at current point
-        const newStrokes = eraseStrokesAtPoint(point, eraserWidth / 2);
-        if (newStrokes.length !== strokes.length) {
+        // Erase strokes at current point using ref for latest state
+        const newStrokes = eraseStrokesAtPoint(strokesRef.current, point, eraserWidth / 2);
+        if (newStrokes !== strokesRef.current) {
+          strokesRef.current = newStrokes; // Update ref immediately
           onStrokesChange(newStrokes);
         }
       }
@@ -404,6 +463,14 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     }
 
     if (tool === 'eraser') {
+      // Save to history at end of erasing session
+      const currentStrokes = strokesRef.current;
+      if (currentStrokes !== strokes) {
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(currentStrokes);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
       setIsDrawing(false);
       setEraserPos(null);
       drawCanvas();
