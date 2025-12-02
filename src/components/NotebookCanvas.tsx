@@ -22,7 +22,6 @@ const CANVAS_HEIGHT = 2400;
 export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', backgroundImage }: NotebookCanvasProps) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const offscreenCanvasRef = useRef<HTMLCanvasElement | null>(null);
   
   // Drawing state
   const [isDrawing, setIsDrawing] = useState(false);
@@ -39,6 +38,9 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   const [highlighterWidth, setHighlighterWidth] = useState(20);
   const [eraserWidth, setEraserWidth] = useState(30);
   
+  // Eraser cursor position
+  const [eraserPos, setEraserPos] = useState<{ x: number; y: number } | null>(null);
+  
   // History
   const [history, setHistory] = useState<Stroke[][]>([strokes]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -51,13 +53,6 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
 
   // Device pixel ratio for HiDPI
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-
-  // Initialize offscreen canvas for better performance
-  useEffect(() => {
-    offscreenCanvasRef.current = document.createElement('canvas');
-    offscreenCanvasRef.current.width = CANVAS_WIDTH * dpr;
-    offscreenCanvasRef.current.height = CANVAS_HEIGHT * dpr;
-  }, [dpr]);
 
   // Setup canvas with HiDPI support
   useEffect(() => {
@@ -85,37 +80,7 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     drawCanvas();
   }, [strokes, template, backgroundImage]);
 
-  const drawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // Reset transform and clear
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // Fill white background
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-
-    // Draw background image if present
-    if (backgroundImage) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
-        drawTemplate(ctx);
-        strokes.forEach(stroke => drawStroke(ctx, stroke));
-      };
-      img.src = backgroundImage;
-    } else {
-      drawTemplate(ctx);
-      strokes.forEach(stroke => drawStroke(ctx, stroke));
-    }
-  }, [strokes, template, backgroundImage, dpr]);
-
-  const drawTemplate = (ctx: CanvasRenderingContext2D) => {
+  const drawTemplate = useCallback((ctx: CanvasRenderingContext2D) => {
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
 
@@ -153,35 +118,20 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
         }
       }
     }
-  };
+  }, [template]);
 
-  const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
+  const drawStroke = useCallback((ctx: CanvasRenderingContext2D, stroke: Stroke) => {
     if (stroke.points.length < 2) return;
 
     const styleConfig = stroke.penStyle ? PEN_STYLES[stroke.penStyle] : PEN_STYLES.ballpoint;
     
-    // Apply smoothing
+    // Apply smoothing for pen strokes
     const smoothedPoints = stroke.tool === 'pen' 
       ? catmullRomSpline(smoothPoints(stroke.points, 3), styleConfig.smoothing)
-      : stroke.points;
+      : smoothPoints(stroke.points, 2);
 
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-
-    if (stroke.tool === 'eraser') {
-      ctx.globalCompositeOperation = 'destination-out';
-      ctx.strokeStyle = 'rgba(255,255,255,1)';
-      ctx.lineWidth = stroke.width;
-      
-      ctx.beginPath();
-      ctx.moveTo(smoothedPoints[0].x, smoothedPoints[0].y);
-      for (let i = 1; i < smoothedPoints.length; i++) {
-        ctx.lineTo(smoothedPoints[i].x, smoothedPoints[i].y);
-      }
-      ctx.stroke();
-      ctx.globalCompositeOperation = 'source-over';
-      return;
-    }
 
     if (stroke.tool === 'highlighter') {
       ctx.globalAlpha = 0.35;
@@ -236,7 +186,68 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     }
 
     ctx.globalAlpha = 1;
+  }, []);
+
+  const drawCanvas = useCallback((additionalStroke?: Stroke | null, eraserCursor?: { x: number; y: number; radius: number } | null) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Reset transform and clear
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Fill white background
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    // Draw background image if present
+    if (backgroundImage) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+        drawTemplate(ctx);
+        strokes.forEach(stroke => drawStroke(ctx, stroke));
+        if (additionalStroke) drawStroke(ctx, additionalStroke);
+        if (eraserCursor) drawEraserCursor(ctx, eraserCursor);
+      };
+      img.src = backgroundImage;
+    } else {
+      drawTemplate(ctx);
+      strokes.forEach(stroke => drawStroke(ctx, stroke));
+      if (additionalStroke) drawStroke(ctx, additionalStroke);
+      if (eraserCursor) drawEraserCursor(ctx, eraserCursor);
+    }
+  }, [strokes, backgroundImage, dpr, drawTemplate, drawStroke]);
+
+  const drawEraserCursor = (ctx: CanvasRenderingContext2D, cursor: { x: number; y: number; radius: number }) => {
+    ctx.save();
+    ctx.strokeStyle = '#666666';
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.arc(cursor.x, cursor.y, cursor.radius, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.restore();
   };
+
+  // Check if a point is near a stroke
+  const isPointNearStroke = useCallback((point: Point, stroke: Stroke, radius: number): boolean => {
+    return stroke.points.some(strokePoint => {
+      const dx = strokePoint.x - point.x;
+      const dy = strokePoint.y - point.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      return distance < radius + stroke.width / 2;
+    });
+  }, []);
+
+  // Erase strokes at point (removes entire strokes that are touched)
+  const eraseStrokesAtPoint = useCallback((point: Point, radius: number): Stroke[] => {
+    return strokes.filter(stroke => !isPointNearStroke(point, stroke, radius));
+  }, [strokes, isPointNearStroke]);
 
   const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current;
@@ -279,8 +290,25 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     lastPointRef.current = point;
     lastTimeRef.current = performance.now();
 
-    const currentWidth = tool === 'highlighter' ? highlighterWidth : tool === 'eraser' ? eraserWidth : strokeWidth;
-    const currentColor = tool === 'highlighter' ? highlighterColor : tool === 'eraser' ? '#ffffff' : color;
+    // Handle eraser - immediately try to erase
+    if (tool === 'eraser') {
+      setIsDrawing(true);
+      const newStrokes = eraseStrokesAtPoint(point, eraserWidth / 2);
+      if (newStrokes.length !== strokes.length) {
+        onStrokesChange(newStrokes);
+        // Update history
+        const newHistory = history.slice(0, historyIndex + 1);
+        newHistory.push(newStrokes);
+        setHistory(newHistory);
+        setHistoryIndex(newHistory.length - 1);
+      }
+      setEraserPos({ x: point.x, y: point.y });
+      drawCanvas(null, { x: point.x, y: point.y, radius: eraserWidth / 2 });
+      return;
+    }
+
+    const currentWidth = tool === 'highlighter' ? highlighterWidth : strokeWidth;
+    const currentColor = tool === 'highlighter' ? highlighterColor : color;
 
     const newStroke: Stroke = {
       id: crypto.randomUUID(),
@@ -302,10 +330,28 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
       return;
     }
 
+    const point = getCanvasPoint(e);
+
+    // Show eraser cursor even when not drawing
+    if (tool === 'eraser') {
+      setEraserPos({ x: point.x, y: point.y });
+      
+      if (isDrawing) {
+        e.preventDefault();
+        // Erase strokes at current point
+        const newStrokes = eraseStrokesAtPoint(point, eraserWidth / 2);
+        if (newStrokes.length !== strokes.length) {
+          onStrokesChange(newStrokes);
+        }
+      }
+      // Redraw with eraser cursor
+      drawCanvas(null, { x: point.x, y: point.y, radius: eraserWidth / 2 });
+      return;
+    }
+
     if (!isDrawing || !currentStroke) return;
     e.preventDefault();
 
-    const point = getCanvasPoint(e);
     lastPointRef.current = point;
 
     const updatedStroke = {
@@ -315,55 +361,20 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
 
     setCurrentStroke(updatedStroke);
 
-    // Real-time drawing
-    const ctx = canvasRef.current?.getContext('2d');
-    if (ctx) {
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      
-      // Draw just the new segment for performance
-      const points = updatedStroke.points;
-      if (points.length >= 2) {
-        const p0 = points[points.length - 2];
-        const p1 = points[points.length - 1];
-        
-        const styleConfig = updatedStroke.penStyle ? PEN_STYLES[updatedStroke.penStyle] : PEN_STYLES.ballpoint;
-        
-        ctx.lineCap = 'round';
-        ctx.lineJoin = 'round';
-
-        if (updatedStroke.tool === 'eraser') {
-          ctx.globalCompositeOperation = 'destination-out';
-          ctx.strokeStyle = 'rgba(255,255,255,1)';
-          ctx.lineWidth = updatedStroke.width;
-        } else if (updatedStroke.tool === 'highlighter') {
-          ctx.globalAlpha = 0.35;
-          ctx.strokeStyle = updatedStroke.color;
-          ctx.lineWidth = updatedStroke.width;
-        } else {
-          const pressure = (p0.pressure ?? 0.5 + (p1.pressure ?? 0.5)) / 2;
-          const widthMultiplier = styleConfig.minWidth + 
-            (styleConfig.maxWidth - styleConfig.minWidth) * 
-            Math.pow(pressure, styleConfig.pressureSensitivity);
-          
-          ctx.strokeStyle = updatedStroke.color;
-          ctx.lineWidth = updatedStroke.width * widthMultiplier;
-          ctx.globalAlpha = styleConfig.opacity;
-        }
-
-        ctx.beginPath();
-        ctx.moveTo(p0.x, p0.y);
-        ctx.lineTo(p1.x, p1.y);
-        ctx.stroke();
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = 1;
-      }
-    }
+    // Redraw canvas with current stroke (consistent rendering)
+    drawCanvas(updatedStroke);
   };
 
   const stopDrawing = () => {
     if (isPanning) {
       setIsPanning(false);
+      return;
+    }
+
+    if (tool === 'eraser') {
+      setIsDrawing(false);
+      setEraserPos(null);
+      drawCanvas();
       return;
     }
 
@@ -384,8 +395,16 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     setCurrentStroke(null);
     lastPointRef.current = null;
 
-    // Redraw for smooth final result
-    requestAnimationFrame(drawCanvas);
+    // Redraw for clean final result
+    requestAnimationFrame(() => drawCanvas());
+  };
+
+  const handlePointerLeave = () => {
+    setEraserPos(null);
+    if (isDrawing) {
+      stopDrawing();
+    }
+    drawCanvas();
   };
 
   const undo = () => {
@@ -560,7 +579,7 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
         >
           <canvas
             ref={canvasRef}
-            className="border shadow-lg cursor-crosshair touch-none bg-white rounded-sm"
+            className={`border shadow-lg touch-none bg-white rounded-sm ${tool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}`}
             style={{
               width: CANVAS_WIDTH,
               height: CANVAS_HEIGHT,
@@ -568,7 +587,7 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
             onPointerDown={startDrawing}
             onPointerMove={draw}
             onPointerUp={stopDrawing}
-            onPointerLeave={stopDrawing}
+            onPointerLeave={handlePointerLeave}
             onPointerCancel={stopDrawing}
           />
         </div>
