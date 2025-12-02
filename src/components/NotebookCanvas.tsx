@@ -394,9 +394,7 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     setIsDrawing(false);
     setCurrentStroke(null);
     lastPointRef.current = null;
-
-    // Redraw for clean final result
-    requestAnimationFrame(() => drawCanvas());
+    // Note: Don't call drawCanvas here - the useEffect will handle it when strokes prop updates
   };
 
   const handlePointerLeave = () => {
