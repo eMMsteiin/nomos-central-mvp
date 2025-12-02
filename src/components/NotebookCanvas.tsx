@@ -234,20 +234,52 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     ctx.restore();
   };
 
-  // Check if a point is near a stroke
-  const isPointNearStroke = useCallback((point: Point, stroke: Stroke, radius: number): boolean => {
-    return stroke.points.some(strokePoint => {
-      const dx = strokePoint.x - point.x;
-      const dy = strokePoint.y - point.y;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-      return distance < radius + stroke.width / 2;
-    });
+  // Check if a point is within eraser radius
+  const isPointInEraser = useCallback((strokePoint: Point, eraserPoint: Point, radius: number, strokeWidth: number): boolean => {
+    const dx = strokePoint.x - eraserPoint.x;
+    const dy = strokePoint.y - eraserPoint.y;
+    const distance = Math.sqrt(dx * dx + dy * dy);
+    return distance < radius + strokeWidth / 2;
   }, []);
 
-  // Erase strokes at point (removes entire strokes that are touched)
+  // Erase strokes at point (splits strokes, keeping parts outside eraser)
   const eraseStrokesAtPoint = useCallback((point: Point, radius: number): Stroke[] => {
-    return strokes.filter(stroke => !isPointNearStroke(point, stroke, radius));
-  }, [strokes, isPointNearStroke]);
+    const newStrokes: Stroke[] = [];
+    
+    strokes.forEach(stroke => {
+      // Find segments that are outside the eraser
+      let currentSegment: Point[] = [];
+      
+      stroke.points.forEach((strokePoint, index) => {
+        const isInEraser = isPointInEraser(strokePoint, point, radius, stroke.width);
+        
+        if (!isInEraser) {
+          currentSegment.push(strokePoint);
+        } else {
+          // If we have accumulated points, save them as a new stroke segment
+          if (currentSegment.length >= 2) {
+            newStrokes.push({
+              ...stroke,
+              id: `${stroke.id}-${index}`,
+              points: [...currentSegment],
+            });
+          }
+          currentSegment = [];
+        }
+      });
+      
+      // Don't forget the last segment
+      if (currentSegment.length >= 2) {
+        newStrokes.push({
+          ...stroke,
+          id: `${stroke.id}-end`,
+          points: [...currentSegment],
+        });
+      }
+    });
+    
+    return newStrokes;
+  }, [strokes, isPointInEraser]);
 
   const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current;
