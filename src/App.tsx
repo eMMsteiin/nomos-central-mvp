@@ -7,6 +7,8 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { HiddenTabsProvider } from "@/contexts/HiddenTabsContext";
+import { CanvaSessionProvider } from "@/contexts/CanvaSessionContext";
+import { FocusSidebar } from "@/components/canva/FocusSidebar";
 import Index from "./pages/Index";
 import Hoje from "./pages/Hoje";
 import EmBreve from "./pages/EmBreve";
@@ -15,6 +17,8 @@ import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
+import Configuracoes from "./pages/Configuracoes";
+import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,29 +30,37 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <HiddenTabsProvider>
-          <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-            
-            <div className="flex-1 flex flex-col w-full">
-              <AppHeader />
+          <CanvaSessionProvider>
+            <SidebarProvider>
+              <div className="flex min-h-screen w-full">
+                <AppSidebar />
               
-              <main className="flex-1">
-                <Routes>
-                  <Route path="/" element={<Index />} />
-                  <Route path="/hoje" element={<Hoje />} />
-                  <Route path="/em-breve" element={<EmBreve />} />
-                  <Route path="/filtros" element={<Filtros />} />
-                  <Route path="/concluido" element={<Concluido />} />
-                  <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
-                  <Route path="/caderno" element={<Caderno />} />
-                  <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </main>
+              <div className="flex-1 flex flex-col w-full">
+                <AppHeader />
+                
+                <main className="flex-1">
+                  <Routes>
+                    <Route path="/" element={<Index />} />
+                    <Route path="/hoje" element={<Hoje />} />
+                    <Route path="/em-breve" element={<EmBreve />} />
+                    <Route path="/filtros" element={<Filtros />} />
+                    <Route path="/concluido" element={<Concluido />} />
+                    <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
+                    <Route path="/caderno" element={<Caderno />} />
+                    <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
+                    <Route path="/configuracoes" element={<Configuracoes />}>
+                      <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
+                    </Route>
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </main>
+              </div>
+              
+              {/* Focus Sidebar - appears when Canva session is active */}
+              <FocusSidebar />
             </div>
-          </div>
-        </SidebarProvider>
+          </SidebarProvider>
+        </CanvaSessionProvider>
       </HiddenTabsProvider>
       </BrowserRouter>
     </TooltipProvider>
