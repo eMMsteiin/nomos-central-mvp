@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Download, Clock, Pencil, Star } from "lucide-react";
+import { Plus, Calendar, Download, Clock, Pencil, Star, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -10,6 +10,9 @@ import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 import { extractTimeFromText, formatDateToTime } from "@/services/timeExtractor";
 import { extractDateFromText } from "@/services/dateExtractor";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
+import { useCanvaSession } from "@/contexts/CanvaSessionContext";
+import { isCanvaRelatedTask } from "@/types/canva";
+import { toast } from "@/hooks/use-toast";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -23,6 +26,9 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
+
+  const { session, settings, startSession, openCanvaPopout } = useCanvaSession();
 
   const cyclePriority = () => {
     setPriority((prev) => {
@@ -31,7 +37,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       return 'baixa';
     });
   };
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   // Load tasks from localStorage on mount
   useEffect(() => {
@@ -53,10 +58,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const addTask = () => {
     if (!inputValue.trim()) return;
 
-    // Primeiro extrair data
     const { cleanText: textWithoutDate, detectedDate, category } = extractDateFromText(inputValue.trim());
-    
-    // Depois extrair horário do texto restante
     const { cleanText, time } = extractTimeFromText(textWithoutDate);
 
     const newTask: Task = {
@@ -71,13 +73,13 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       priority: priority,
       sourceType: 'manual',
       category: category,
+      isCanvaTask: isCanvaRelatedTask(cleanText),
     };
 
     setTasks((prev) => [newTask, ...prev]);
     setInputValue("");
     setPriority('baixa');
     
-    // Dispatch event to update counts
     window.dispatchEvent(new Event('tasksUpdated'));
   };
 
@@ -94,6 +96,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       priority: 'media',
       sourceType: 'ava',
       completed: false,
+      isCanvaTask: isCanvaRelatedTask(event.title),
     }));
     
     setTasks((prev) => [...importedTasks, ...prev]);
@@ -117,7 +120,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         return next;
       });
       
-      // Dispatch custom event for count updates
       window.dispatchEvent(new Event("tasksUpdated"));
     }, 400);
   };
@@ -133,6 +135,42 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     );
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event("tasksUpdated"));
+  };
+
+  const handleOpenCanva = (task: Task) => {
+    if (session) {
+      toast({
+        title: "Sessão em andamento",
+        description: "Finalize a sessão atual antes de iniciar outra.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    startSession(task);
+    const popup = openCanvaPopout(task.canvaDesignUrl);
+    
+    if (popup) {
+      toast({
+        title: "Canva aberto!",
+        description: "Use a barra de foco para controlar sua sessão.",
+      });
+    } else {
+      toast({
+        title: "Pop-up bloqueado",
+        description: "Permita pop-ups para usar o Canva integrado.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Check if task should show Canva button
+  const shouldShowCanvaButton = (task: Task) => {
+    if (!settings.enabled) return false;
+    if (settings.autoDetectCanvaTasks) {
+      return task.isCanvaTask || isCanvaRelatedTask(task.text);
+    }
+    return task.isCanvaTask;
   };
 
   // Filter tasks based on filterMode
@@ -157,7 +195,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   };
 
   return (
-    <div className="flex-1 bg-background flex flex-col relative">
+    <div className={`flex-1 bg-background flex flex-col relative ${session ? 'mr-64' : ''}`}>
       {/* Main content */}
       <div className="px-6 py-8 md:py-12 flex-1">
         <div className="max-w-4xl mx-auto space-y-8">
@@ -173,6 +211,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
               Importar do AVA
             </Button>
           </div>
+          
           {/* Input Section */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
@@ -191,7 +230,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                 <Plus className="h-5 w-5" />
               </Button>
               
-              {/* Estrela de Prioridade */}
               <Button
                 onClick={cyclePriority}
                 size="icon"
@@ -208,8 +246,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                       : 'fill-secondary text-secondary'
                   }`}
                 />
-                
-                {/* Tooltip minimalista */}
                 <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                   {priority === 'alta' ? 'Alta' : priority === 'media' ? 'Média' : 'Baixa'}
                 </span>
@@ -235,12 +271,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                   exit={{ opacity: 0 }}
                   className="text-center py-16"
                 >
-            <p className="text-muted-foreground text-sm">
-              {filterMode === 'hoje' 
-                ? "Ops nenhuma tarefa para hoje. Vida fácil em!!!" 
-                : "Nenhuma tarefa nesta categoria."
-              }
-            </p>
+                  <p className="text-muted-foreground text-sm">
+                    {filterMode === 'hoje' 
+                      ? "Ops nenhuma tarefa para hoje. Vida fácil em!!!" 
+                      : "Nenhuma tarefa nesta categoria."
+                    }
+                  </p>
                 </motion.div>
               ) : (
                 displayedTasks.map((task, index) => (
@@ -253,10 +289,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                             opacity: 0,
                             scale: 0.9,
                             x: 100,
-                            transition: { 
-                              duration: 0.5, 
-                              ease: [0.4, 0, 0.2, 1]
-                            },
+                            transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
                           }
                         : { 
                             opacity: 1, 
@@ -269,12 +302,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                             }
                           }
                     }
-                    exit={{ 
-                      opacity: 0, 
-                      scale: 0.9,
-                      x: 100,
-                      transition: { duration: 0.3 }
-                    }}
+                    exit={{ opacity: 0, scale: 0.9, x: 100, transition: { duration: 0.3 } }}
                     className="hover:bg-muted/20 rounded-lg transition-all duration-200 overflow-hidden group"
                   >
                     <div className="flex items-start gap-3 py-2 px-1">
@@ -284,7 +312,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                         className="mt-0.5"
                       />
                       
-                      {/* Priority Bar */}
                       <div
                         className={`w-1 h-full rounded-full self-stretch ${
                           task.priority === 'alta' 
@@ -309,7 +336,6 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                               {task.text}
                             </motion.p>
                             
-                            {/* Priority Badge */}
                             <span
                               className={`text-xs px-2 py-0.5 rounded-full ${
                                 task.priority === 'alta'
@@ -321,17 +347,39 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                             >
                               {task.priority === 'alta' ? 'Alta' : task.priority === 'media' ? 'Média' : 'Baixa'}
                             </span>
+
+                            {/* Canva badge for linked tasks */}
+                            {task.canvaDesignUrl && (
+                              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                                Canva
+                              </span>
+                            )}
                           </div>
                           
-                          {/* Edit Button */}
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => setEditingTask(task)}
-                          >
-                            <Pencil className="h-3 w-3" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            {/* Canva Button */}
+                            {shouldShowCanvaButton(task) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10"
+                                onClick={() => handleOpenCanva(task)}
+                              >
+                                <Palette className="h-3 w-3" />
+                                <span className="text-xs">Canva</span>
+                              </Button>
+                            )}
+                            
+                            {/* Edit Button */}
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              onClick={() => setEditingTask(task)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                         
                         <div className="flex items-center gap-2 mt-1 flex-wrap">

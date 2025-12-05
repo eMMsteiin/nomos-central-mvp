@@ -10,4 +10,10 @@ export interface Task {
   priority?: 'alta' | 'media' | 'baixa';
   sourceType?: 'manual' | 'ava';
   completed?: boolean;
+  // Canva integration fields
+  canvaDesignUrl?: string;
+  canvaDesignTitle?: string;
+  canvaTimeSpent?: number;
+  canvaLastOpened?: string;
+  isCanvaTask?: boolean;
 }

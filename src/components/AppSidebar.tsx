@@ -13,7 +13,8 @@ import {
   StickyNote,
   Book,
   EyeOff,
-  MoreVertical
+  MoreVertical,
+  Settings
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -224,9 +225,18 @@ export function AppSidebar() {
       <SidebarFooter className="px-2 pb-2">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="hover:bg-muted/50">
-              <Plus className="h-4 w-4" />
-              {open && <span>Adicionar uma equipe</span>}
+            <SidebarMenuButton asChild>
+              <NavLink
+                to="/configuracoes/integracoes"
+                className={
+                  currentPath.startsWith('/configuracoes')
+                    ? "bg-[hsl(var(--todoist-orange-bg))] text-foreground font-medium"
+                    : "hover:bg-muted/50"
+                }
+              >
+                <Settings className="h-4 w-4" />
+                {open && <span>Configurações</span>}
+              </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
