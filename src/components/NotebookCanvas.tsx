@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
-import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
+import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Stroke, Point, PenStyle, ToolType, PEN_STYLES, HIGHLIGHTER_COLORS } from '@/types/notebook';
 import { ColorPicker } from './notebook/ColorPicker';
@@ -16,6 +16,11 @@ interface NotebookCanvasProps {
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
+  // Page navigation props for fullscreen mode
+  currentPage?: number;
+  totalPages?: number;
+  onPreviousPage?: () => void;
+  onNextPage?: () => void;
 }
 
 // Canvas dimensions (logical)
@@ -29,7 +34,11 @@ export const NotebookCanvas = ({
   backgroundImage,
   isFullscreen = false,
   onToggleFullscreen,
-  canvasRef: externalCanvasRef
+  canvasRef: externalCanvasRef,
+  currentPage = 1,
+  totalPages = 1,
+  onPreviousPage,
+  onNextPage
 }: NotebookCanvasProps) => {
   const internalCanvasRef = useRef<HTMLCanvasElement>(null);
   const canvasRef = externalCanvasRef || internalCanvasRef;
@@ -556,6 +565,38 @@ export const NotebookCanvas = ({
       {/* Toolbar */}
       <div className="flex items-center gap-2 p-3 bg-background border-b flex-wrap">
         {/* Fullscreen Toggle */}
+        {/* Page Navigation in Fullscreen */}
+        {isFullscreen && totalPages > 1 && (
+          <>
+            <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onPreviousPage}
+                disabled={currentPage <= 1}
+                className="h-8"
+                title="Página anterior"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs font-medium px-2 min-w-[60px] text-center">
+                {currentPage} / {totalPages}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={onNextPage}
+                disabled={currentPage >= totalPages}
+                className="h-8"
+                title="Próxima página"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="w-px h-6 bg-border" />
+          </>
+        )}
+
         {onToggleFullscreen && (
           <>
             <Button

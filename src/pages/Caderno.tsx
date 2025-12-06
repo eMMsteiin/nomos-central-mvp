@@ -217,6 +217,10 @@ const Caderno = () => {
           isFullscreen={true}
           onToggleFullscreen={handleToggleFullscreen}
           canvasRef={canvasRef}
+          currentPage={currentPageIndex + 1}
+          totalPages={selectedNotebook.pages.length}
+          onPreviousPage={() => setCurrentPageIndex(prev => Math.max(0, prev - 1))}
+          onNextPage={() => setCurrentPageIndex(prev => Math.min(selectedNotebook.pages.length - 1, prev + 1))}
         />
       );
     }
