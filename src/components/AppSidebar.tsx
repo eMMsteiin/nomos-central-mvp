@@ -14,7 +14,9 @@ import {
   Book,
   EyeOff,
   MoreVertical,
-  Settings
+  Settings,
+  PanelLeftClose,
+  PanelLeft
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -62,7 +64,7 @@ const projects = [
 
 export function AppSidebar() {
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
-  const { open } = useSidebar();
+  const { open, toggleSidebar } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const counts = useTaskCounts();
@@ -243,6 +245,21 @@ export function AppSidebar() {
             <SidebarMenuButton className="hover:bg-muted/50">
               <LifeBuoy className="h-4 w-4" />
               {open && <span>Ajuda e recursos</span>}
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SidebarMenuButton 
+              onClick={toggleSidebar}
+              className="hover:bg-muted/50"
+            >
+              {open ? (
+                <>
+                  <PanelLeftClose className="h-4 w-4" />
+                  <span>Minimizar</span>
+                </>
+              ) : (
+                <PanelLeft className="h-4 w-4" />
+              )}
             </SidebarMenuButton>
           </SidebarMenuItem>
         </SidebarMenu>
