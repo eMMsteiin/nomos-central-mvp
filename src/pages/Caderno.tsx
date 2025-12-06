@@ -318,6 +318,37 @@ const Caderno = () => {
           onToggleFullscreen={handleToggleFullscreen}
           canvasRef={canvasRef}
         />
+
+        {/* Add Page Dialog - inside canvas view */}
+        <Dialog open={isAddPageDialogOpen} onOpenChange={setIsAddPageDialogOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Adicionar Nova Página</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>Template da página</Label>
+                <Select value={newPageTemplate} onValueChange={(val: any) => setNewPageTemplate(val)}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="blank">Em branco</SelectItem>
+                    <SelectItem value="lined">Pautado</SelectItem>
+                    <SelectItem value="grid">Quadriculado</SelectItem>
+                    <SelectItem value="dotted">Pontilhado</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsAddPageDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button onClick={handleAddPage}>Adicionar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
