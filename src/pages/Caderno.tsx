@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import { useNotebooks } from '@/hooks/useNotebooks';
 import { NotebookCanvas } from '@/components/NotebookCanvas';
 import { ImportPdfDialog } from '@/components/ImportPdfDialog';
@@ -6,10 +6,22 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Book, Plus, Trash2, ArrowLeft, Search, Upload, FileText, ChevronLeft, ChevronRight, FilePlus } from 'lucide-react';
+import { 
+  Book, Plus, Trash2, ArrowLeft, Search, Upload, FileText, 
+  ChevronLeft, ChevronRight, FilePlus, Download, Image, FileDown,
+  Maximize2
+} from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
+} from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { Notebook } from '@/types/notebook';
+import { downloadPageAsPng, downloadNotebookAsPdf } from '@/utils/notebookExport';
 
 const Caderno = () => {
   const { notebooks, createNotebook, deleteNotebook, updateNotebook, addPage } = useNotebooks();
@@ -24,6 +36,11 @@ const Caderno = () => {
   const [filterDiscipline, setFilterDiscipline] = useState<string>('all');
   const [isAddPageDialogOpen, setIsAddPageDialogOpen] = useState(false);
   const [newPageTemplate, setNewPageTemplate] = useState<'blank' | 'lined' | 'grid' | 'dotted'>('blank');
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
+  
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Get unique disciplines
   const disciplines = useMemo(() => {
@@ -142,8 +159,67 @@ const Caderno = () => {
     }
   };
 
+  const handleToggleFullscreen = () => {
+    setIsFullscreen(!isFullscreen);
+  };
+
+  const handleDownloadPage = async () => {
+    if (!selectedNotebook) return;
+    
+    try {
+      toast.info('Preparando download...');
+      await downloadPageAsPng(
+        selectedNotebook.pages[currentPageIndex],
+        selectedNotebook.title,
+        currentPageIndex + 1
+      );
+      toast.success('Página baixada!');
+    } catch (error) {
+      console.error('Error downloading page:', error);
+      toast.error('Erro ao baixar página');
+    }
+  };
+
+  const handleDownloadNotebook = async () => {
+    if (!selectedNotebook) return;
+    
+    try {
+      setIsExporting(true);
+      setExportProgress({ current: 0, total: selectedNotebook.pages.length });
+      
+      toast.info(`Gerando PDF com ${selectedNotebook.pages.length} páginas...`);
+      
+      await downloadNotebookAsPdf(selectedNotebook, (current, total) => {
+        setExportProgress({ current, total });
+      });
+      
+      toast.success('Caderno baixado como PDF!');
+    } catch (error) {
+      console.error('Error downloading notebook:', error);
+      toast.error('Erro ao baixar caderno');
+    } finally {
+      setIsExporting(false);
+      setExportProgress({ current: 0, total: 0 });
+    }
+  };
+
   if (selectedNotebook) {
     const currentPage = selectedNotebook.pages[currentPageIndex];
+
+    // Fullscreen mode - only show canvas
+    if (isFullscreen) {
+      return (
+        <NotebookCanvas
+          strokes={currentPage.strokes}
+          onStrokesChange={handleStrokesChange}
+          template={currentPage.template}
+          backgroundImage={currentPage.backgroundImage}
+          isFullscreen={true}
+          onToggleFullscreen={handleToggleFullscreen}
+          canvasRef={canvasRef}
+        />
+      );
+    }
 
     return (
       <div className="flex flex-col h-screen">
@@ -193,9 +269,44 @@ const Caderno = () => {
               className="gap-2"
             >
               <FilePlus className="h-4 w-4" />
-              Adicionar Página
+              <span className="hidden sm:inline">Adicionar Página</span>
             </Button>
           </div>
+
+          {/* Fullscreen Button */}
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleToggleFullscreen}
+            title="Tela cheia"
+          >
+            <Maximize2 className="h-4 w-4" />
+          </Button>
+
+          {/* Export Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2" disabled={isExporting}>
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">
+                  {isExporting 
+                    ? `Exportando ${exportProgress.current}/${exportProgress.total}...` 
+                    : 'Exportar'}
+                </span>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleDownloadPage}>
+                <Image className="h-4 w-4 mr-2" />
+                Baixar página (PNG)
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={handleDownloadNotebook}>
+                <FileDown className="h-4 w-4 mr-2" />
+                Baixar caderno (PDF)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         <NotebookCanvas
@@ -203,6 +314,9 @@ const Caderno = () => {
           onStrokesChange={handleStrokesChange}
           template={currentPage.template}
           backgroundImage={currentPage.backgroundImage}
+          isFullscreen={false}
+          onToggleFullscreen={handleToggleFullscreen}
+          canvasRef={canvasRef}
         />
       </div>
     );
