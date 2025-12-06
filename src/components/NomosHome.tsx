@@ -195,20 +195,20 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   };
 
   return (
-    <div className={`flex-1 bg-background flex flex-col relative ${session ? 'mr-64' : ''}`}>
+    <div className={`flex-1 bg-background flex flex-col relative ${session ? 'md:mr-64' : ''}`}>
       {/* Main content */}
-      <div className="px-6 py-8 md:py-12 flex-1">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-semibold">{getTitle()}</h1>
+      <div className="px-4 sm:px-6 py-6 sm:py-8 md:py-12 flex-1">
+        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h1 className="text-2xl sm:text-3xl font-semibold">{getTitle()}</h1>
             <Button 
               onClick={() => setImportModalOpen(true)}
               variant="outline"
               size="sm"
-              className="gap-2"
+              className="gap-2 w-full sm:w-auto"
             >
               <Download className="h-4 w-4" />
-              Importar do AVA
+              <span className="sm:inline">Importar do AVA</span>
             </Button>
           </div>
           
@@ -434,7 +434,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       </div>
 
       {/* Footer */}
-      <footer className="border-t border-border px-6 py-6">
+      <footer className="border-t border-border px-4 sm:px-6 py-4 sm:py-6">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}

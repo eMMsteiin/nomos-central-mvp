@@ -16,6 +16,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface WeekBlockProps {
   block: Block;
@@ -50,6 +51,7 @@ export const WeekBlock = ({
   const [title, setTitle] = useState(block.title);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [expandedDayId, setExpandedDayId] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   const handleTitleSave = () => {
     setIsEditing(false);
@@ -93,24 +95,24 @@ export const WeekBlock = ({
               size="sm"
               variant="ghost"
               onClick={() => block.isExpanded ? onCollapse(block.id) : onExpand(block.id)}
-              className="gap-1"
+              className="gap-1 text-xs sm:text-sm"
             >
               {block.isExpanded ? (
                 <>
                   <ChevronDown className="w-4 h-4" />
-                  Colapsar
+                  <span className="hidden sm:inline">Colapsar</span>
                 </>
               ) : (
                 <>
                   <ChevronRight className="w-4 h-4" />
-                  Expandir em dias
+                  <span className="hidden sm:inline">Expandir em dias</span>
                 </>
               )}
             </Button>
             <Button
               size="icon"
               variant="ghost"
-              className="hover:bg-destructive hover:text-destructive-foreground"
+              className="hover:bg-destructive hover:text-destructive-foreground h-8 w-8"
               onClick={() => setShowDeleteDialog(true)}
             >
               <Trash2 className="w-4 h-4" />
@@ -148,8 +150,8 @@ export const WeekBlock = ({
                 </div>
               </>
             ) : (
-              // Visão dos 7 dias em grade
-              <div className="grid grid-cols-7 h-full">
+              // Visão dos 7 dias em grade - responsiva
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 h-full">
                 {dayBlocks.map((dayBlock) => (
                   <DayBlock
                     key={dayBlock.id}
