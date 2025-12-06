@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
-import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react';
+import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2 } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Stroke, Point, PenStyle, ToolType, PEN_STYLES, HIGHLIGHTER_COLORS } from '@/types/notebook';
 import { ColorPicker } from './notebook/ColorPicker';
@@ -13,14 +13,26 @@ interface NotebookCanvasProps {
   onStrokesChange: (strokes: Stroke[]) => void;
   template?: 'blank' | 'lined' | 'grid' | 'dotted';
   backgroundImage?: string;
+  isFullscreen?: boolean;
+  onToggleFullscreen?: () => void;
+  canvasRef?: React.RefObject<HTMLCanvasElement>;
 }
 
 // Canvas dimensions (logical)
 const CANVAS_WIDTH = 1600;
 const CANVAS_HEIGHT = 2400;
 
-export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', backgroundImage }: NotebookCanvasProps) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export const NotebookCanvas = ({ 
+  strokes, 
+  onStrokesChange, 
+  template = 'blank', 
+  backgroundImage,
+  isFullscreen = false,
+  onToggleFullscreen,
+  canvasRef: externalCanvasRef
+}: NotebookCanvasProps) => {
+  const internalCanvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = externalCanvasRef || internalCanvasRef;
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Drawing state
@@ -28,12 +40,19 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   const [currentStroke, setCurrentStroke] = useState<Stroke | null>(null);
   const lastPointRef = useRef<Point | null>(null);
   const lastTimeRef = useRef<number>(0);
-  const strokesRef = useRef<Stroke[]>(strokes); // Track strokes for eraser
   
-  // Keep strokesRef in sync
-  useEffect(() => {
-    strokesRef.current = strokes;
-  }, [strokes]);
+  // Eraser session tracking - accumulate changes during erasing
+  const eraserSessionRef = useRef<{
+    isActive: boolean;
+    initialStrokes: Stroke[];
+    currentStrokes: Stroke[];
+    hasChanges: boolean;
+  }>({
+    isActive: false,
+    initialStrokes: [],
+    currentStrokes: [],
+    hasChanges: false
+  });
   
   // Tool state
   const [tool, setTool] = useState<ToolType>('pen');
@@ -47,9 +66,21 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   // Eraser cursor position
   const [eraserPos, setEraserPos] = useState<{ x: number; y: number } | null>(null);
   
-  // History
+  // History - use strokes as single source of truth
   const [history, setHistory] = useState<Stroke[][]>([strokes]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  
+  // Sync history when strokes prop changes externally
+  useEffect(() => {
+    if (!eraserSessionRef.current.isActive) {
+      // Only update history if this is an external change
+      const lastHistoryState = history[historyIndex];
+      if (lastHistoryState !== strokes && JSON.stringify(lastHistoryState) !== JSON.stringify(strokes)) {
+        setHistory([strokes]);
+        setHistoryIndex(0);
+      }
+    }
+  }, [strokes]);
   
   // Zoom and pan
   const [zoom, setZoom] = useState(0.5);
@@ -85,6 +116,18 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   useEffect(() => {
     drawCanvas();
   }, [strokes, template, backgroundImage]);
+
+  // Keyboard shortcuts for fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen && onToggleFullscreen) {
+        onToggleFullscreen();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isFullscreen, onToggleFullscreen]);
 
   const drawTemplate = useCallback((ctx: CanvasRenderingContext2D) => {
     ctx.strokeStyle = '#e5e7eb';
@@ -201,6 +244,11 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Get the strokes to render - during eraser session, use the session strokes
+    const strokesToRender = eraserSessionRef.current.isActive 
+      ? eraserSessionRef.current.currentStrokes 
+      : strokes;
+
     // Reset transform and clear
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
@@ -215,14 +263,14 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
       img.onload = () => {
         ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         drawTemplate(ctx);
-        strokes.forEach(stroke => drawStroke(ctx, stroke));
+        strokesToRender.forEach(stroke => drawStroke(ctx, stroke));
         if (additionalStroke) drawStroke(ctx, additionalStroke);
         if (eraserCursor) drawEraserCursor(ctx, eraserCursor);
       };
       img.src = backgroundImage;
     } else {
       drawTemplate(ctx);
-      strokes.forEach(stroke => drawStroke(ctx, stroke));
+      strokesToRender.forEach(stroke => drawStroke(ctx, stroke));
       if (additionalStroke) drawStroke(ctx, additionalStroke);
       if (eraserCursor) drawEraserCursor(ctx, eraserCursor);
     }
@@ -247,11 +295,9 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     const lengthSq = dx * dx + dy * dy;
     
     if (lengthSq === 0) {
-      // Segment is a point
       return Math.sqrt((point.x - segStart.x) ** 2 + (point.y - segStart.y) ** 2);
     }
     
-    // Project point onto line segment
     let t = ((point.x - segStart.x) * dx + (point.y - segStart.y) * dy) / lengthSq;
     t = Math.max(0, Math.min(1, t));
     
@@ -261,82 +307,32 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
   }, []);
 
-  // Check if a segment intersects with eraser circle
-  const isSegmentInEraser = useCallback((p1: Point, p2: Point, eraserPoint: Point, radius: number, strokeWidth: number): boolean => {
-    const effectiveRadius = radius + strokeWidth / 2;
-    return pointToSegmentDistance(eraserPoint, p1, p2) < effectiveRadius;
-  }, [pointToSegmentDistance]);
-
-  // Erase strokes at point (splits strokes, keeping parts outside eraser)
+  // Improved eraser - removes entire strokes that intersect with eraser
   const eraseStrokesAtPoint = useCallback((currentStrokes: Stroke[], point: Point, radius: number): Stroke[] => {
-    const newStrokes: Stroke[] = [];
-    let hasChanges = false;
+    const effectiveRadius = radius * 1.2; // Slightly larger hit area for better UX
     
-    currentStrokes.forEach(stroke => {
-      if (stroke.points.length < 2) {
-        newStrokes.push(stroke);
-        return;
-      }
+    return currentStrokes.filter(stroke => {
+      if (stroke.points.length < 2) return true;
       
-      let currentSegment: Point[] = [];
-      let strokeModified = false;
-      
-      for (let i = 0; i < stroke.points.length; i++) {
-        const currentPoint = stroke.points[i];
-        const nextPoint = stroke.points[i + 1];
-        
-        // Check if current point or segment to next point is in eraser
-        let shouldErase = false;
-        
-        // Check point distance
-        const pointDist = Math.sqrt((currentPoint.x - point.x) ** 2 + (currentPoint.y - point.y) ** 2);
-        if (pointDist < radius + stroke.width / 2) {
-          shouldErase = true;
-        }
-        
-        // Check segment to next point
-        if (!shouldErase && nextPoint) {
-          shouldErase = isSegmentInEraser(currentPoint, nextPoint, point, radius, stroke.width);
-        }
-        
-        if (!shouldErase) {
-          currentSegment.push(currentPoint);
-        } else {
-          strokeModified = true;
-          // Save accumulated segment as new stroke
-          if (currentSegment.length >= 2) {
-            newStrokes.push({
-              ...stroke,
-              id: `${stroke.id}-${Date.now()}-${i}`,
-              points: [...currentSegment],
-            });
-          }
-          currentSegment = [];
+      // Check if any point is within eraser radius
+      for (const p of stroke.points) {
+        const dist = Math.sqrt((p.x - point.x) ** 2 + (p.y - point.y) ** 2);
+        if (dist < effectiveRadius + stroke.width / 2) {
+          return false; // Remove this stroke
         }
       }
       
-      // Save the last segment
-      if (currentSegment.length >= 2) {
-        if (strokeModified) {
-          newStrokes.push({
-            ...stroke,
-            id: `${stroke.id}-${Date.now()}-end`,
-            points: [...currentSegment],
-          });
-        } else {
-          // Stroke wasn't modified, keep original
-          newStrokes.push(stroke);
+      // Check segments between points
+      for (let i = 0; i < stroke.points.length - 1; i++) {
+        const segDist = pointToSegmentDistance(point, stroke.points[i], stroke.points[i + 1]);
+        if (segDist < effectiveRadius + stroke.width / 2) {
+          return false; // Remove this stroke
         }
-      } else if (!strokeModified && stroke.points.length >= 2) {
-        // Stroke wasn't modified at all
-        newStrokes.push(stroke);
       }
       
-      if (strokeModified) hasChanges = true;
+      return true; // Keep this stroke
     });
-    
-    return hasChanges ? newStrokes : currentStrokes;
-  }, [isSegmentInEraser]);
+  }, [pointToSegmentDistance]);
 
   const getCanvasPoint = (e: React.PointerEvent<HTMLCanvasElement>): Point => {
     const canvas = canvasRef.current;
@@ -379,19 +375,25 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     lastPointRef.current = point;
     lastTimeRef.current = performance.now();
 
-    // Handle eraser - immediately try to erase
+    // Handle eraser - start eraser session
     if (tool === 'eraser') {
       setIsDrawing(true);
-      const newStrokes = eraseStrokesAtPoint(strokesRef.current, point, eraserWidth / 2);
-      if (newStrokes !== strokesRef.current) {
-        strokesRef.current = newStrokes; // Update ref immediately
-        onStrokesChange(newStrokes);
-        // Update history
-        const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(newStrokes);
-        setHistory(newHistory);
-        setHistoryIndex(newHistory.length - 1);
+      
+      // Initialize eraser session
+      eraserSessionRef.current = {
+        isActive: true,
+        initialStrokes: [...strokes],
+        currentStrokes: [...strokes],
+        hasChanges: false
+      };
+      
+      // Perform initial erase
+      const newStrokes = eraseStrokesAtPoint(strokes, point, eraserWidth / 2);
+      if (newStrokes.length !== strokes.length) {
+        eraserSessionRef.current.currentStrokes = newStrokes;
+        eraserSessionRef.current.hasChanges = true;
       }
+      
       setEraserPos({ x: point.x, y: point.y });
       drawCanvas(null, { x: point.x, y: point.y, radius: eraserWidth / 2 });
       return;
@@ -426,15 +428,17 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     if (tool === 'eraser') {
       setEraserPos({ x: point.x, y: point.y });
       
-      if (isDrawing) {
+      if (isDrawing && eraserSessionRef.current.isActive) {
         e.preventDefault();
-        // Erase strokes at current point using ref for latest state
-        const newStrokes = eraseStrokesAtPoint(strokesRef.current, point, eraserWidth / 2);
-        if (newStrokes !== strokesRef.current) {
-          strokesRef.current = newStrokes; // Update ref immediately
-          onStrokesChange(newStrokes);
+        
+        // Erase from current session strokes
+        const newStrokes = eraseStrokesAtPoint(eraserSessionRef.current.currentStrokes, point, eraserWidth / 2);
+        if (newStrokes.length !== eraserSessionRef.current.currentStrokes.length) {
+          eraserSessionRef.current.currentStrokes = newStrokes;
+          eraserSessionRef.current.hasChanges = true;
         }
       }
+      
       // Redraw with eraser cursor
       drawCanvas(null, { x: point.x, y: point.y, radius: eraserWidth / 2 });
       return;
@@ -451,8 +455,6 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     };
 
     setCurrentStroke(updatedStroke);
-
-    // Redraw canvas with current stroke (consistent rendering)
     drawCanvas(updatedStroke);
   };
 
@@ -463,14 +465,28 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     }
 
     if (tool === 'eraser') {
-      // Save to history at end of erasing session
-      const currentStrokes = strokesRef.current;
-      if (currentStrokes !== strokes) {
+      // End eraser session and commit changes
+      if (eraserSessionRef.current.isActive && eraserSessionRef.current.hasChanges) {
+        const finalStrokes = eraserSessionRef.current.currentStrokes;
+        
+        // Update history
         const newHistory = history.slice(0, historyIndex + 1);
-        newHistory.push(currentStrokes);
+        newHistory.push(finalStrokes);
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
+        
+        // Commit to parent
+        onStrokesChange(finalStrokes);
       }
+      
+      // Reset eraser session
+      eraserSessionRef.current = {
+        isActive: false,
+        initialStrokes: [],
+        currentStrokes: [],
+        hasChanges: false
+      };
+      
       setIsDrawing(false);
       setEraserPos(null);
       drawCanvas();
@@ -482,18 +498,18 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
     // Only save if we have enough points
     if (currentStroke.points.length > 1) {
       const newStrokes = [...strokes, currentStroke];
-      onStrokesChange(newStrokes);
-
+      
       const newHistory = history.slice(0, historyIndex + 1);
       newHistory.push(newStrokes);
       setHistory(newHistory);
       setHistoryIndex(newHistory.length - 1);
+      
+      onStrokesChange(newStrokes);
     }
 
     setIsDrawing(false);
     setCurrentStroke(null);
     lastPointRef.current = null;
-    // Note: Don't call drawCanvas here - the useEffect will handle it when strokes prop updates
   };
 
   const handlePointerLeave = () => {
@@ -536,9 +552,32 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
   const handleZoomChange = (value: number[]) => setZoom(value[0]);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
       {/* Toolbar */}
       <div className="flex items-center gap-2 p-3 bg-background border-b flex-wrap">
+        {/* Fullscreen Toggle */}
+        {onToggleFullscreen && (
+          <>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onToggleFullscreen}
+              className="h-8 gap-1"
+              title={isFullscreen ? 'Sair da tela cheia (ESC)' : 'Tela cheia'}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="h-4 w-4" />
+              ) : (
+                <Maximize2 className="h-4 w-4" />
+              )}
+              <span className="hidden sm:inline text-xs">
+                {isFullscreen ? 'Sair' : 'Tela cheia'}
+              </span>
+            </Button>
+            <div className="w-px h-6 bg-border" />
+          </>
+        )}
+
         {/* Tools */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <Button
@@ -658,7 +697,8 @@ export const NotebookCanvas = ({ strokes, onStrokesChange, template = 'blank', b
             variant="ghost"
             size="sm"
             onClick={handleFitToScreen}
-            className="h-8 gap-1"
+            className="h-8"
+            title="Ajustar à tela"
           >
             <Maximize2 className="h-4 w-4" />
           </Button>
