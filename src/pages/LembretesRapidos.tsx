@@ -26,23 +26,23 @@ const LembretesRapidos = () => {
   const weekBlocks = blocks.filter(b => b.type === 'week');
 
   return (
-    <div className="flex flex-col h-full p-6">
+    <div className="flex flex-col h-full p-4 sm:p-6">
       <div className="w-full flex flex-col h-full">
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
+        <div className="mb-4 sm:mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div>
-            <div className="flex items-center gap-3 mb-1">
-              <StickyNote className="w-7 h-7 text-primary" />
-              <h2 className="text-2xl font-semibold">Lembretes Rápidos</h2>
+            <div className="flex items-center gap-2 sm:gap-3 mb-1">
+              <StickyNote className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+              <h2 className="text-xl sm:text-2xl font-semibold">Lembretes Rápidos</h2>
             </div>
-            <p className="text-muted-foreground text-sm">
+            <p className="text-muted-foreground text-xs sm:text-sm">
               Organize seus lembretes em blocos semanais
             </p>
           </div>
           
-          <Button onClick={() => setIsCreateBlockDialogOpen(true)} size="lg" className="gap-2">
-            <CalendarDays className="w-5 h-5" />
-            Criar Bloco Semanal
+          <Button onClick={() => setIsCreateBlockDialogOpen(true)} size="default" className="gap-2 w-full sm:w-auto">
+            <CalendarDays className="w-4 h-4 sm:w-5 sm:h-5" />
+            <span className="sm:inline">Criar Bloco Semanal</span>
           </Button>
         </div>
 

@@ -227,90 +227,97 @@ const Caderno = () => {
 
     return (
       <div className="flex flex-col h-screen">
-        <div className="flex items-center gap-4 p-4 bg-background border-b">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => {
-              setSelectedNotebook(null);
-              setCurrentPageIndex(0);
-            }}
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex-1">
-            <h1 className="text-xl font-semibold">{selectedNotebook.title}</h1>
-            {selectedNotebook.discipline && (
-              <p className="text-sm text-muted-foreground">{selectedNotebook.discipline}</p>
-            )}
+        {/* Responsive header */}
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 p-3 sm:p-4 bg-background border-b">
+          {/* Top row: back + title */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={() => {
+                setSelectedNotebook(null);
+                setCurrentPageIndex(0);
+              }}
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl font-semibold truncate">{selectedNotebook.title}</h1>
+              {selectedNotebook.discipline && (
+                <p className="text-xs sm:text-sm text-muted-foreground truncate">{selectedNotebook.discipline}</p>
+              )}
+            </div>
           </div>
           
-          {/* Page Navigation */}
-          <div className="flex items-center gap-2">
+          {/* Bottom row on mobile: actions */}
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* Page Navigation */}
+            <div className="flex items-center gap-1 sm:gap-2">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handlePreviousPage}
+                disabled={currentPageIndex === 0}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-xs sm:text-sm text-muted-foreground min-w-[60px] sm:min-w-[100px] text-center">
+                {currentPageIndex + 1} / {selectedNotebook.pages.length}
+              </span>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8"
+                onClick={handleNextPage}
+                disabled={currentPageIndex === selectedNotebook.pages.length - 1}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+            
             <Button
               variant="outline"
               size="icon"
-              onClick={handlePreviousPage}
-              disabled={currentPageIndex === 0}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm text-muted-foreground min-w-[100px] text-center">
-              Página {currentPageIndex + 1} de {selectedNotebook.pages.length}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={handleNextPage}
-              disabled={currentPageIndex === selectedNotebook.pages.length - 1}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
+              className="h-8 w-8"
               onClick={() => setIsAddPageDialogOpen(true)}
-              className="gap-2"
+              title="Adicionar página"
             >
               <FilePlus className="h-4 w-4" />
-              <span className="hidden sm:inline">Adicionar Página</span>
             </Button>
+
+            {/* Fullscreen Button */}
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleToggleFullscreen}
+              title="Tela cheia"
+            >
+              <Maximize2 className="h-4 w-4" />
+            </Button>
+
+            {/* Export Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" className="h-8 w-8" disabled={isExporting}>
+                  <Download className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-popover z-50">
+                <DropdownMenuItem onClick={handleDownloadPage}>
+                  <Image className="h-4 w-4 mr-2" />
+                  Baixar página (PNG)
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleDownloadNotebook}>
+                  <FileDown className="h-4 w-4 mr-2" />
+                  Baixar caderno (PDF)
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
-
-          {/* Fullscreen Button */}
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={handleToggleFullscreen}
-            title="Tela cheia"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </Button>
-
-          {/* Export Dropdown */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2" disabled={isExporting}>
-                <Download className="h-4 w-4" />
-                <span className="hidden sm:inline">
-                  {isExporting 
-                    ? `Exportando ${exportProgress.current}/${exportProgress.total}...` 
-                    : 'Exportar'}
-                </span>
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={handleDownloadPage}>
-                <Image className="h-4 w-4 mr-2" />
-                Baixar página (PNG)
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleDownloadNotebook}>
-                <FileDown className="h-4 w-4 mr-2" />
-                Baixar caderno (PDF)
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
 
         <NotebookCanvas
@@ -358,33 +365,33 @@ const Caderno = () => {
   }
 
   return (
-    <div className="flex flex-col h-screen px-6 py-8">
+    <div className="flex flex-col h-screen px-4 sm:px-6 py-4 sm:py-8">
       <div className="max-w-7xl mx-auto w-full flex flex-col h-full">
         {/* Header */}
-        <div className="mb-6">
-          <div className="flex items-center gap-3 mb-2">
-            <Book className="w-7 h-7 text-primary" />
-            <h2 className="text-2xl font-semibold">Caderno Digital</h2>
+        <div className="mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-3 mb-2">
+            <Book className="w-6 h-6 sm:w-7 sm:h-7 text-primary" />
+            <h2 className="text-xl sm:text-2xl font-semibold">Caderno Digital</h2>
           </div>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-muted-foreground text-xs sm:text-sm">
             Crie cadernos organizados, escreva à mão e organize seu estudo
           </p>
         </div>
 
         {/* Actions Bar */}
-        <div className="flex flex-wrap gap-3 mb-6">
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+        <div className="flex flex-wrap gap-2 sm:gap-3 mb-4 sm:mb-6">
+          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2 flex-1 sm:flex-none">
             <Plus className="h-4 w-4" />
-            Novo Caderno
+            <span className="sm:inline">Novo Caderno</span>
           </Button>
-          <Button onClick={() => setIsPdfDialogOpen(true)} variant="outline" className="gap-2">
+          <Button onClick={() => setIsPdfDialogOpen(true)} variant="outline" className="gap-2 flex-1 sm:flex-none">
             <Upload className="h-4 w-4" />
-            Importar PDF
+            <span className="sm:inline">Importar PDF</span>
           </Button>
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4 sm:mb-6">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -398,7 +405,7 @@ const Caderno = () => {
             <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Todas as disciplinas" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="bg-popover z-50">
               <SelectItem value="all">Todas as disciplinas</SelectItem>
               {disciplines.map(disc => (
                 <SelectItem key={disc} value={disc}>{disc}</SelectItem>
@@ -438,7 +445,7 @@ const Caderno = () => {
                   <span>{discipline}</span>
                   <span className="text-sm text-muted-foreground">({notebooksInGroup.length})</span>
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   {notebooksInGroup.map((notebook) => (
                     <div
                       key={notebook.id}

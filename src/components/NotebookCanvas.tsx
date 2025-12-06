@@ -562,8 +562,8 @@ export const NotebookCanvas = ({
 
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
-      {/* Toolbar */}
-      <div className="flex items-center gap-2 p-3 bg-background border-b flex-wrap">
+      {/* Toolbar - responsive with flex-wrap */}
+      <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 bg-background border-b flex-wrap">
         {/* Fullscreen Toggle */}
         {/* Page Navigation in Fullscreen */}
         {isFullscreen && totalPages > 1 && (
@@ -701,7 +701,7 @@ export const NotebookCanvas = ({
 
         <div className="w-px h-6 bg-border" />
 
-        {/* Zoom Controls */}
+        {/* Zoom Controls - simplified on mobile */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -712,7 +712,7 @@ export const NotebookCanvas = ({
           >
             <ZoomOut className="h-4 w-4" />
           </Button>
-          <div className="flex items-center gap-2 min-w-[100px]">
+          <div className="hidden sm:flex items-center gap-2 min-w-[100px]">
             <Slider
               value={[zoom]}
               onValueChange={handleZoomChange}
@@ -725,6 +725,9 @@ export const NotebookCanvas = ({
               {Math.round(zoom * 100)}%
             </span>
           </div>
+          <span className="sm:hidden text-xs text-muted-foreground min-w-[36px] text-center">
+            {Math.round(zoom * 100)}%
+          </span>
           <Button
             variant="ghost"
             size="sm"
@@ -738,7 +741,7 @@ export const NotebookCanvas = ({
             variant="ghost"
             size="sm"
             onClick={handleFitToScreen}
-            className="h-8"
+            className="h-8 hidden sm:flex"
             title="Ajustar à tela"
           >
             <Maximize2 className="h-4 w-4" />
@@ -747,7 +750,7 @@ export const NotebookCanvas = ({
       </div>
 
       {/* Canvas Container */}
-      <div ref={containerRef} className="flex-1 overflow-auto bg-muted/50 p-4">
+      <div ref={containerRef} className="flex-1 overflow-auto bg-muted/50 p-2 sm:p-4 touch-pan-x touch-pan-y">
         <div 
           className="inline-block"
           style={{
