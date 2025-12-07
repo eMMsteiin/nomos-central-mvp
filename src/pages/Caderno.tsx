@@ -19,9 +19,91 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
+import { 
+  Drawer, 
+  DrawerTrigger, 
+  DrawerContent, 
+  DrawerHeader, 
+  DrawerTitle,
+  DrawerClose
+} from '@/components/ui/drawer';
 import { toast } from 'sonner';
 import { Notebook } from '@/types/notebook';
 import { downloadPageAsPng, downloadNotebookAsPdf } from '@/utils/notebookExport';
+import { useIsMobile } from '@/hooks/use-mobile';
+
+// Componente de Export responsivo - Drawer para mobile, DropdownMenu para desktop
+const ExportButton = ({ 
+  isExporting, 
+  onDownloadPage, 
+  onDownloadNotebook 
+}: { 
+  isExporting: boolean; 
+  onDownloadPage: () => void; 
+  onDownloadNotebook: () => void; 
+}) => {
+  const isMobile = useIsMobile();
+
+  if (isMobile) {
+    return (
+      <Drawer>
+        <DrawerTrigger asChild>
+          <Button variant="outline" size="icon" className="h-8 w-8" disabled={isExporting}>
+            <Download className="h-4 w-4" />
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Exportar Caderno</DrawerTitle>
+          </DrawerHeader>
+          <div className="p-4 pb-8 space-y-3">
+            <DrawerClose asChild>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start h-14 text-base"
+                onClick={onDownloadPage}
+              >
+                <Image className="h-5 w-5 mr-3" />
+                Baixar página atual (PNG)
+              </Button>
+            </DrawerClose>
+            <DrawerClose asChild>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start h-14 text-base"
+                onClick={onDownloadNotebook}
+              >
+                <FileDown className="h-5 w-5 mr-3" />
+                Baixar caderno completo (PDF)
+              </Button>
+            </DrawerClose>
+          </div>
+        </DrawerContent>
+      </Drawer>
+    );
+  }
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" size="icon" className="h-8 w-8" disabled={isExporting}>
+          <Download className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="bg-popover z-50">
+        <DropdownMenuItem onClick={onDownloadPage}>
+          <Image className="h-4 w-4 mr-2" />
+          Baixar página (PNG)
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onDownloadNotebook}>
+          <FileDown className="h-4 w-4 mr-2" />
+          Baixar caderno (PDF)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+};
 
 const Caderno = () => {
   const { notebooks, createNotebook, deleteNotebook, updateNotebook, addPage } = useNotebooks();
@@ -298,25 +380,12 @@ const Caderno = () => {
               <Maximize2 className="h-4 w-4" />
             </Button>
 
-            {/* Export Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="icon" className="h-8 w-8" disabled={isExporting}>
-                  <Download className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-popover z-50">
-                <DropdownMenuItem onClick={handleDownloadPage}>
-                  <Image className="h-4 w-4 mr-2" />
-                  Baixar página (PNG)
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleDownloadNotebook}>
-                  <FileDown className="h-4 w-4 mr-2" />
-                  Baixar caderno (PDF)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* Export - Responsivo: Drawer em mobile, DropdownMenu em desktop */}
+            <ExportButton 
+              isExporting={isExporting}
+              onDownloadPage={handleDownloadPage}
+              onDownloadNotebook={handleDownloadNotebook}
+            />
           </div>
         </div>
 
