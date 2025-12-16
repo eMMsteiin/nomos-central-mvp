@@ -2,6 +2,7 @@ export interface Conversation {
   id: string;
   user_id: string;
   status: 'active' | 'archived';
+  title?: string;
   created_at: string;
 }
 

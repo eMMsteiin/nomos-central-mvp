@@ -7,55 +7,55 @@ import { toast } from 'sonner';
 
 const TASKS_STORAGE_KEY = "nomos.tasks.today";
 
-export function useChat() {
+interface UseChatOptions {
+  externalConversationId?: string | null;
+  onConversationCreated?: (id: string, title?: string) => void;
+}
+
+export function useChat(options: UseChatOptions = {}) {
+  const { externalConversationId, onConversationCreated } = options;
   const deviceId = useDeviceId();
   const [messages, setMessages] = useState<Message[]>([]);
-  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [conversationId, setConversationId] = useState<string | null>(externalConversationId || null);
   const [isLoading, setIsLoading] = useState(false);
   const [recentActions, setRecentActions] = useState<ChatAction[]>([]);
 
-  // Load existing conversation and messages
+  // Update conversationId when external one changes
   useEffect(() => {
-    if (!deviceId) return;
+    if (externalConversationId !== undefined) {
+      setConversationId(externalConversationId);
+    }
+  }, [externalConversationId]);
 
-    const loadConversation = async () => {
-      // Get active conversation
-      const { data: conversation } = await supabase
-        .from('conversations')
-        .select('id')
-        .eq('user_id', deviceId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .single();
+  // Load messages for current conversation
+  useEffect(() => {
+    if (!conversationId) {
+      setMessages([]);
+      return;
+    }
 
-      if (conversation) {
-        setConversationId(conversation.id);
-        
-        // Load messages
-        const { data: existingMessages } = await supabase
-          .from('messages')
-          .select('*')
-          .eq('conversation_id', conversation.id)
-          .order('created_at', { ascending: true });
+    const loadMessages = async () => {
+      const { data: existingMessages } = await supabase
+        .from('messages')
+        .select('*')
+        .eq('conversation_id', conversationId)
+        .order('created_at', { ascending: true });
 
-        if (existingMessages) {
-          // Parse proposal JSON for each message
-          const parsedMessages: Message[] = existingMessages.map(msg => ({
-            id: msg.id,
-            conversation_id: msg.conversation_id,
-            role: msg.role as 'user' | 'assistant' | 'system',
-            content: msg.content,
-            proposal: msg.proposal as unknown as Proposal | null,
-            created_at: msg.created_at
-          }));
-          setMessages(parsedMessages);
-        }
+      if (existingMessages) {
+        const parsedMessages: Message[] = existingMessages.map(msg => ({
+          id: msg.id,
+          conversation_id: msg.conversation_id,
+          role: msg.role as 'user' | 'assistant' | 'system',
+          content: msg.content,
+          proposal: msg.proposal as unknown as Proposal | null,
+          created_at: msg.created_at
+        }));
+        setMessages(parsedMessages);
       }
     };
 
-    loadConversation();
-  }, [deviceId]);
+    loadMessages();
+  }, [conversationId]);
 
   // Load recent actions
   useEffect(() => {
@@ -102,7 +102,6 @@ export function useChat() {
             created_at: raw.created_at as string
           };
           setMessages(prev => {
-            // Avoid duplicates
             if (prev.some(m => m.id === newMessage.id)) return prev;
             return [...prev, newMessage];
           });
@@ -120,7 +119,6 @@ export function useChat() {
 
     setIsLoading(true);
 
-    // Optimistically add user message
     const tempUserMessage: Message = {
       id: `temp-${Date.now()}`,
       conversation_id: conversationId || '',
@@ -142,11 +140,14 @@ export function useChat() {
 
       if (error) throw error;
 
-      if (data.conversationId && !conversationId) {
+      if (data.conversationId && data.conversationId !== conversationId) {
         setConversationId(data.conversationId);
+        // Notify about new conversation with title
+        if (onConversationCreated) {
+          onConversationCreated(data.conversationId, data.title);
+        }
       }
 
-      // Refresh actions if a proposal was made
       if (data.proposal) {
         const { data: actions } = await supabase
           .from('chat_actions_log')
@@ -163,15 +164,13 @@ export function useChat() {
     } catch (error) {
       console.error('Error sending message:', error);
       toast.error('Erro ao enviar mensagem. Tente novamente.');
-      // Remove optimistic message on error
       setMessages(prev => prev.filter(m => m.id !== tempUserMessage.id));
     } finally {
       setIsLoading(false);
     }
-  }, [deviceId, conversationId]);
+  }, [deviceId, conversationId, onConversationCreated]);
 
   const parseDuration = (durationStr: string): number => {
-    // Parse strings like "1h30", "2h", "45min", "1:30"
     if (!durationStr) return 60;
     
     const hourMatch = durationStr.match(/(\d+)\s*h/i);
@@ -186,10 +185,9 @@ export function useChat() {
     if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
     if (minMatch) totalMinutes += parseInt(minMatch[1]);
     
-    // If just a number, assume minutes
     if (!hourMatch && !minMatch) {
       const num = parseInt(durationStr);
-      if (!isNaN(num)) return num > 10 ? num : num * 60; // < 10 assume hours
+      if (!isNaN(num)) return num > 10 ? num : num * 60;
     }
     
     return totalMinutes || 60;
@@ -205,13 +203,9 @@ export function useChat() {
     switch (action.action_type) {
       case 'create_routine_block': {
         const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
-        console.log('[executeProposalAction] Tasks existentes:', existingTasks.length);
-        
         const newBlocks: Task[] = [];
         
-        // Structure 1: study_blocks array (AI format)
         const studyBlocks = payload?.study_blocks as Array<Record<string, unknown>> | undefined;
-        console.log('[executeProposalAction] Tentando Structure 1 (study_blocks):', studyBlocks);
         if (studyBlocks?.length) {
           studyBlocks.forEach((block, i) => {
             newBlocks.push({
@@ -227,12 +221,9 @@ export function useChat() {
               focusSubject: block.focus as string || block.subject as string,
             });
           });
-          console.log('[executeProposalAction] Structure 1 criou:', newBlocks.length, 'blocos');
         }
         
-        // Structure 2: blocks array (alternative AI format)
         const blocks = payload?.blocks as Array<Record<string, unknown>> | undefined;
-        console.log('[executeProposalAction] Tentando Structure 2 (blocks):', blocks);
         if (blocks?.length && !newBlocks.length) {
           blocks.forEach((block, i) => {
             newBlocks.push({
@@ -248,11 +239,8 @@ export function useChat() {
               focusSubject: block.focus as string || block.subject as string,
             });
           });
-          console.log('[executeProposalAction] Structure 2 criou:', newBlocks.length, 'blocos');
         }
         
-        // Structure 3: evening_study_block (original format)
-        console.log('[executeProposalAction] Tentando Structure 3 (evening_study_block):', payload?.evening_study_block);
         if (!newBlocks.length && payload?.evening_study_block) {
           const eveningBlock = payload.evening_study_block as Record<string, unknown>;
           const duration = eveningBlock.duration as string || '1h';
@@ -270,20 +258,14 @@ export function useChat() {
             durationMinutes: parseDuration(duration),
             focusSubject: focus,
           });
-          console.log('[executeProposalAction] Structure 3 criou:', newBlocks.length, 'blocos');
         }
         
-        // Structure 4: Flat payload (activity, task_name, subject, etc. directly in root)
-        console.log('[executeProposalAction] Tentando Structure 4 (flat payload)');
         if (!newBlocks.length && payload) {
           const activity = payload.activity as string || payload.task_name as string || payload.subject as string || payload.focus as string || payload.title as string || payload.name as string;
           const startTime = payload.start_time as string || payload.time_start as string || payload.time as string;
           const endTime = payload.end_time as string || payload.time_end as string;
           const durationRaw = payload.duration as string || payload.duration_minutes?.toString();
           
-          console.log('[executeProposalAction] Structure 4 campos:', { activity, startTime, endTime, durationRaw });
-          
-          // Only create if we have activity name OR start time OR duration
           if (activity || startTime || durationRaw) {
             const durationMinutes = typeof payload.duration_minutes === 'number' 
               ? payload.duration_minutes 
@@ -301,24 +283,17 @@ export function useChat() {
               durationMinutes: durationMinutes,
               focusSubject: activity,
             });
-            console.log('[executeProposalAction] Structure 4 criou:', newBlocks.length, 'blocos');
           }
         }
         
-        // Log para debug se nenhum bloco foi criado
         if (!newBlocks.length) {
           console.error('[executeProposalAction] NENHUM BLOCO CRIADO! Payload não reconhecido:', payload);
           toast.warning('Proposta aplicada, mas nenhum bloco foi criado. Verifique o console.');
-        } else {
-          console.log('[executeProposalAction] Blocos criados com sucesso:', newBlocks);
         }
         
         const finalTasks = [...newBlocks, ...existingTasks];
         localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(finalTasks));
-        console.log('[executeProposalAction] Salvo no localStorage. Total:', finalTasks.length);
-        
         window.dispatchEvent(new Event('tasksUpdated'));
-        console.log('[executeProposalAction] Evento tasksUpdated disparado');
         
         if (newBlocks.length > 0) {
           toast.success(`${newBlocks.length} bloco(s) de estudo criado(s)!`, {
@@ -348,7 +323,6 @@ export function useChat() {
       }
       
       case 'start_study_session': {
-        // Create immediate study block
         const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
         const duration = payload?.duration as string || '25min';
         const subject = payload?.subject as string || 'Sessão de Estudo';
@@ -361,7 +335,7 @@ export function useChat() {
           category: 'hoje',
           sourceType: 'chat',
           durationMinutes: parseDuration(duration),
-          timerStartedAt: new Date().toISOString(), // Start immediately
+          timerStartedAt: new Date().toISOString(),
         };
         
         localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([newBlock, ...existingTasks]));
@@ -382,16 +356,10 @@ export function useChat() {
   }, []);
 
   const applyProposal = useCallback(async (actionId: string) => {
-    console.log('[applyProposal] Iniciando com actionId:', actionId);
-    console.log('[applyProposal] recentActions disponíveis:', recentActions.map(a => ({ id: a.id, type: a.action_type, status: a.status })));
-    
     try {
-      // Find the action to execute
       const actionToApply = recentActions.find(a => a.id === actionId);
-      console.log('[applyProposal] Action encontrada:', actionToApply ? { id: actionToApply.id, type: actionToApply.action_type, payload: actionToApply.payload } : 'NÃO ENCONTRADA');
       
       if (!actionToApply) {
-        console.error('[applyProposal] ACTION NÃO ENCONTRADA em recentActions!');
         toast.error('Ação não encontrada. Tente recarregar a página.');
         return;
       }
@@ -407,12 +375,7 @@ export function useChat() {
         prev.map(a => a.id === actionId ? { ...a, status: 'applied' as const } : a)
       );
 
-      // Execute the actual action
-      console.log('[applyProposal] Chamando executeProposalAction...');
       executeProposalAction(actionToApply);
-      console.log('[applyProposal] executeProposalAction concluído');
-      
-      // Send confirmation to chat
       await sendMessage('Ok, pode aplicar essa mudança!');
 
     } catch (error) {
@@ -464,10 +427,12 @@ export function useChat() {
   return {
     messages,
     isLoading,
+    conversationId,
     sendMessage,
     applyProposal,
     cancelProposal,
     clearConversation,
-    recentActions
+    recentActions,
+    setConversationId
   };
 }

@@ -62,6 +62,7 @@ serve(async (req) => {
 
     // Get or create conversation
     let activeConversationId = conversationId;
+    let isNewConversation = false;
     
     if (!activeConversationId) {
       // Check for existing active conversation
@@ -77,15 +78,17 @@ serve(async (req) => {
       if (existingConversation) {
         activeConversationId = existingConversation.id;
       } else {
-        // Create new conversation
+        // Create new conversation with auto-generated title
+        const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
         const { data: newConversation, error: convError } = await supabase
           .from('conversations')
-          .insert({ user_id: userId, status: 'active' })
+          .insert({ user_id: userId, status: 'active', title })
           .select('id')
           .single();
 
         if (convError) throw convError;
         activeConversationId = newConversation.id;
+        isNewConversation = true;
       }
     }
 
@@ -105,6 +108,23 @@ serve(async (req) => {
         role: 'user',
         content: message
       });
+
+    // Update conversation title if it's the first message and conversation has no title
+    if (!conversationId && !isNewConversation) {
+      const { data: conv } = await supabase
+        .from('conversations')
+        .select('title')
+        .eq('id', activeConversationId)
+        .single();
+      
+      if (conv && !conv.title) {
+        const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
+        await supabase
+          .from('conversations')
+          .update({ title })
+          .eq('id', activeConversationId);
+      }
+    }
 
     // Build messages array for AI
     const messages = [
@@ -184,10 +204,18 @@ serve(async (req) => {
         proposal: proposal
       });
 
+    // Get conversation title to return
+    const { data: convData } = await supabase
+      .from('conversations')
+      .select('title')
+      .eq('id', activeConversationId)
+      .single();
+
     return new Response(JSON.stringify({
       conversationId: activeConversationId,
       reply: aiContent,
-      proposal
+      proposal,
+      title: convData?.title
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
