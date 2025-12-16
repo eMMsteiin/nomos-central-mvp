@@ -358,52 +358,13 @@ export function useChat(options: UseChatOptions = {}) {
         break;
       }
       
-      case 'create_postit': {
-        const text = payload?.text as string || payload?.content as string || 'Novo lembrete';
-        const color = payload?.color as string || 'areia';
-        
-        // Apenas sugerir - não criar automaticamente
-        toast.info(`📝 Sugestão: Criar post-it`, {
-          description: `"${text.substring(0, 80)}${text.length > 80 ? '...' : ''}"`,
-          action: {
-            label: 'Criar em Lembretes',
-            onClick: () => {
-              const params = new URLSearchParams({
-                newPostIt: 'true',
-                text: text,
-                color: color
-              });
-              window.location.href = `/lembretes?${params.toString()}`;
-            }
-          },
-          duration: 15000
-        });
-        break;
-      }
-      
-      case 'create_task_embreve': {
-        const tasks = JSON.parse(localStorage.getItem(TASKS_EMBREVE_KEY) || '[]');
-        
-        const newTask: Task = {
-          id: crypto.randomUUID(),
-          text: payload?.text as string || payload?.title as string || 'Nova tarefa',
-          createdAt: new Date().toISOString(),
-          category: 'em-breve',
-          dueDate: payload?.dueDate ? new Date(payload.dueDate as string) : undefined,
-          priority: (payload?.priority as Task['priority']) || 'media',
-          sourceType: 'chat',
-        };
-        
-        localStorage.setItem(TASKS_EMBREVE_KEY, JSON.stringify([...tasks, newTask]));
-        window.dispatchEvent(new Event('tasksUpdated'));
-        
-        toast.success('Tarefa agendada!', {
-          description: newTask.text,
-          action: {
-            label: 'Ver Calendário',
-            onClick: () => window.location.href = '/em-breve'
-          }
-        });
+      case 'create_postit':
+      case 'create_task_embreve':
+      case 'suggest_choice': {
+        // These are now handled by ProposalCard with choices
+        // The user clicks a button and is redirected to the appropriate page
+        // No action needed here - this case exists for legacy proposals
+        toast.info('Use as opções do card para escolher onde salvar.');
         break;
       }
       

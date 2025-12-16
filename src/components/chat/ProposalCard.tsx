@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { Proposal, ChatAction } from '@/types/chat';
+import { Proposal, ChatAction, ChoiceOption } from '@/types/chat';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Check, X, Loader2, Sparkles, Calendar, Zap, BookOpen, Play, RefreshCw } from 'lucide-react';
+import { Check, X, Loader2, Sparkles, Calendar, Zap, BookOpen, Play, RefreshCw, StickyNote, ListTodo, Inbox, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ProposalCardProps {
@@ -19,6 +19,7 @@ const ACTION_ICONS: Record<string, React.ReactNode> = {
   reschedule_day: <Calendar className="w-5 h-5" />,
   activate_exam_mode: <BookOpen className="w-5 h-5" />,
   start_study_session: <Play className="w-5 h-5" />,
+  suggest_choice: <Sparkles className="w-5 h-5" />,
 };
 
 const ACTION_COLORS: Record<string, string> = {
@@ -27,6 +28,13 @@ const ACTION_COLORS: Record<string, string> = {
   reschedule_day: 'from-rose-500 to-pink-600',
   activate_exam_mode: 'from-purple-500 to-violet-600',
   start_study_session: 'from-green-500 to-emerald-600',
+  suggest_choice: 'from-violet-500 to-purple-600',
+};
+
+const CHOICE_ICONS: Record<string, React.ReactNode> = {
+  postit: <StickyNote className="w-4 h-4" />,
+  task_hoje: <ListTodo className="w-4 h-4" />,
+  task_entrada: <Inbox className="w-4 h-4" />,
 };
 
 export function ProposalCard({ proposal, action, onApply, onCancel }: ProposalCardProps) {
@@ -35,6 +43,7 @@ export function ProposalCard({ proposal, action, onApply, onCancel }: ProposalCa
 
   const status = action?.status || 'proposed';
   const isResolved = status === 'applied' || status === 'cancelled';
+  const hasChoices = proposal.choices && proposal.choices.length > 0;
 
   const handleApply = async () => {
     setIsApplying(true);
@@ -46,6 +55,11 @@ export function ProposalCard({ proposal, action, onApply, onCancel }: ProposalCa
     setIsCancelling(true);
     await onCancel();
     setIsCancelling(false);
+  };
+
+  const handleChoiceClick = (choice: ChoiceOption) => {
+    const params = new URLSearchParams(choice.queryParams || {});
+    window.location.href = `${choice.targetRoute}?${params.toString()}`;
   };
 
   const icon = ACTION_ICONS[proposal.action_type] || <Sparkles className="w-5 h-5" />;
@@ -68,7 +82,7 @@ export function ProposalCard({ proposal, action, onApply, onCancel }: ProposalCa
           </div>
           <div className="flex-1">
             <CardTitle className="text-base font-semibold flex items-center gap-2">
-              Proposta de Ação
+              {hasChoices ? 'Onde deseja salvar?' : 'Proposta de Ação'}
               {status === 'applied' && (
                 <Badge variant="default" className="bg-green-500 text-xs">
                   <Check className="w-3 h-3 mr-1" />
@@ -88,15 +102,40 @@ export function ProposalCard({ proposal, action, onApply, onCancel }: ProposalCa
       <CardContent className="space-y-3">
         <p className="text-sm text-foreground">{proposal.description}</p>
         
-        {proposal.impact && (
+        {proposal.impact && !hasChoices && (
           <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
             <Zap className="w-3 h-3 text-yellow-500" />
             <span><strong>Impacto:</strong> {proposal.impact}</span>
           </div>
         )}
+
+        {/* Render choice buttons if available */}
+        {hasChoices && !isResolved && (
+          <div className="flex flex-col gap-2 mt-4">
+            {proposal.choices!.map((choice) => (
+              <Button
+                key={choice.id}
+                variant="outline"
+                onClick={() => handleChoiceClick(choice)}
+                className="justify-between h-auto py-3 px-4 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-1.5 rounded-md bg-primary/10 text-primary group-hover:bg-primary/20 transition-colors">
+                    {CHOICE_ICONS[choice.id] || <Sparkles className="w-4 h-4" />}
+                  </div>
+                  <div className="text-left">
+                    <span className="font-medium text-foreground">{choice.label}</span>
+                    <p className="text-xs text-muted-foreground">{choice.description}</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
+              </Button>
+            ))}
+          </div>
+        )}
       </CardContent>
 
-      {!isResolved && (
+      {!isResolved && !hasChoices && (
         <CardFooter className="gap-2 pt-0">
           <Button
             onClick={handleApply}
@@ -125,6 +164,24 @@ export function ProposalCard({ proposal, action, onApply, onCancel }: ProposalCa
                 <X className="w-4 h-4 mr-2" />
                 Cancelar
               </>
+            )}
+          </Button>
+        </CardFooter>
+      )}
+
+      {/* Cancel button for choice proposals */}
+      {!isResolved && hasChoices && (
+        <CardFooter className="pt-0">
+          <Button
+            variant="ghost"
+            onClick={handleCancel}
+            disabled={isCancelling}
+            className="w-full text-muted-foreground hover:text-foreground"
+          >
+            {isCancelling ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              'Não quero salvar agora'
             )}
           </Button>
         </CardFooter>
