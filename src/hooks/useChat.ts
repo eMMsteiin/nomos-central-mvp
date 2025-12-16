@@ -4,8 +4,12 @@ import { useDeviceId } from './useDeviceId';
 import { Message, Proposal, ChatAction } from '@/types/chat';
 import { Task } from '@/types/task';
 import { toast } from 'sonner';
+import { collectChatContext } from '@/utils/chatContext';
 
 const TASKS_STORAGE_KEY = "nomos.tasks.today";
+const TASKS_EMBREVE_KEY = "nomos.tasks.embreve";
+const POSTITS_KEY = "nomos-postits";
+const BLOCKS_KEY = "nomos-blocks";
 
 interface UseChatOptions {
   externalConversationId?: string | null;
@@ -130,11 +134,15 @@ export function useChat(options: UseChatOptions = {}) {
     setMessages(prev => [...prev, tempUserMessage]);
 
     try {
+      // Collect context from all tabs
+      const context = collectChatContext();
+      
       const { data, error } = await supabase.functions.invoke('chat-nomos', {
         body: {
           userId: deviceId,
           conversationId,
-          message: content.trim()
+          message: content.trim(),
+          context // Pass full context to AI
         }
       });
 
@@ -347,6 +355,138 @@ export function useChat(options: UseChatOptions = {}) {
             onClick: () => window.location.href = '/hoje'
           }
         });
+        break;
+      }
+      
+      case 'create_postit': {
+        const postIts = JSON.parse(localStorage.getItem(POSTITS_KEY) || '[]');
+        const blocks = JSON.parse(localStorage.getItem(BLOCKS_KEY) || '[]');
+        
+        // Find first block or create default
+        let targetBlockId = blocks[0]?.id;
+        
+        if (!targetBlockId) {
+          // Create a default weekly block
+          const newBlock = {
+            id: crypto.randomUUID(),
+            type: 'weekly',
+            title: 'Esta Semana',
+            createdAt: new Date().toISOString(),
+            isExpanded: false,
+          };
+          localStorage.setItem(BLOCKS_KEY, JSON.stringify([newBlock]));
+          targetBlockId = newBlock.id;
+          window.dispatchEvent(new Event('blocks-updated'));
+        }
+        
+        const newPostIt = {
+          id: crypto.randomUUID(),
+          text: payload?.text as string || payload?.content as string || 'Novo lembrete',
+          color: payload?.color as string || 'areia',
+          blockId: targetBlockId,
+          position: { x: 50 + Math.random() * 100, y: 50 + Math.random() * 100 },
+          size: { width: 200, height: 150 },
+          createdAt: new Date().toISOString(),
+        };
+        
+        localStorage.setItem(POSTITS_KEY, JSON.stringify([...postIts, newPostIt]));
+        window.dispatchEvent(new Event('postits-updated'));
+        
+        toast.success('Post-it criado!', {
+          description: newPostIt.text.substring(0, 50),
+          action: {
+            label: 'Ver Lembretes',
+            onClick: () => window.location.href = '/lembretes'
+          }
+        });
+        break;
+      }
+      
+      case 'create_task_embreve': {
+        const tasks = JSON.parse(localStorage.getItem(TASKS_EMBREVE_KEY) || '[]');
+        
+        const newTask: Task = {
+          id: crypto.randomUUID(),
+          text: payload?.text as string || payload?.title as string || 'Nova tarefa',
+          createdAt: new Date().toISOString(),
+          category: 'em-breve',
+          dueDate: payload?.dueDate ? new Date(payload.dueDate as string) : undefined,
+          priority: (payload?.priority as Task['priority']) || 'media',
+          sourceType: 'chat',
+        };
+        
+        localStorage.setItem(TASKS_EMBREVE_KEY, JSON.stringify([...tasks, newTask]));
+        window.dispatchEvent(new Event('tasksUpdated'));
+        
+        toast.success('Tarefa agendada!', {
+          description: newTask.text,
+          action: {
+            label: 'Ver Calendário',
+            onClick: () => window.location.href = '/em-breve'
+          }
+        });
+        break;
+      }
+      
+      case 'suggest_notebook': {
+        const notebookId = payload?.notebookId as string;
+        const notebookTitle = payload?.notebookTitle as string || payload?.title as string;
+        const reason = payload?.reason as string || 'Este caderno pode ajudar com o que você está estudando.';
+        
+        toast.info(`📓 Caderno sugerido: "${notebookTitle}"`, {
+          description: reason,
+          action: {
+            label: 'Abrir Caderno',
+            onClick: () => window.location.href = `/caderno?id=${notebookId}`
+          },
+          duration: 10000
+        });
+        break;
+      }
+      
+      case 'complete_task': {
+        const taskId = payload?.taskId as string;
+        const category = payload?.category as string || 'hoje';
+        
+        const storageKey = category === 'em-breve' ? TASKS_EMBREVE_KEY : TASKS_STORAGE_KEY;
+        const tasks = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        
+        const updatedTasks = tasks.map((t: Task) => 
+          t.id === taskId ? { ...t, completed: true } : t
+        );
+        
+        localStorage.setItem(storageKey, JSON.stringify(updatedTasks));
+        window.dispatchEvent(new Event('tasksUpdated'));
+        
+        toast.success('Tarefa concluída! 🎉');
+        break;
+      }
+      
+      case 'move_task': {
+        const taskId = payload?.taskId as string;
+        const fromCategory = payload?.from as string;
+        const toCategory = payload?.to as string;
+        
+        const fromKey = fromCategory === 'em-breve' ? TASKS_EMBREVE_KEY : TASKS_STORAGE_KEY;
+        const toKey = toCategory === 'em-breve' ? TASKS_EMBREVE_KEY : TASKS_STORAGE_KEY;
+        
+        const fromTasks = JSON.parse(localStorage.getItem(fromKey) || '[]');
+        const toTasks = JSON.parse(localStorage.getItem(toKey) || '[]');
+        
+        const taskIndex = fromTasks.findIndex((t: Task) => t.id === taskId);
+        if (taskIndex !== -1) {
+          const [task] = fromTasks.splice(taskIndex, 1);
+          task.category = toCategory;
+          toTasks.push(task);
+          
+          localStorage.setItem(fromKey, JSON.stringify(fromTasks));
+          if (fromKey !== toKey) {
+            localStorage.setItem(toKey, JSON.stringify(toTasks));
+          }
+          window.dispatchEvent(new Event('tasksUpdated'));
+          
+          toast.success(`Tarefa movida para ${toCategory}!`);
+        }
         break;
       }
       

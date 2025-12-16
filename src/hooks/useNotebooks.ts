@@ -92,12 +92,34 @@ export const useNotebooks = () => {
     saveNotebooks(updated);
   };
 
+  const updateTextNotes = (notebookId: string, textNotes: string) => {
+    const updated = notebooks.map(n => 
+      n.id === notebookId 
+        ? { ...n, textNotes, updatedAt: new Date().toISOString() } 
+        : n
+    );
+    setNotebooks(updated);
+    saveNotebooks(updated);
+  };
+
+  const addTags = (notebookId: string, tags: string[]) => {
+    const updated = notebooks.map(n => 
+      n.id === notebookId 
+        ? { ...n, tags: [...new Set([...(n.tags || []), ...tags])], updatedAt: new Date().toISOString() } 
+        : n
+    );
+    setNotebooks(updated);
+    saveNotebooks(updated);
+  };
+
   return {
     notebooks,
     createNotebook,
     deleteNotebook,
     updateNotebook,
     addPage,
+    updateTextNotes,
+    addTags,
     refreshNotebooks: loadNotebooks,
   };
 };

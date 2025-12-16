@@ -6,7 +6,53 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SYSTEM_PROMPT = `Você é a Nomos, assistente de rotina para estudantes universitários brasileiros.
+// Context types from frontend
+interface TaskContext {
+  id: string;
+  text: string;
+  priority?: string;
+  completed?: boolean;
+  dueDate?: string;
+  type?: string;
+  focusSubject?: string;
+}
+
+interface PostItContext {
+  id: string;
+  text: string;
+  blockTitle?: string;
+}
+
+interface NotebookContext {
+  id: string;
+  title: string;
+  discipline?: string;
+  subject?: string;
+  textNotes?: string;
+  updatedAt: string;
+  pageCount: number;
+}
+
+interface ChatContext {
+  todayTasks: TaskContext[];
+  entradaTasks: TaskContext[];
+  embreveTasks: TaskContext[];
+  completedTasks: TaskContext[];
+  studyBlocks: TaskContext[];
+  postIts: PostItContext[];
+  notebooks: NotebookContext[];
+  stats: {
+    completedToday: number;
+    pendingTotal: number;
+    studyBlocksToday: number;
+    totalPostIts: number;
+    totalNotebooks: number;
+  };
+  currentTime: string;
+  currentDate: string;
+}
+
+const BASE_SYSTEM_PROMPT = `Você é a Nomos, assistente de rotina para estudantes universitários brasileiros.
 
 PERSONALIDADE:
 - Empática e acolhedora
@@ -19,28 +65,145 @@ OBJETIVO:
 - Ajudar a organizar o dia de forma sustentável
 - Propor ajustes realistas de rotina
 - Entender o contexto do aluno antes de sugerir mudanças
+- Conectar informações entre diferentes partes do app (tarefas, cadernos, lembretes)
 
 REGRAS IMPORTANTES:
 1. NUNCA faça mudanças sem propor primeiro e pedir confirmação
 2. Sempre entenda o contexto antes de sugerir ações
 3. Seja breve nas respostas (máximo 3-4 frases por mensagem)
 4. Quando detectar uma intenção de ação, gere uma proposta estruturada
+5. Se o aluno mencionar uma matéria ou conceito, busque nos cadernos se há notas relevantes
 
-QUANDO GERAR PROPOSTAS:
-- "configurar rotina" ou "criar rotina" → action_type: "create_routine_block"
+TIPOS DE AÇÃO DISPONÍVEIS:
+- "configurar rotina" ou "criar rotina" ou "bloco de estudo" → action_type: "create_routine_block"
 - "ajuste rápido" ou "redistribuir" → action_type: "redistribute_tasks"
 - "hoje desandou" ou "não consegui" → action_type: "reschedule_day"
 - "modo provas" ou "prova" → action_type: "activate_exam_mode"
 - "estudar agora" ou "começar a estudar" → action_type: "start_study_session"
+- "criar lembrete" ou "post-it" ou "não esquecer" → action_type: "create_postit"
+- "agendar para depois" ou "em breve" ou "semana que vem" → action_type: "create_task_embreve"
+- "abrir caderno" ou quando mencionar matéria com caderno relevante → action_type: "suggest_notebook"
+- "concluir" ou "marcar como feito" → action_type: "complete_task"
+- "mover tarefa" ou "adiar" → action_type: "move_task"
 
 FORMATO DE PROPOSTA (JSON no final da resposta):
 Se detectar intenção de ação, termine sua resposta com:
-[PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {}}[/PROPOSAL]`;
+[PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {dados específicos da ação}}[/PROPOSAL]
+
+PAYLOADS POR TIPO:
+- create_routine_block: {"study_blocks": [{"focus": "matéria", "duration": "1h30", "time_start": "19:00"}]}
+- create_postit: {"text": "conteúdo do lembrete", "color": "areia|rosa|azul|verde|amarelo"}
+- create_task_embreve: {"text": "descrição da tarefa", "dueDate": "2024-01-15", "priority": "alta|media|baixa"}
+- suggest_notebook: {"notebookId": "id", "notebookTitle": "título", "reason": "por que é relevante"}
+- complete_task: {"taskId": "id", "category": "hoje|em-breve"}
+- move_task: {"taskId": "id", "from": "hoje", "to": "em-breve"}`;
+
+function buildContextPrompt(context: ChatContext | undefined): string {
+  if (!context) return '';
+  
+  const sections: string[] = ['\n\n--- CONTEXTO ATUAL DO ALUNO ---'];
+  
+  // Current time
+  sections.push(`📅 ${context.currentDate} - ${context.currentTime}`);
+  
+  // Stats summary
+  sections.push(`\n📊 RESUMO:`);
+  sections.push(`- Tarefas pendentes hoje: ${context.todayTasks?.length || 0}`);
+  sections.push(`- Concluídas hoje: ${context.stats?.completedToday || 0}`);
+  sections.push(`- Blocos de estudo ativos: ${context.stats?.studyBlocksToday || 0}`);
+  sections.push(`- Total pendente (todas abas): ${context.stats?.pendingTotal || 0}`);
+  sections.push(`- Post-its: ${context.stats?.totalPostIts || 0}`);
+  sections.push(`- Cadernos: ${context.stats?.totalNotebooks || 0}`);
+  
+  // Today's tasks
+  if (context.todayTasks?.length > 0) {
+    sections.push(`\n📋 TAREFAS DE HOJE:`);
+    context.todayTasks.slice(0, 10).forEach(t => {
+      const priority = t.priority ? ` [${t.priority}]` : '';
+      sections.push(`- ${t.text}${priority}`);
+    });
+    if (context.todayTasks.length > 10) {
+      sections.push(`... e mais ${context.todayTasks.length - 10} tarefas`);
+    }
+  }
+  
+  // Study blocks
+  if (context.studyBlocks?.length > 0) {
+    sections.push(`\n⏱️ BLOCOS DE ESTUDO HOJE:`);
+    context.studyBlocks.forEach(b => {
+      sections.push(`- ${b.focusSubject || b.text}`);
+    });
+  }
+  
+  // Upcoming tasks
+  if (context.embreveTasks?.length > 0) {
+    sections.push(`\n📆 PRÓXIMAS TAREFAS (Em Breve):`);
+    context.embreveTasks.slice(0, 5).forEach(t => {
+      const due = t.dueDate ? ` - ${t.dueDate}` : '';
+      sections.push(`- ${t.text}${due}`);
+    });
+  }
+  
+  // Post-its
+  if (context.postIts?.length > 0) {
+    sections.push(`\n📝 LEMBRETES RÁPIDOS:`);
+    context.postIts.slice(0, 5).forEach(p => {
+      sections.push(`- "${p.text.substring(0, 50)}${p.text.length > 50 ? '...' : ''}"`);
+    });
+  }
+  
+  // Notebooks (with textNotes for AI search)
+  if (context.notebooks?.length > 0) {
+    sections.push(`\n📓 CADERNOS DIGITAIS:`);
+    context.notebooks.forEach(n => {
+      const info = [n.title];
+      if (n.discipline) info.push(`(${n.discipline})`);
+      if (n.textNotes) {
+        info.push(`- Notas: "${n.textNotes.substring(0, 100)}${n.textNotes.length > 100 ? '...' : ''}"`);
+      }
+      sections.push(`- ${info.join(' ')}`);
+    });
+  }
+  
+  // Recently completed (for context)
+  if (context.completedTasks?.length > 0) {
+    sections.push(`\n✅ RECENTEMENTE CONCLUÍDAS:`);
+    context.completedTasks.slice(0, 3).forEach(t => {
+      sections.push(`- ${t.text}`);
+    });
+  }
+  
+  sections.push('\n--- FIM DO CONTEXTO ---\n');
+  
+  return sections.join('\n');
+}
+
+// Search for relevant notebooks based on user message
+function findRelevantNotebooks(message: string, notebooks: NotebookContext[] | undefined): NotebookContext[] {
+  if (!notebooks?.length) return [];
+  
+  const keywords = message.toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 3)
+    .filter(word => !['como', 'para', 'quero', 'preciso', 'estou', 'tenho', 'fazer', 'ajuda', 'pode', 'consegue'].includes(word));
+  
+  return notebooks.filter(notebook => {
+    const searchableText = [
+      notebook.title,
+      notebook.discipline,
+      notebook.subject,
+      notebook.textNotes,
+    ].filter(Boolean).join(' ').toLowerCase();
+    
+    return keywords.some(keyword => searchableText.includes(keyword));
+  });
+}
 
 interface ChatRequest {
   userId: string;
   conversationId?: string;
   message: string;
+  context?: ChatContext;
 }
 
 serve(async (req) => {
@@ -49,7 +212,7 @@ serve(async (req) => {
   }
 
   try {
-    const { userId, conversationId, message } = await req.json() as ChatRequest;
+    const { userId, conversationId, message, context } = await req.json() as ChatRequest;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -112,12 +275,30 @@ serve(async (req) => {
       }
     }
 
+    // Build dynamic system prompt with context
+    const contextPrompt = buildContextPrompt(context);
+    const fullSystemPrompt = BASE_SYSTEM_PROMPT + contextPrompt;
+    
+    // Check for relevant notebooks to potentially suggest
+    const relevantNotebooks = findRelevantNotebooks(message, context?.notebooks);
+    let notebookHint = '';
+    if (relevantNotebooks.length > 0) {
+      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos possivelmente relevantes para esta conversa: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. Considere sugerir ao aluno se for útil.]`;
+    }
+
     // Build messages array for AI
     const messages = [
-      { role: 'system', content: SYSTEM_PROMPT },
+      { role: 'system', content: fullSystemPrompt + notebookHint },
       ...(history || []).map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: message }
     ];
+
+    console.log('[chat-nomos] Sending to AI with context:', {
+      hasContext: !!context,
+      todayTasks: context?.todayTasks?.length || 0,
+      notebooks: context?.notebooks?.length || 0,
+      relevantNotebooks: relevantNotebooks.length,
+    });
 
     // Call Lovable AI
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -174,6 +355,8 @@ serve(async (req) => {
             payload: proposal.payload || {},
             status: 'proposed'
           });
+          
+        console.log('[chat-nomos] Proposal created:', proposal.action_type);
       } catch (e) {
         console.error("Error parsing proposal:", e);
         proposal = null;
