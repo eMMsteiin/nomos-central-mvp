@@ -8,7 +8,7 @@ export interface Task {
   course?: string;
   category?: 'hoje' | 'entrada' | 'em-breve';
   priority?: 'alta' | 'media' | 'baixa';
-  sourceType?: 'manual' | 'ava';
+  sourceType?: 'manual' | 'ava' | 'chat';
   completed?: boolean;
   // Canva integration fields
   canvaDesignUrl?: string;
@@ -16,4 +16,13 @@ export interface Task {
   canvaTimeSpent?: number;
   canvaLastOpened?: string;
   isCanvaTask?: boolean;
+  // Study block fields
+  type?: 'task' | 'study-block';
+  startTime?: string;
+  endTime?: string;
+  durationMinutes?: number;
+  focusSubject?: string;
+  timerStartedAt?: string;
+  timerPausedAt?: string;
+  timerRemainingSeconds?: number;
 }

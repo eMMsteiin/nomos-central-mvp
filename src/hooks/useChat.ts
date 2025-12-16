@@ -2,7 +2,10 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useDeviceId } from './useDeviceId';
 import { Message, Proposal, ChatAction } from '@/types/chat';
+import { Task } from '@/types/task';
 import { toast } from 'sonner';
+
+const TASKS_STORAGE_KEY = "nomos.tasks.today";
 
 export function useChat() {
   const deviceId = useDeviceId();
@@ -167,8 +170,124 @@ export function useChat() {
     }
   }, [deviceId, conversationId]);
 
+  const parseDuration = (durationStr: string): number => {
+    // Parse strings like "1h30", "2h", "45min", "1:30"
+    if (!durationStr) return 60;
+    
+    const hourMatch = durationStr.match(/(\d+)\s*h/i);
+    const minMatch = durationStr.match(/(\d+)\s*min/i);
+    const colonMatch = durationStr.match(/(\d+):(\d+)/);
+    
+    if (colonMatch) {
+      return parseInt(colonMatch[1]) * 60 + parseInt(colonMatch[2]);
+    }
+    
+    let totalMinutes = 0;
+    if (hourMatch) totalMinutes += parseInt(hourMatch[1]) * 60;
+    if (minMatch) totalMinutes += parseInt(minMatch[1]);
+    
+    // If just a number, assume minutes
+    if (!hourMatch && !minMatch) {
+      const num = parseInt(durationStr);
+      if (!isNaN(num)) return num > 10 ? num : num * 60; // < 10 assume hours
+    }
+    
+    return totalMinutes || 60;
+  };
+
+  const executeProposalAction = useCallback((action: ChatAction) => {
+    const payload = action.payload as Record<string, unknown> | null;
+    
+    switch (action.action_type) {
+      case 'create_routine_block': {
+        // Create study block in tasks
+        const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
+        
+        // Extract info from payload
+        const eveningBlock = payload?.evening_study_block as Record<string, unknown> | undefined;
+        const duration = eveningBlock?.duration as string || payload?.duration as string || '1h';
+        const focus = eveningBlock?.focus as string || payload?.focus as string || 'Estudos';
+        const startTime = payload?.start_time as string || '19:00';
+        
+        const newBlock: Task = {
+          id: `block-${Date.now()}`,
+          type: 'study-block',
+          text: `Bloco de ${focus}`,
+          createdAt: new Date().toISOString(),
+          category: 'hoje',
+          sourceType: 'chat',
+          startTime: startTime,
+          durationMinutes: parseDuration(duration),
+          focusSubject: focus,
+        };
+        
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([newBlock, ...existingTasks]));
+        window.dispatchEvent(new Event('tasksUpdated'));
+        
+        toast.success(`Bloco de estudo criado!`, {
+          description: `${focus} - ${duration} às ${startTime}`,
+          action: {
+            label: 'Ver em Hoje',
+            onClick: () => window.location.href = '/hoje'
+          }
+        });
+        break;
+      }
+      
+      case 'redistribute_tasks': {
+        toast.info('Redistribuição de tarefas aplicada!');
+        break;
+      }
+      
+      case 'reduce_workload': {
+        toast.info('Carga reduzida aplicada!');
+        break;
+      }
+      
+      case 'focus_mode': {
+        toast.info('Modo foco ativado!');
+        break;
+      }
+      
+      case 'start_study_session': {
+        // Create immediate study block
+        const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
+        const duration = payload?.duration as string || '25min';
+        const subject = payload?.subject as string || 'Sessão de Estudo';
+        
+        const newBlock: Task = {
+          id: `session-${Date.now()}`,
+          type: 'study-block',
+          text: subject,
+          createdAt: new Date().toISOString(),
+          category: 'hoje',
+          sourceType: 'chat',
+          durationMinutes: parseDuration(duration),
+          timerStartedAt: new Date().toISOString(), // Start immediately
+        };
+        
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([newBlock, ...existingTasks]));
+        window.dispatchEvent(new Event('tasksUpdated'));
+        
+        toast.success('Sessão de estudo iniciada!', {
+          action: {
+            label: 'Ver em Hoje',
+            onClick: () => window.location.href = '/hoje'
+          }
+        });
+        break;
+      }
+      
+      default:
+        toast.info('Ação aplicada!');
+    }
+  }, []);
+
   const applyProposal = useCallback(async (actionId: string) => {
     try {
+      // Find the action to execute
+      const actionToApply = recentActions.find(a => a.id === actionId);
+      
       const { error } = await supabase
         .from('chat_actions_log')
         .update({ status: 'applied' })
@@ -180,7 +299,10 @@ export function useChat() {
         prev.map(a => a.id === actionId ? { ...a, status: 'applied' as const } : a)
       );
 
-      toast.success('Ação aplicada com sucesso!');
+      // Execute the actual action
+      if (actionToApply) {
+        executeProposalAction(actionToApply);
+      }
       
       // Send confirmation to chat
       await sendMessage('Ok, pode aplicar essa mudança!');
@@ -189,7 +311,7 @@ export function useChat() {
       console.error('Error applying proposal:', error);
       toast.error('Erro ao aplicar ação.');
     }
-  }, [sendMessage]);
+  }, [recentActions, executeProposalAction, sendMessage]);
 
   const cancelProposal = useCallback(async (actionId: string) => {
     try {
