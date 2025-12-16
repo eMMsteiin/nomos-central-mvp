@@ -198,13 +198,20 @@ export function useChat() {
   const executeProposalAction = useCallback((action: ChatAction) => {
     const payload = action.payload as Record<string, unknown> | null;
     
+    console.log('[executeProposalAction] Iniciando execução');
+    console.log('[executeProposalAction] action_type:', action.action_type);
+    console.log('[executeProposalAction] payload:', JSON.stringify(payload, null, 2));
+    
     switch (action.action_type) {
       case 'create_routine_block': {
         const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
+        console.log('[executeProposalAction] Tasks existentes:', existingTasks.length);
+        
         const newBlocks: Task[] = [];
         
         // Structure 1: study_blocks array (AI format)
         const studyBlocks = payload?.study_blocks as Array<Record<string, unknown>> | undefined;
+        console.log('[executeProposalAction] Tentando Structure 1 (study_blocks):', studyBlocks);
         if (studyBlocks?.length) {
           studyBlocks.forEach((block, i) => {
             newBlocks.push({
@@ -214,16 +221,18 @@ export function useChat() {
               createdAt: new Date().toISOString(),
               category: 'hoje',
               sourceType: 'chat',
-              startTime: block.time_start as string || block.start_time as string,
+              startTime: block.time_start as string || block.start_time as string || block.time as string,
               endTime: block.time_end as string || block.end_time as string,
               durationMinutes: block.duration_minutes as number || parseDuration(block.duration as string || '60'),
               focusSubject: block.focus as string || block.subject as string,
             });
           });
+          console.log('[executeProposalAction] Structure 1 criou:', newBlocks.length, 'blocos');
         }
         
         // Structure 2: blocks array (alternative AI format)
         const blocks = payload?.blocks as Array<Record<string, unknown>> | undefined;
+        console.log('[executeProposalAction] Tentando Structure 2 (blocks):', blocks);
         if (blocks?.length && !newBlocks.length) {
           blocks.forEach((block, i) => {
             newBlocks.push({
@@ -233,20 +242,22 @@ export function useChat() {
               createdAt: new Date().toISOString(),
               category: 'hoje',
               sourceType: 'chat',
-              startTime: block.time_start as string || block.start_time as string,
+              startTime: block.time_start as string || block.start_time as string || block.time as string,
               endTime: block.time_end as string || block.end_time as string,
               durationMinutes: block.duration_minutes as number || parseDuration(block.duration as string || '60'),
               focusSubject: block.focus as string || block.subject as string,
             });
           });
+          console.log('[executeProposalAction] Structure 2 criou:', newBlocks.length, 'blocos');
         }
         
         // Structure 3: evening_study_block (original format)
+        console.log('[executeProposalAction] Tentando Structure 3 (evening_study_block):', payload?.evening_study_block);
         if (!newBlocks.length && payload?.evening_study_block) {
           const eveningBlock = payload.evening_study_block as Record<string, unknown>;
           const duration = eveningBlock.duration as string || '1h';
           const focus = eveningBlock.focus as string || 'Estudos';
-          const startTime = payload.start_time as string || '19:00';
+          const startTime = payload.start_time as string || eveningBlock.time as string || '19:00';
           
           newBlocks.push({
             id: `block-${Date.now()}`,
@@ -259,16 +270,20 @@ export function useChat() {
             durationMinutes: parseDuration(duration),
             focusSubject: focus,
           });
+          console.log('[executeProposalAction] Structure 3 criou:', newBlocks.length, 'blocos');
         }
         
         // Structure 4: Flat payload (activity, task_name, subject, etc. directly in root)
+        console.log('[executeProposalAction] Tentando Structure 4 (flat payload)');
         if (!newBlocks.length && payload) {
-          const activity = payload.activity as string || payload.task_name as string || payload.subject as string || payload.focus as string || payload.title as string;
-          const startTime = payload.start_time as string || payload.time_start as string;
+          const activity = payload.activity as string || payload.task_name as string || payload.subject as string || payload.focus as string || payload.title as string || payload.name as string;
+          const startTime = payload.start_time as string || payload.time_start as string || payload.time as string;
           const endTime = payload.end_time as string || payload.time_end as string;
           const durationRaw = payload.duration as string || payload.duration_minutes?.toString();
           
-          // Only create if we have activity name OR start time
+          console.log('[executeProposalAction] Structure 4 campos:', { activity, startTime, endTime, durationRaw });
+          
+          // Only create if we have activity name OR start time OR duration
           if (activity || startTime || durationRaw) {
             const durationMinutes = typeof payload.duration_minutes === 'number' 
               ? payload.duration_minutes 
@@ -286,24 +301,34 @@ export function useChat() {
               durationMinutes: durationMinutes,
               focusSubject: activity,
             });
+            console.log('[executeProposalAction] Structure 4 criou:', newBlocks.length, 'blocos');
           }
         }
         
         // Log para debug se nenhum bloco foi criado
         if (!newBlocks.length) {
-          console.warn('[useChat] Payload não reconhecido para create_routine_block:', payload);
+          console.error('[executeProposalAction] NENHUM BLOCO CRIADO! Payload não reconhecido:', payload);
+          toast.warning('Proposta aplicada, mas nenhum bloco foi criado. Verifique o console.');
+        } else {
+          console.log('[executeProposalAction] Blocos criados com sucesso:', newBlocks);
         }
         
-        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([...newBlocks, ...existingTasks]));
-        window.dispatchEvent(new Event('tasksUpdated'));
+        const finalTasks = [...newBlocks, ...existingTasks];
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(finalTasks));
+        console.log('[executeProposalAction] Salvo no localStorage. Total:', finalTasks.length);
         
-        toast.success(`${newBlocks.length} bloco(s) de estudo criado(s)!`, {
-          description: newBlocks.map(b => b.text).join(', '),
-          action: {
-            label: 'Ver em Hoje',
-            onClick: () => window.location.href = '/hoje'
-          }
-        });
+        window.dispatchEvent(new Event('tasksUpdated'));
+        console.log('[executeProposalAction] Evento tasksUpdated disparado');
+        
+        if (newBlocks.length > 0) {
+          toast.success(`${newBlocks.length} bloco(s) de estudo criado(s)!`, {
+            description: newBlocks.map(b => b.text).join(', '),
+            action: {
+              label: 'Ver em Hoje',
+              onClick: () => window.location.href = '/hoje'
+            }
+          });
+        }
         break;
       }
       
@@ -357,9 +382,19 @@ export function useChat() {
   }, []);
 
   const applyProposal = useCallback(async (actionId: string) => {
+    console.log('[applyProposal] Iniciando com actionId:', actionId);
+    console.log('[applyProposal] recentActions disponíveis:', recentActions.map(a => ({ id: a.id, type: a.action_type, status: a.status })));
+    
     try {
       // Find the action to execute
       const actionToApply = recentActions.find(a => a.id === actionId);
+      console.log('[applyProposal] Action encontrada:', actionToApply ? { id: actionToApply.id, type: actionToApply.action_type, payload: actionToApply.payload } : 'NÃO ENCONTRADA');
+      
+      if (!actionToApply) {
+        console.error('[applyProposal] ACTION NÃO ENCONTRADA em recentActions!');
+        toast.error('Ação não encontrada. Tente recarregar a página.');
+        return;
+      }
       
       const { error } = await supabase
         .from('chat_actions_log')
@@ -373,15 +408,15 @@ export function useChat() {
       );
 
       // Execute the actual action
-      if (actionToApply) {
-        executeProposalAction(actionToApply);
-      }
+      console.log('[applyProposal] Chamando executeProposalAction...');
+      executeProposalAction(actionToApply);
+      console.log('[applyProposal] executeProposalAction concluído');
       
       // Send confirmation to chat
       await sendMessage('Ok, pode aplicar essa mudança!');
 
     } catch (error) {
-      console.error('Error applying proposal:', error);
+      console.error('[applyProposal] Erro:', error);
       toast.error('Erro ao aplicar ação.');
     }
   }, [recentActions, executeProposalAction, sendMessage]);

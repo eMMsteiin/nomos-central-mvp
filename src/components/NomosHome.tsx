@@ -54,12 +54,19 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   // Listen for tasksUpdated event to reload tasks from localStorage
   useEffect(() => {
     const handleTasksUpdated = () => {
+      console.log('[NomosHome] Evento tasksUpdated recebido!');
       const stored = localStorage.getItem(STORAGE_KEY);
+      console.log('[NomosHome] localStorage raw (primeiros 500 chars):', stored?.substring(0, 500));
+      
       if (stored) {
         try {
-          setTasks(JSON.parse(stored));
+          const parsed = JSON.parse(stored);
+          const studyBlocks = parsed.filter((t: Task) => t.type === 'study-block');
+          console.log('[NomosHome] Tasks carregadas:', parsed.length, '| Study blocks:', studyBlocks.length);
+          console.log('[NomosHome] Study blocks encontrados:', studyBlocks);
+          setTasks(parsed);
         } catch (e) {
-          console.error("Failed to parse tasks from localStorage", e);
+          console.error("[NomosHome] Erro ao parsear tasks:", e);
         }
       }
     };
