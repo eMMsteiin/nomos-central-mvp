@@ -13,6 +13,7 @@ import { EditTaskDialog } from "@/components/EditTaskDialog";
 import { useCanvaSession } from "@/contexts/CanvaSessionContext";
 import { isCanvaRelatedTask } from "@/types/canva";
 import { toast } from "@/hooks/use-toast";
+import { StudyBlockItem } from "@/components/StudyBlockItem";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -135,6 +136,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     );
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
     window.dispatchEvent(new Event("tasksUpdated"));
+  };
+
+  const handleTimerStateChange = (taskId: string, updates: Partial<Task>) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, ...updates } : t))
+    );
   };
 
   const handleOpenCanva = (task: Task) => {
@@ -280,6 +287,16 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                 </motion.div>
               ) : (
                 displayedTasks.map((task, index) => (
+                  task.type === 'study-block' ? (
+                    <StudyBlockItem
+                      key={task.id}
+                      task={task}
+                      index={index}
+                      isCompleting={completingTasks.has(task.id)}
+                      onComplete={() => completeTask(task.id)}
+                      onTimerStateChange={(updates) => handleTimerStateChange(task.id, updates)}
+                    />
+                  ) : (
                   <motion.div
                     key={task.id}
                     initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -426,6 +443,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                       </div>
                     </div>
                   </motion.div>
+                  )
                 ))
               )}
             </AnimatePresence>
