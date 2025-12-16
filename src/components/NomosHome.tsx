@@ -51,6 +51,23 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     }
   }, []);
 
+  // Listen for tasksUpdated event to reload tasks from localStorage
+  useEffect(() => {
+    const handleTasksUpdated = () => {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        try {
+          setTasks(JSON.parse(stored));
+        } catch (e) {
+          console.error("Failed to parse tasks from localStorage", e);
+        }
+      }
+    };
+
+    window.addEventListener('tasksUpdated', handleTasksUpdated);
+    return () => window.removeEventListener('tasksUpdated', handleTasksUpdated);
+  }, []);
+
   // Save tasks to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
