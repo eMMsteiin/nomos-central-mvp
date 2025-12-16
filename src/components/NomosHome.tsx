@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Calendar, Download, Clock, Pencil, Star, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const isInitialMount = useRef(true);
 
   const { session, settings, startSession, openCanvaPopout } = useCanvaSession();
 
@@ -75,8 +76,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     return () => window.removeEventListener('tasksUpdated', handleTasksUpdated);
   }, []);
 
-  // Save tasks to localStorage whenever they change
+  // Save tasks to localStorage whenever they change (skip initial mount)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
 
