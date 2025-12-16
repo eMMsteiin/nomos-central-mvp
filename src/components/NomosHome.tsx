@@ -88,8 +88,14 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const addTask = () => {
     if (!inputValue.trim()) return;
 
-    const { cleanText: textWithoutDate, detectedDate, category } = extractDateFromText(inputValue.trim());
+    const { cleanText: textWithoutDate, detectedDate, category: detectedCategory } = extractDateFromText(inputValue.trim());
     const { cleanText, time } = extractTimeFromText(textWithoutDate);
+
+    // Se nenhuma data foi detectada, usar a aba atual como categoria
+    let finalCategory = detectedCategory;
+    if (!detectedDate && (filterMode === 'hoje' || filterMode === 'entrada')) {
+      finalCategory = filterMode;
+    }
 
     const newTask: Task = {
       id: Date.now().toString(),
@@ -102,7 +108,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       dueDate: detectedDate,
       priority: priority,
       sourceType: 'manual',
-      category: category,
+      category: finalCategory,
       isCanvaTask: isCanvaRelatedTask(cleanText),
     };
 
