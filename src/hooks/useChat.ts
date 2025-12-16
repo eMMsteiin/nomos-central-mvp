@@ -200,32 +200,72 @@ export function useChat() {
     
     switch (action.action_type) {
       case 'create_routine_block': {
-        // Create study block in tasks
         const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
+        const newBlocks: Task[] = [];
         
-        // Extract info from payload
-        const eveningBlock = payload?.evening_study_block as Record<string, unknown> | undefined;
-        const duration = eveningBlock?.duration as string || payload?.duration as string || '1h';
-        const focus = eveningBlock?.focus as string || payload?.focus as string || 'Estudos';
-        const startTime = payload?.start_time as string || '19:00';
+        // Structure 1: study_blocks array (AI format)
+        const studyBlocks = payload?.study_blocks as Array<Record<string, unknown>> | undefined;
+        if (studyBlocks?.length) {
+          studyBlocks.forEach((block, i) => {
+            newBlocks.push({
+              id: `block-${Date.now()}-${i}`,
+              type: 'study-block',
+              text: `Bloco de ${block.focus || block.subject || 'Estudo'}`,
+              createdAt: new Date().toISOString(),
+              category: 'hoje',
+              sourceType: 'chat',
+              startTime: block.time_start as string || block.start_time as string,
+              endTime: block.time_end as string || block.end_time as string,
+              durationMinutes: block.duration_minutes as number || parseDuration(block.duration as string || '60'),
+              focusSubject: block.focus as string || block.subject as string,
+            });
+          });
+        }
         
-        const newBlock: Task = {
-          id: `block-${Date.now()}`,
-          type: 'study-block',
-          text: `Bloco de ${focus}`,
-          createdAt: new Date().toISOString(),
-          category: 'hoje',
-          sourceType: 'chat',
-          startTime: startTime,
-          durationMinutes: parseDuration(duration),
-          focusSubject: focus,
-        };
+        // Structure 2: blocks array (alternative AI format)
+        const blocks = payload?.blocks as Array<Record<string, unknown>> | undefined;
+        if (blocks?.length && !newBlocks.length) {
+          blocks.forEach((block, i) => {
+            newBlocks.push({
+              id: `block-${Date.now()}-${i}`,
+              type: 'study-block',
+              text: block.description as string || block.title as string || `Bloco de Estudo`,
+              createdAt: new Date().toISOString(),
+              category: 'hoje',
+              sourceType: 'chat',
+              startTime: block.time_start as string || block.start_time as string,
+              endTime: block.time_end as string || block.end_time as string,
+              durationMinutes: block.duration_minutes as number || parseDuration(block.duration as string || '60'),
+              focusSubject: block.focus as string || block.subject as string,
+            });
+          });
+        }
         
-        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([newBlock, ...existingTasks]));
+        // Structure 3: evening_study_block or single block (original format)
+        if (!newBlocks.length) {
+          const eveningBlock = payload?.evening_study_block as Record<string, unknown> | undefined;
+          const duration = eveningBlock?.duration as string || payload?.duration as string || payload?.duration_minutes?.toString() || '1h';
+          const focus = eveningBlock?.focus as string || payload?.focus as string || payload?.subject as string || 'Estudos';
+          const startTime = payload?.start_time as string || payload?.time_start as string || '19:00';
+          
+          newBlocks.push({
+            id: `block-${Date.now()}`,
+            type: 'study-block',
+            text: `Bloco de ${focus}`,
+            createdAt: new Date().toISOString(),
+            category: 'hoje',
+            sourceType: 'chat',
+            startTime: startTime,
+            durationMinutes: typeof payload?.duration_minutes === 'number' ? payload.duration_minutes : parseDuration(duration),
+            focusSubject: focus,
+          });
+        }
+        
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([...newBlocks, ...existingTasks]));
         window.dispatchEvent(new Event('tasksUpdated'));
         
-        toast.success(`Bloco de estudo criado!`, {
-          description: `${focus} - ${duration} às ${startTime}`,
+        toast.success(`${newBlocks.length} bloco(s) de estudo criado(s)!`, {
+          description: newBlocks.map(b => b.text).join(', '),
           action: {
             label: 'Ver em Hoje',
             onClick: () => window.location.href = '/hoje'
