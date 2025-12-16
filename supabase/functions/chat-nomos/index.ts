@@ -73,6 +73,7 @@ REGRAS IMPORTANTES:
 3. Seja breve nas respostas (máximo 3-4 frases por mensagem)
 4. Quando detectar uma intenção de ação, gere uma proposta estruturada
 5. Se o aluno mencionar uma matéria ou conceito, busque nos cadernos se há notas relevantes
+6. Quando o aluno quiser anotar, lembrar ou criar algo sem especificar onde, use suggest_choice para perguntar onde salvar
 
 TIPOS DE AÇÃO DISPONÍVEIS:
 - "configurar rotina" ou "criar rotina" ou "bloco de estudo" → action_type: "create_routine_block"
@@ -80,23 +81,34 @@ TIPOS DE AÇÃO DISPONÍVEIS:
 - "hoje desandou" ou "não consegui" → action_type: "reschedule_day"
 - "modo provas" ou "prova" → action_type: "activate_exam_mode"
 - "estudar agora" ou "começar a estudar" → action_type: "start_study_session"
-- "criar lembrete" ou "post-it" ou "não esquecer" → action_type: "create_postit"
-- "agendar para depois" ou "em breve" ou "semana que vem" → action_type: "create_task_embreve"
 - "abrir caderno" ou quando mencionar matéria com caderno relevante → action_type: "suggest_notebook"
 - "concluir" ou "marcar como feito" → action_type: "complete_task"
 - "mover tarefa" ou "adiar" → action_type: "move_task"
+- "anotar" ou "lembrar" ou "não esquecer" ou "preciso fazer" (SEM especificar onde) → action_type: "suggest_choice"
 
 FORMATO DE PROPOSTA (JSON no final da resposta):
 Se detectar intenção de ação, termine sua resposta com:
-[PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {dados específicos da ação}}[/PROPOSAL]
+[PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {dados específicos}, "choices": [...]}[/PROPOSAL]
 
 PAYLOADS POR TIPO:
 - create_routine_block: {"study_blocks": [{"focus": "matéria", "duration": "1h30", "time_start": "19:00"}]}
-- create_postit: {"text": "conteúdo do lembrete", "color": "areia|rosa|azul|verde|amarelo"}
-- create_task_embreve: {"text": "descrição da tarefa", "dueDate": "2024-01-15", "priority": "alta|media|baixa"}
 - suggest_notebook: {"notebookId": "id", "notebookTitle": "título", "reason": "por que é relevante"}
 - complete_task: {"taskId": "id", "category": "hoje|em-breve"}
-- move_task: {"taskId": "id", "from": "hoje", "to": "em-breve"}`;
+- move_task: {"taskId": "id", "from": "hoje", "to": "em-breve"}
+
+IMPORTANTE - PARA suggest_choice (quando o aluno quer criar/anotar algo):
+Use este formato com choices para perguntar onde salvar:
+{
+  "action_type": "suggest_choice",
+  "description": "Entendi! Onde você quer salvar isso?",
+  "impact": "",
+  "payload": {"text": "o conteúdo que o aluno quer salvar"},
+  "choices": [
+    {"id": "postit", "label": "📝 Criar Post-it", "description": "Em Lembretes Rápidos", "targetRoute": "/lembretes", "queryParams": {"newPostIt": "true", "text": "conteúdo"}},
+    {"id": "task_hoje", "label": "✅ Criar Tarefa", "description": "Em Hoje", "targetRoute": "/hoje", "queryParams": {"newTask": "true", "text": "conteúdo"}},
+    {"id": "task_entrada", "label": "📥 Criar na Entrada", "description": "Na caixa de entrada", "targetRoute": "/", "queryParams": {"newTask": "true", "text": "conteúdo"}}
+  ]
+}`;
 
 function buildContextPrompt(context: ChatContext | undefined): string {
   if (!context) return '';

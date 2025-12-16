@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Star, Calendar } from 'lucide-react';
 import {
   Dialog,
@@ -15,13 +15,21 @@ import { extractDateFromText, formatDetectedDate } from '@/services/dateExtracto
 interface AddTaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultText?: string;
 }
 
 const STORAGE_KEY = "nomos.tasks.today";
 
-export function AddTaskDialog({ open, onOpenChange }: AddTaskDialogProps) {
-  const [inputValue, setInputValue] = useState('');
+export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskDialogProps) {
+  const [inputValue, setInputValue] = useState(defaultText);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
+
+  // Update input when defaultText changes
+  useEffect(() => {
+    if (defaultText) {
+      setInputValue(defaultText);
+    }
+  }, [defaultText]);
 
   const addTask = () => {
     if (!inputValue.trim()) return;

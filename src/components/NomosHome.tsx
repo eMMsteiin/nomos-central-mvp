@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Plus, Calendar, Download, Clock, Pencil, Star, Palette } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +15,7 @@ import { useCanvaSession } from "@/contexts/CanvaSessionContext";
 import { isCanvaRelatedTask } from "@/types/canva";
 import { toast } from "@/hooks/use-toast";
 import { StudyBlockItem } from "@/components/StudyBlockItem";
+import { AddTaskDialog } from "@/components/AddTaskDialog";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -22,15 +24,31 @@ interface NomosHomeProps {
 }
 
 const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [inputValue, setInputValue] = useState("");
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
+  const [prefilledTaskText, setPrefilledTaskText] = useState('');
   const isInitialMount = useRef(true);
 
   const { session, settings, startSession, openCanvaPopout } = useCanvaSession();
+
+  // Handle URL params for pre-filled task creation from Chat
+  useEffect(() => {
+    const newTask = searchParams.get('newTask');
+    const text = searchParams.get('text');
+    
+    if (newTask === 'true' && text) {
+      setPrefilledTaskText(decodeURIComponent(text));
+      setAddTaskDialogOpen(true);
+      // Clear URL params
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const cyclePriority = () => {
     setPriority((prev) => {
@@ -549,6 +567,15 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
           onSave={handleEditTask}
         />
       )}
+
+      <AddTaskDialog
+        open={addTaskDialogOpen}
+        onOpenChange={(open) => {
+          setAddTaskDialogOpen(open);
+          if (!open) setPrefilledTaskText('');
+        }}
+        defaultText={prefilledTaskText}
+      />
     </div>
   );
 };

@@ -15,11 +15,20 @@ export interface Message {
   created_at: string;
 }
 
+export interface ChoiceOption {
+  id: string;
+  label: string;
+  description: string;
+  targetRoute: string;
+  queryParams?: Record<string, string>;
+}
+
 export interface Proposal {
   action_type: string;
   description: string;
   impact: string;
   payload: Record<string, unknown>;
+  choices?: ChoiceOption[];
 }
 
 export interface ChatAction {
