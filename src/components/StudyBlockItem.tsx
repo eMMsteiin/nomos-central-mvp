@@ -1,3 +1,4 @@
+import React, { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Clock } from "lucide-react";
 import { Task } from "@/types/task";
@@ -12,13 +13,8 @@ interface StudyBlockItemProps {
   onTimerStateChange: (updates: Partial<Task>) => void;
 }
 
-export function StudyBlockItem({
-  task,
-  index,
-  isCompleting,
-  onComplete,
-  onTimerStateChange
-}: StudyBlockItemProps) {
+export const StudyBlockItem = forwardRef<HTMLDivElement, StudyBlockItemProps>(
+  function StudyBlockItem({ task, index, isCompleting, onComplete, onTimerStateChange }, ref) {
   const { 
     formattedTime, 
     progress, 
@@ -55,6 +51,7 @@ export function StudyBlockItem({
 
   const handleSkip = () => {
     skip();
+    onComplete(); // Marcar como concluído imediatamente
   };
 
   const formatDuration = (minutes: number) => {
@@ -68,6 +65,7 @@ export function StudyBlockItem({
 
   return (
     <motion.div
+      ref={ref}
       initial={{ opacity: 0, scale: 0.95, y: 20 }}
       animate={
         isCompleting || isFinished
@@ -141,4 +139,4 @@ export function StudyBlockItem({
       </div>
     </motion.div>
   );
-}
+});

@@ -154,6 +154,24 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     }, 400);
   };
 
+  // Função dedicada para blocos de estudo - marca como completo imediatamente e persiste
+  const completeStudyBlock = (taskId: string) => {
+    setCompletingTasks((prev) => new Set(prev).add(taskId));
+
+    setTimeout(() => {
+      setTasks((prev) => 
+        prev.map((t) => 
+          t.id === taskId ? { ...t, completed: true } : t
+        )
+      );
+      setCompletingTasks((prev) => {
+        const next = new Set(prev);
+        next.delete(taskId);
+        return next;
+      });
+    }, 400);
+  };
+
   const handleEditTask = (updatedTask: Task) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
@@ -322,7 +340,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                       task={task}
                       index={index}
                       isCompleting={completingTasks.has(task.id)}
-                      onComplete={() => completeTask(task.id)}
+                      onComplete={() => completeStudyBlock(task.id)}
                       onTimerStateChange={(updates) => handleTimerStateChange(task.id, updates)}
                     />
                   ) : (
