@@ -14,6 +14,7 @@ import {
   Book,
   EyeOff,
   MoreVertical,
+  MessageCircle,
   Settings,
   PanelLeftClose,
   PanelLeft
@@ -49,6 +50,7 @@ const menuItems = [
   { title: "Hoje", url: "/hoje", icon: Calendar, canHide: true },
   { title: "Em breve", url: "/em-breve", icon: CalendarClock, canHide: true },
   { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
+  { title: "Chat NOMOS", url: "/chat", icon: MessageCircle, color: "purple", canHide: false },
   { title: "Caderno Digital", url: "/caderno", icon: Book, canHide: true },
   { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag, canHide: true },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
@@ -127,7 +129,10 @@ export function AppSidebar() {
                         >
                           <item.icon 
                             className="h-4 w-4" 
-                            style={item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : undefined}
+                            style={
+                              item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : 
+                              item.color === "purple" ? { color: "hsl(270, 70%, 60%)" } : undefined
+                            }
                           />
                           {open && (
                             <>
