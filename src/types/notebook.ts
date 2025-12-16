@@ -8,6 +8,12 @@ export interface Notebook {
   updatedAt: string;
   pages: NotebookPage[];
   isPdf?: boolean;
+  // Text notes searchable by AI
+  textNotes?: string;
+  // AI-generated summary
+  summary?: string;
+  // Tags for search
+  tags?: string[];
 }
 
 export interface NotebookPage {
