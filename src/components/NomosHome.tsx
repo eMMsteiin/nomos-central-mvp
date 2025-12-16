@@ -106,10 +106,15 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       isCanvaTask: isCanvaRelatedTask(cleanText),
     };
 
-    setTasks((prev) => [newTask, ...prev]);
+    // Persistir antes de emitir tasksUpdated (evita sobrescrever com dados antigos)
+    const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const nextTasks = [newTask, ...storedTasks];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+
+    setTasks(nextTasks);
     setInputValue("");
     setPriority('baixa');
-    
+
     window.dispatchEvent(new Event('tasksUpdated'));
   };
 
@@ -128,8 +133,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       completed: false,
       isCanvaTask: isCanvaRelatedTask(event.title),
     }));
-    
-    setTasks((prev) => [...importedTasks, ...prev]);
+
+    const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+    const nextTasks = [...importedTasks, ...storedTasks];
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+
+    setTasks(nextTasks);
     window.dispatchEvent(new Event('tasksUpdated'));
   };
 
