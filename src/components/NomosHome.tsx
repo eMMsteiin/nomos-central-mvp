@@ -152,7 +152,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     setCompletingTasks((prev) => new Set(prev).add(taskId));
 
     setTimeout(() => {
-      setTasks((prev) => prev.filter((t) => t.id !== taskId));
+      // Persistir ANTES de atualizar state
+      const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const nextTasks = storedTasks.filter((t) => t.id !== taskId);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+
+      setTasks(nextTasks);
       setCompletingTasks((prev) => {
         const next = new Set(prev);
         next.delete(taskId);
@@ -168,11 +173,14 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     setCompletingTasks((prev) => new Set(prev).add(taskId));
 
     setTimeout(() => {
-      setTasks((prev) => 
-        prev.map((t) => 
-          t.id === taskId ? { ...t, completed: true } : t
-        )
+      // Persistir ANTES de atualizar state
+      const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const nextTasks = storedTasks.map((t) => 
+        t.id === taskId ? { ...t, completed: true } : t
       );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+
+      setTasks(nextTasks);
       setCompletingTasks((prev) => {
         const next = new Set(prev);
         next.delete(taskId);
