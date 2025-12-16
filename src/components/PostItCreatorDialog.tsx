@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
@@ -17,12 +17,28 @@ interface PostItCreatorDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreatePostIt: (postIt: Omit<PostIt, 'blockId'>) => void;
+  defaultText?: string;
+  defaultColor?: string;
 }
 
-export const PostItCreatorDialog = ({ open, onOpenChange, onCreatePostIt }: PostItCreatorDialogProps) => {
-  const [text, setText] = useState('');
-  const [selectedColor, setSelectedColor] = useState<keyof typeof POST_IT_COLORS>('areia');
+export const PostItCreatorDialog = ({ 
+  open, 
+  onOpenChange, 
+  onCreatePostIt,
+  defaultText = '',
+  defaultColor = 'areia'
+}: PostItCreatorDialogProps) => {
+  const [text, setText] = useState(defaultText);
+  const [selectedColor, setSelectedColor] = useState<keyof typeof POST_IT_COLORS>(
+    defaultColor as keyof typeof POST_IT_COLORS
+  );
   const [imageUrl, setImageUrl] = useState<string>();
+
+  // Update state when defaults change
+  useEffect(() => {
+    if (defaultText) setText(defaultText);
+    if (defaultColor) setSelectedColor(defaultColor as keyof typeof POST_IT_COLORS);
+  }, [defaultText, defaultColor]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

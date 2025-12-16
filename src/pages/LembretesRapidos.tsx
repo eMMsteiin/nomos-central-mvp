@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { usePostIts } from '@/hooks/usePostIts';
 import { useBlocks } from '@/hooks/useBlocks';
 import { WeekBlock } from '@/components/blocks/WeekBlock';
 import { CreateBlockDialog } from '@/components/blocks/CreateBlockDialog';
+import { PostItCreatorDialog } from '@/components/PostItCreatorDialog';
 import { Button } from '@/components/ui/button';
 import { StickyNote, CalendarDays } from 'lucide-react';
 
@@ -18,9 +19,50 @@ const LembretesRapidos = () => {
   } = useBlocks();
 
   const [isCreateBlockDialogOpen, setIsCreateBlockDialogOpen] = useState(false);
+  const [isPostItDialogOpen, setIsPostItDialogOpen] = useState(false);
+  const [prefilledPostIt, setPrefilledPostIt] = useState<{ text: string; color: string } | null>(null);
+
+  // Handle URL params for pre-filled post-it from Chat NOMOS
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('newPostIt') === 'true') {
+      const text = params.get('text') || '';
+      const color = params.get('color') || 'areia';
+      
+      setPrefilledPostIt({ text, color });
+      setIsPostItDialogOpen(true);
+      
+      // Clean URL
+      window.history.replaceState({}, '', '/lembretes');
+    }
+  }, []);
 
   const handleCreateBlock = (title: string) => {
     createWeekBlock({ x: 0, y: 0 }, title);
+  };
+
+  const handleCreatePostIt = (postItData: Omit<import('@/types/postit').PostIt, 'blockId'>) => {
+    const weekBlocks = blocks.filter(b => b.type === 'week');
+    let targetBlockId = weekBlocks[0]?.id;
+    
+    // Create a default block if none exists
+    if (!targetBlockId) {
+      createWeekBlock({ x: 0, y: 0 }, 'Esta Semana');
+      // Get the newly created block
+      const updatedBlocks = JSON.parse(localStorage.getItem('nomos-blocks') || '[]');
+      targetBlockId = updatedBlocks[0]?.id;
+    }
+    
+    if (targetBlockId) {
+      const fullPostIt = {
+        ...postItData,
+        blockId: targetBlockId
+      };
+      addPostIt(fullPostIt);
+    }
+    
+    setIsPostItDialogOpen(false);
+    setPrefilledPostIt(null);
   };
 
   const weekBlocks = blocks.filter(b => b.type === 'week');
@@ -97,6 +139,17 @@ const LembretesRapidos = () => {
           open={isCreateBlockDialogOpen}
           onOpenChange={setIsCreateBlockDialogOpen}
           onCreateBlock={handleCreateBlock}
+        />
+
+        <PostItCreatorDialog
+          open={isPostItDialogOpen}
+          onOpenChange={(open) => {
+            setIsPostItDialogOpen(open);
+            if (!open) setPrefilledPostIt(null);
+          }}
+          onCreatePostIt={handleCreatePostIt}
+          defaultText={prefilledPostIt?.text}
+          defaultColor={prefilledPostIt?.color}
         />
       </div>
     </div>

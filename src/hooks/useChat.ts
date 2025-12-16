@@ -359,45 +359,24 @@ export function useChat(options: UseChatOptions = {}) {
       }
       
       case 'create_postit': {
-        const postIts = JSON.parse(localStorage.getItem(POSTITS_KEY) || '[]');
-        const blocks = JSON.parse(localStorage.getItem(BLOCKS_KEY) || '[]');
+        const text = payload?.text as string || payload?.content as string || 'Novo lembrete';
+        const color = payload?.color as string || 'areia';
         
-        // Find first block or create default
-        let targetBlockId = blocks[0]?.id;
-        
-        if (!targetBlockId) {
-          // Create a default weekly block
-          const newBlock = {
-            id: crypto.randomUUID(),
-            type: 'weekly',
-            title: 'Esta Semana',
-            createdAt: new Date().toISOString(),
-            isExpanded: false,
-          };
-          localStorage.setItem(BLOCKS_KEY, JSON.stringify([newBlock]));
-          targetBlockId = newBlock.id;
-          window.dispatchEvent(new Event('blocks-updated'));
-        }
-        
-        const newPostIt = {
-          id: crypto.randomUUID(),
-          text: payload?.text as string || payload?.content as string || 'Novo lembrete',
-          color: payload?.color as string || 'areia',
-          blockId: targetBlockId,
-          position: { x: 50 + Math.random() * 100, y: 50 + Math.random() * 100 },
-          size: { width: 200, height: 150 },
-          createdAt: new Date().toISOString(),
-        };
-        
-        localStorage.setItem(POSTITS_KEY, JSON.stringify([...postIts, newPostIt]));
-        window.dispatchEvent(new Event('postits-updated'));
-        
-        toast.success('Post-it criado!', {
-          description: newPostIt.text.substring(0, 50),
+        // Apenas sugerir - não criar automaticamente
+        toast.info(`📝 Sugestão: Criar post-it`, {
+          description: `"${text.substring(0, 80)}${text.length > 80 ? '...' : ''}"`,
           action: {
-            label: 'Ver Lembretes',
-            onClick: () => window.location.href = '/lembretes'
-          }
+            label: 'Criar em Lembretes',
+            onClick: () => {
+              const params = new URLSearchParams({
+                newPostIt: 'true',
+                text: text,
+                color: color
+              });
+              window.location.href = `/lembretes?${params.toString()}`;
+            }
+          },
+          duration: 15000
         });
         break;
       }
