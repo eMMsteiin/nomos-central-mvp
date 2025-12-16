@@ -65,7 +65,7 @@ export default function ChatNomos() {
   };
 
   const handleNewConversation = async () => {
-    selectConversation(null);
+    await createConversation(); // Cria nova conversa no banco
     setSidebarOpen(false);
   };
 

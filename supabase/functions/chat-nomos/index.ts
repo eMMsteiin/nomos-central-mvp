@@ -65,31 +65,17 @@ serve(async (req) => {
     let isNewConversation = false;
     
     if (!activeConversationId) {
-      // Check for existing active conversation
-      const { data: existingConversation } = await supabase
+      // SEMPRE cria nova conversa quando não tem conversationId
+      const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
+      const { data: newConversation, error: convError } = await supabase
         .from('conversations')
+        .insert({ user_id: userId, status: 'active', title })
         .select('id')
-        .eq('user_id', userId)
-        .eq('status', 'active')
-        .order('created_at', { ascending: false })
-        .limit(1)
         .single();
 
-      if (existingConversation) {
-        activeConversationId = existingConversation.id;
-      } else {
-        // Create new conversation with auto-generated title
-        const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
-        const { data: newConversation, error: convError } = await supabase
-          .from('conversations')
-          .insert({ user_id: userId, status: 'active', title })
-          .select('id')
-          .single();
-
-        if (convError) throw convError;
-        activeConversationId = newConversation.id;
-        isNewConversation = true;
-      }
+      if (convError) throw convError;
+      activeConversationId = newConversation.id;
+      isNewConversation = true;
     }
 
     // Get conversation history (last 10 messages for context)
