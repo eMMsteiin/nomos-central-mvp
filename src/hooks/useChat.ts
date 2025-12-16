@@ -241,12 +241,12 @@ export function useChat() {
           });
         }
         
-        // Structure 3: evening_study_block or single block (original format)
-        if (!newBlocks.length) {
-          const eveningBlock = payload?.evening_study_block as Record<string, unknown> | undefined;
-          const duration = eveningBlock?.duration as string || payload?.duration as string || payload?.duration_minutes?.toString() || '1h';
-          const focus = eveningBlock?.focus as string || payload?.focus as string || payload?.subject as string || 'Estudos';
-          const startTime = payload?.start_time as string || payload?.time_start as string || '19:00';
+        // Structure 3: evening_study_block (original format)
+        if (!newBlocks.length && payload?.evening_study_block) {
+          const eveningBlock = payload.evening_study_block as Record<string, unknown>;
+          const duration = eveningBlock.duration as string || '1h';
+          const focus = eveningBlock.focus as string || 'Estudos';
+          const startTime = payload.start_time as string || '19:00';
           
           newBlocks.push({
             id: `block-${Date.now()}`,
@@ -256,9 +256,42 @@ export function useChat() {
             category: 'hoje',
             sourceType: 'chat',
             startTime: startTime,
-            durationMinutes: typeof payload?.duration_minutes === 'number' ? payload.duration_minutes : parseDuration(duration),
+            durationMinutes: parseDuration(duration),
             focusSubject: focus,
           });
+        }
+        
+        // Structure 4: Flat payload (activity, task_name, subject, etc. directly in root)
+        if (!newBlocks.length && payload) {
+          const activity = payload.activity as string || payload.task_name as string || payload.subject as string || payload.focus as string || payload.title as string;
+          const startTime = payload.start_time as string || payload.time_start as string;
+          const endTime = payload.end_time as string || payload.time_end as string;
+          const durationRaw = payload.duration as string || payload.duration_minutes?.toString();
+          
+          // Only create if we have activity name OR start time
+          if (activity || startTime || durationRaw) {
+            const durationMinutes = typeof payload.duration_minutes === 'number' 
+              ? payload.duration_minutes 
+              : parseDuration(durationRaw || '60');
+            
+            newBlocks.push({
+              id: `block-${Date.now()}`,
+              type: 'study-block',
+              text: activity || 'Bloco de Estudo',
+              createdAt: new Date().toISOString(),
+              category: 'hoje',
+              sourceType: 'chat',
+              startTime: startTime,
+              endTime: endTime,
+              durationMinutes: durationMinutes,
+              focusSubject: activity,
+            });
+          }
+        }
+        
+        // Log para debug se nenhum bloco foi criado
+        if (!newBlocks.length) {
+          console.warn('[useChat] Payload não reconhecido para create_routine_block:', payload);
         }
         
         localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([...newBlocks, ...existingTasks]));
