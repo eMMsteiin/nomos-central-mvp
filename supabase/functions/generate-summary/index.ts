@@ -36,6 +36,40 @@ const DIFFICULTY_INSTRUCTIONS = {
   advanced: 'Inclua detalhes técnicos, exceções, casos especiais e conexões com outros tópicos.',
 };
 
+// Parse direct markdown response when tool calling fails
+function parseMarkdownResponse(text: string): { title: string; content: string; tags: string[] } {
+  // Extract title from first # heading or first line
+  const titleMatch = text.match(/^#\s*(.+)$/m);
+  const title = titleMatch 
+    ? titleMatch[1].replace(/[#*_]/g, '').trim()
+    : text.split('\n')[0].substring(0, 60).replace(/[#*_]/g, '').trim();
+
+  // Remove the title line from content
+  const content = titleMatch 
+    ? text.replace(titleMatch[0], '').trim()
+    : text;
+
+  // Extract tags from bold words or key terms
+  const boldWords = text.match(/\*\*([^*]+)\*\*/g) || [];
+  const tags = boldWords
+    .slice(0, 5)
+    .map(w => w.replace(/\*\*/g, '').toLowerCase().trim())
+    .filter(w => w.length > 2 && w.length < 30);
+
+  // If no bold words, extract from headings
+  if (tags.length === 0) {
+    const headings = text.match(/^##\s*(.+)$/gm) || [];
+    headings.slice(0, 5).forEach(h => {
+      const cleaned = h.replace(/^##\s*/, '').replace(/[📝❓📌🎯💡]/g, '').toLowerCase().trim();
+      if (cleaned.length > 2 && cleaned.length < 30) {
+        tags.push(cleaned);
+      }
+    });
+  }
+
+  return { title: title || 'Resumo', content, tags };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -142,17 +176,39 @@ INSTRUÇÕES:
     }
 
     const data = await response.json();
+    
+    // Log response structure for debugging
+    console.log('AI Response structure:', {
+      hasToolCalls: !!data.choices?.[0]?.message?.tool_calls,
+      hasContent: !!data.choices?.[0]?.message?.content,
+      finishReason: data.choices?.[0]?.finish_reason
+    });
+
+    // Try tool calling first (preferred)
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     
-    if (!toolCall) {
-      throw new Error('Resposta inválida da IA');
+    if (toolCall) {
+      try {
+        const result = JSON.parse(toolCall.function.arguments);
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (parseError) {
+        console.error('Error parsing tool call arguments:', parseError);
+      }
     }
 
-    const result = JSON.parse(toolCall.function.arguments);
-    
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    // Fallback: extract from direct text content
+    const textContent = data.choices?.[0]?.message?.content;
+    if (textContent) {
+      console.log('Using fallback: parsing direct text response');
+      const result = parseMarkdownResponse(textContent);
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    throw new Error('Resposta inválida da IA - nenhum conteúdo encontrado');
   } catch (error) {
     console.error('Error in generate-summary:', error);
     return new Response(
