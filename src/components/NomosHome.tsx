@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Download, Clock, Pencil, Star, Palette } from "lucide-react";
+import { Plus, Calendar, Download, Clock, Pencil, Star, Palette, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,42 @@ import { StudyBlockItem } from "@/components/StudyBlockItem";
 import { AddTaskDialog } from "@/components/AddTaskDialog";
 
 const STORAGE_KEY = "nomos.tasks.today";
+
+// Helper function to format task date with smart labels and status
+const formatTaskDate = (date: Date | string | undefined): { 
+  text: string; 
+  isOverdue: boolean; 
+  isToday: boolean; 
+  isTomorrow: boolean;
+} => {
+  if (!date) return { text: 'Sem data', isOverdue: false, isToday: false, isTomorrow: false };
+  
+  const taskDate = new Date(date);
+  const today = new Date();
+  const tomorrow = new Date(today);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  
+  // Normalize to compare only day (ignore time)
+  const normalizedTask = new Date(taskDate.getFullYear(), taskDate.getMonth(), taskDate.getDate());
+  const normalizedToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const normalizedTomorrow = new Date(tomorrow.getFullYear(), tomorrow.getMonth(), tomorrow.getDate());
+  
+  const isToday = normalizedTask.getTime() === normalizedToday.getTime();
+  const isTomorrow = normalizedTask.getTime() === normalizedTomorrow.getTime();
+  const isOverdue = normalizedTask.getTime() < normalizedToday.getTime();
+  
+  let text: string;
+  if (isToday) {
+    text = 'Hoje';
+  } else if (isTomorrow) {
+    text = 'Amanhã';
+  } else {
+    // Format as "15 dez" (day + abbreviated month)
+    text = taskDate.toLocaleDateString('pt-BR', { day: 'numeric', month: 'short' }).replace('.', '');
+  }
+  
+  return { text, isOverdue, isToday, isTomorrow };
+};
 
 interface NomosHomeProps {
   filterMode?: 'entrada' | 'hoje' | 'em-breve' | 'all';
@@ -487,47 +523,85 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                           </div>
                         </div>
                         
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3 text-[hsl(var(--todoist-green))]" />
-                            <span className="text-xs text-[hsl(var(--todoist-green))]">
-                              {task.dueDate 
-                                ? new Date(task.dueDate).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' })
-                                : 'Hoje'
-                              }
-                            </span>
-                          </div>
-                          
-                          {task.dueTime && (
-                            <>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-xs text-muted-foreground">
-                                  {task.dueTime}
+                        {/* Task metadata row with smart date formatting */}
+                        {(() => {
+                          const dateInfo = formatTaskDate(task.dueDate);
+                          return (
+                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                              {/* Date badge with dynamic colors */}
+                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md ${
+                                dateInfo.isOverdue 
+                                  ? 'bg-destructive/10' 
+                                  : dateInfo.isToday 
+                                  ? 'bg-primary/10' 
+                                  : dateInfo.isTomorrow 
+                                  ? 'bg-blue-500/10' 
+                                  : 'bg-muted'
+                              }`}>
+                                {dateInfo.isOverdue ? (
+                                  <AlertCircle className="h-3 w-3 text-destructive" />
+                                ) : (
+                                  <Calendar className={`h-3 w-3 ${
+                                    dateInfo.isToday 
+                                      ? 'text-primary' 
+                                      : dateInfo.isTomorrow 
+                                      ? 'text-blue-500' 
+                                      : 'text-muted-foreground'
+                                  }`} />
+                                )}
+                                <span className={`text-xs font-medium ${
+                                  dateInfo.isOverdue 
+                                    ? 'text-destructive' 
+                                    : dateInfo.isToday 
+                                    ? 'text-primary' 
+                                    : dateInfo.isTomorrow 
+                                    ? 'text-blue-500' 
+                                    : 'text-muted-foreground'
+                                }`}>
+                                  {dateInfo.text}
                                 </span>
+                                {dateInfo.isOverdue && (
+                                  <span className="text-[10px] text-destructive font-medium">
+                                    Atrasada
+                                  </span>
+                                )}
                               </div>
-                            </>
-                          )}
-                          
-                          {task.course && (
-                            <>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs bg-muted px-2 py-0.5 rounded">
-                                {task.course}
-                              </span>
-                            </>
-                          )}
-                          
-                          {task.sourceType === 'ava' && (
-                            <>
-                              <span className="text-xs text-muted-foreground">•</span>
-                              <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
-                                AVA
-                              </span>
-                            </>
-                          )}
-                        </div>
+                              
+                              {/* Time */}
+                              {task.dueTime && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3 text-muted-foreground" />
+                                    <span className="text-xs text-muted-foreground font-medium">
+                                      {task.dueTime}
+                                    </span>
+                                  </div>
+                                </>
+                              )}
+                              
+                              {/* Course */}
+                              {task.course && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-xs bg-muted px-2 py-0.5 rounded font-medium">
+                                    {task.course}
+                                  </span>
+                                </>
+                              )}
+                              
+                              {/* AVA source badge */}
+                              {task.sourceType === 'ava' && (
+                                <>
+                                  <span className="text-xs text-muted-foreground">•</span>
+                                  <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
+                                    AVA
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </motion.div>
