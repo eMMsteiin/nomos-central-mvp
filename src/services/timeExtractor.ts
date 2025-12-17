@@ -4,28 +4,42 @@ interface TimeExtractionResult {
 }
 
 export function extractTimeFromText(text: string): TimeExtractionResult {
-  const timeRegex = /\b([0-1]?[0-9]|2[0-3]):([0-5][0-9])\b/g;
-  const matches = text.match(timeRegex);
+  // Formato padrão: HH:MM
+  const timeRegexColon = /\b([0-1]?[0-9]|2[0-3]):([0-5][0-9])\b/g;
+  
+  // Formato alternativo: 14h, 14h30
+  const timeRegexH = /\b([0-1]?[0-9]|2[0-3])h([0-5][0-9])?\b/gi;
+  
+  let matches = text.match(timeRegexColon);
+  let usedRegex: RegExp = timeRegexColon;
+  
+  if (!matches) {
+    matches = text.match(timeRegexH);
+    usedRegex = timeRegexH;
+  }
   
   if (!matches) return { cleanText: text };
   
   const rawTime = matches[0];
-  const [hours, minutes] = rawTime.split(':').map(Number);
+  let hours: number;
+  let minutes: number;
   
-  let period = 'AM';
-  let displayHours = hours;
-  
-  if (hours === 0) {
-    displayHours = 12;
-  } else if (hours === 12) {
-    period = 'PM';
-  } else if (hours > 12) {
-    displayHours = hours - 12;
-    period = 'PM';
+  if (rawTime.includes(':')) {
+    [hours, minutes] = rawTime.split(':').map(Number);
+  } else {
+    // Formato "14h" ou "14h30"
+    const match = rawTime.match(/(\d{1,2})h(\d{2})?/i);
+    if (match) {
+      hours = parseInt(match[1], 10);
+      minutes = match[2] ? parseInt(match[2], 10) : 0;
+    } else {
+      return { cleanText: text };
+    }
   }
   
-  const formattedTime = `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
-  const cleanText = text.replace(timeRegex, '').trim();
+  // Manter formato 24h brasileiro
+  const formattedTime = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+  const cleanText = text.replace(usedRegex, '').trim();
   
   return { cleanText, time: formattedTime };
 }
@@ -34,17 +48,6 @@ export function formatDateToTime(date: Date): string {
   const hours = date.getHours();
   const minutes = date.getMinutes();
   
-  let period = 'AM';
-  let displayHours = hours;
-  
-  if (hours === 0) {
-    displayHours = 12;
-  } else if (hours === 12) {
-    period = 'PM';
-  } else if (hours > 12) {
-    displayHours = hours - 12;
-    period = 'PM';
-  }
-  
-  return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${period}`;
+  // Manter formato 24h brasileiro
+  return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
 }

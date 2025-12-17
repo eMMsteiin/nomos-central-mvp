@@ -91,8 +91,9 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     return 'fill-secondary text-secondary';
   };
 
-  // Extrair data para preview
+  // Extrair data e horário para preview
   const { detectedDate, category } = extractDateFromText(inputValue);
+  const { time: detectedTime } = extractTimeFromText(inputValue);
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -131,14 +132,16 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
             />
           </div>
 
-          {/* Preview de data detectada */}
-          {detectedDate && (
+          {/* Preview de data e horário detectados */}
+          {(detectedDate || detectedTime) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-md">
               <Calendar className="h-4 w-4" />
               <span>
-                {formatDetectedDate(detectedDate)} • 
-                <span className="ml-1 font-medium">
-                  {category === 'hoje' ? 'Hoje' : category === 'em-breve' ? 'Em breve' : 'Entrada'}
+                {detectedDate && formatDetectedDate(detectedDate)}
+                {detectedDate && detectedTime && ' • '}
+                {detectedTime && `🕐 ${detectedTime}`}
+                <span className="ml-2 font-medium">
+                  → {category === 'hoje' ? 'Hoje' : category === 'em-breve' ? 'Em breve' : 'Entrada'}
                 </span>
               </span>
             </div>
@@ -146,7 +149,7 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
 
           <div className="text-xs text-muted-foreground space-y-1">
             <p>💡 Dica: Use datas e horários para organizar automaticamente</p>
-            <p className="text-[10px]">Exemplos: "amanhã às 14h", "22/11 às 10h", "15 de dezembro"</p>
+            <p className="text-[10px]">Exemplos: "Jogar bola 11:10 22/12", "Reunião 15h amanhã", "Estudar 14h30 25/12"</p>
           </div>
         </div>
 
