@@ -2,8 +2,11 @@ import { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Sparkles, Loader2, AlertCircle } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sparkles, Loader2, AlertCircle, FileText, Lightbulb } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -27,14 +30,25 @@ export function GenerateFlashcardsDialog({
   onSaveCards,
   deckTitle
 }: GenerateFlashcardsDialogProps) {
+  const [mode, setMode] = useState<'text' | 'topic'>('text');
   const [inputText, setInputText] = useState('');
+  const [topic, setTopic] = useState('');
+  const [difficulty, setDifficulty] = useState('intermediate');
+  const [cardCount, setCardCount] = useState('10');
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedCards, setGeneratedCards] = useState<GeneratedCard[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const isTextModeValid = inputText.length >= 50;
+  const isTopicModeValid = topic.length >= 3 && topic.length <= 100;
+  const canGenerate = mode === 'text' ? isTextModeValid : isTopicModeValid;
+
   const handleGenerate = async () => {
-    if (inputText.length < 50) {
-      setError('Cole pelo menos 50 caracteres para gerar flashcards.');
+    if (!canGenerate) {
+      setError(mode === 'text' 
+        ? 'Cole pelo menos 50 caracteres para gerar flashcards.'
+        : 'Digite um tópico com pelo menos 3 caracteres.'
+      );
       return;
     }
 
@@ -43,8 +57,12 @@ export function GenerateFlashcardsDialog({
     setGeneratedCards([]);
 
     try {
+      const body = mode === 'text'
+        ? { mode: 'text', text: inputText, maxCards: parseInt(cardCount) }
+        : { mode: 'topic', topic, difficulty, maxCards: parseInt(cardCount) };
+
       const { data, error: fnError } = await supabase.functions.invoke('generate-flashcards', {
-        body: { text: inputText, maxCards: 10 }
+        body
       });
 
       if (fnError) {
@@ -100,8 +118,12 @@ export function GenerateFlashcardsDialog({
 
   const handleClose = () => {
     setInputText('');
+    setTopic('');
+    setDifficulty('intermediate');
+    setCardCount('10');
     setGeneratedCards([]);
     setError(null);
+    setMode('text');
     onOpenChange(false);
   };
 
@@ -119,37 +141,113 @@ export function GenerateFlashcardsDialog({
         </DialogHeader>
 
         <div className="flex-1 overflow-y-auto space-y-4 pr-2">
-          {/* Input Section */}
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Cole seu texto aqui:</label>
-            <Textarea
-              value={inputText}
-              onChange={(e) => setInputText(e.target.value)}
-              placeholder="Cole aqui o conteúdo que deseja transformar em flashcards. Pode ser um resumo, anotações de aula, trechos de livros, etc."
-              className="min-h-[120px] resize-none"
-              disabled={isGenerating}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">
-                {inputText.length} caracteres {inputText.length < 50 && '(mínimo 50)'}
-              </span>
-              <Button
-                onClick={handleGenerate}
-                disabled={inputText.length < 50 || isGenerating}
-              >
-                {isGenerating ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                    Gerando...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="h-4 w-4 mr-2" />
-                    Gerar Flashcards
-                  </>
-                )}
-              </Button>
-            </div>
+          {/* Mode Tabs */}
+          <Tabs value={mode} onValueChange={(v) => setMode(v as 'text' | 'topic')}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="text" className="flex items-center gap-2">
+                <FileText className="h-4 w-4" />
+                Colar Texto
+              </TabsTrigger>
+              <TabsTrigger value="topic" className="flex items-center gap-2">
+                <Lightbulb className="h-4 w-4" />
+                Gerar por Tópico
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Text Mode */}
+            <TabsContent value="text" className="space-y-3 mt-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Cole seu texto aqui:</label>
+                <Textarea
+                  value={inputText}
+                  onChange={(e) => setInputText(e.target.value)}
+                  placeholder="Cole aqui o conteúdo que deseja transformar em flashcards. Pode ser um resumo, anotações de aula, trechos de livros, etc."
+                  className="min-h-[140px] resize-none"
+                  disabled={isGenerating}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {inputText.length} caracteres {inputText.length < 50 && '(mínimo 50)'}
+                </span>
+              </div>
+            </TabsContent>
+
+            {/* Topic Mode */}
+            <TabsContent value="topic" className="space-y-4 mt-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Qual tópico você quer estudar?</label>
+                <Input
+                  value={topic}
+                  onChange={(e) => setTopic(e.target.value)}
+                  placeholder="Ex: Revolução Francesa, Teorema de Pitágoras, Fotossíntese..."
+                  disabled={isGenerating}
+                  maxLength={100}
+                />
+                <span className="text-xs text-muted-foreground">
+                  {topic.length}/100 caracteres {topic.length < 3 && topic.length > 0 && '(mínimo 3)'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Nível de dificuldade</label>
+                  <Select value={difficulty} onValueChange={setDifficulty} disabled={isGenerating}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="basic">🟢 Básico</SelectItem>
+                      <SelectItem value="intermediate">🟡 Intermediário</SelectItem>
+                      <SelectItem value="advanced">🔴 Avançado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Quantidade de cards</label>
+                  <Select value={cardCount} onValueChange={setCardCount} disabled={isGenerating}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="5">5 cards</SelectItem>
+                      <SelectItem value="10">10 cards</SelectItem>
+                      <SelectItem value="15">15 cards</SelectItem>
+                      <SelectItem value="20">20 cards</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="p-3 bg-muted/50 rounded-lg border border-border/50">
+                <p className="text-xs text-muted-foreground flex items-start gap-2">
+                  <Lightbulb className="h-4 w-4 flex-shrink-0 mt-0.5 text-primary" />
+                  <span>
+                    <strong>Dica:</strong> Seja específico! "Guerra dos Cem Anos" gera cards melhores que apenas "História".
+                  </span>
+                </p>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Generate Button */}
+          <div className="flex justify-end">
+            <Button
+              onClick={handleGenerate}
+              disabled={!canGenerate || isGenerating}
+              size="lg"
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Gerando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-4 w-4 mr-2" />
+                  Gerar Flashcards
+                </>
+              )}
+            </Button>
           </div>
 
           {/* Error Display */}
