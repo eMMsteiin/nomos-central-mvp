@@ -75,26 +75,32 @@ export function useChatConversations() {
     setActiveConversationId(id);
   }, []);
 
-  // Archive conversation
-  const archiveConversation = useCallback(async (id: string) => {
+  // Delete conversation permanently
+  const deleteConversation = useCallback(async (id: string) => {
     try {
+      // First delete all messages from the conversation
+      await supabase
+        .from('messages')
+        .delete()
+        .eq('conversation_id', id);
+
+      // Then delete the conversation itself
       const { error } = await supabase
         .from('conversations')
-        .update({ status: 'archived' })
+        .delete()
         .eq('id', id);
 
       if (error) throw error;
 
-      setConversations(prev =>
-        prev.map(c => c.id === id ? { ...c, status: 'archived' as const } : c)
-      );
+      // Remove from local state
+      setConversations(prev => prev.filter(c => c.id !== id));
 
-      // If archived conversation was active, clear it
+      // If deleted conversation was active, clear selection
       if (activeConversationId === id) {
         setActiveConversationId(null);
       }
     } catch (err) {
-      console.error('Error archiving conversation:', err);
+      console.error('Error deleting conversation:', err);
     }
   }, [activeConversationId]);
 
@@ -112,12 +118,10 @@ export function useChatConversations() {
 
   return {
     conversations,
-    activeConversations: conversations.filter(c => c.status === 'active'),
-    archivedConversations: conversations.filter(c => c.status === 'archived'),
     activeConversationId,
     createConversation,
     selectConversation,
-    archiveConversation,
+    deleteConversation,
     updateConversationTitle,
     isLoading,
     refresh: loadConversations
