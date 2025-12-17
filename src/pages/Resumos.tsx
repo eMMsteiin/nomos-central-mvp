@@ -146,9 +146,9 @@ const Resumos = () => {
 
       {/* View Summary Dialog */}
       {selectedSummary && (
-        <Dialog open={!!selectedSummary} onOpenChange={() => setSelectedSummary(null)}>
-          <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
-            <DialogHeader>
+      <Dialog open={!!selectedSummary} onOpenChange={() => setSelectedSummary(null)}>
+          <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col overflow-hidden">
+            <DialogHeader className="flex-shrink-0">
               <DialogTitle className="flex items-center gap-2">
                 {DEFAULT_DISCIPLINES.find(d => d.id === selectedSummary.disciplineId)?.emoji}
                 {selectedSummary.title}
@@ -162,7 +162,7 @@ const Resumos = () => {
                 ))}
               </div>
             </DialogHeader>
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 min-h-0 pr-4">
               <SummaryRenderer 
                 content={selectedSummary.content} 
                 template={selectedSummary.template} 
