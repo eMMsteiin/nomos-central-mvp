@@ -17,6 +17,7 @@ import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
 import ChatNomos from "./pages/ChatNomos";
+import Flashcards from "./pages/Flashcards";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
@@ -49,6 +50,7 @@ const App = () => (
                     <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
                     <Route path="/caderno" element={<Caderno />} />
                     <Route path="/chat" element={<ChatNomos />} />
+                    <Route path="/flashcards" element={<Flashcards />} />
                     <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
                     <Route path="/configuracoes" element={<Configuracoes />}>
                       <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />

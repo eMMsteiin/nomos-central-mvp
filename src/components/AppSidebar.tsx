@@ -17,7 +17,8 @@ import {
   MessageCircle,
   Settings,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  Layers
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -52,6 +53,7 @@ const menuItems = [
   { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
   { title: "Chat NOMOS", url: "/chat", icon: MessageCircle, color: "purple", canHide: false },
   { title: "Caderno Digital", url: "/caderno", icon: Book, canHide: true },
+  { title: "Flashcards", url: "/flashcards", icon: Layers, color: "blue", canHide: true },
   { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag, canHide: true },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
 ];
@@ -131,7 +133,8 @@ export function AppSidebar() {
                             className="h-4 w-4" 
                             style={
                               item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : 
-                              item.color === "purple" ? { color: "hsl(270, 70%, 60%)" } : undefined
+                              item.color === "purple" ? { color: "hsl(270, 70%, 60%)" } : 
+                              item.color === "blue" ? { color: "hsl(200, 70%, 50%)" } : undefined
                             }
                           />
                           {open && (
