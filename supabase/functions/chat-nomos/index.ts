@@ -93,6 +93,26 @@ REGRAS IMPORTANTES:
   
 - Se o aluno NÃO informou horário E duração, NÃO gere a proposta ainda - pergunte primeiro!
 
+⚠️ REGRA DE FOCO (CRÍTICO):
+- Se você está COLETANDO INFORMAÇÕES para criar um bloco de estudo (perguntou horário ou duração):
+  → NÃO mude de assunto
+  → NÃO sugira abrir cadernos
+  → NÃO faça outras propostas
+  → MANTENHA O FOCO até completar a coleta
+
+⚠️ RASTREAMENTO DE INFORMAÇÕES (LEIA O HISTÓRICO):
+- ANTES de perguntar algo, verifique se o aluno JÁ INFORMOU no histórico:
+  → Se já disse horário (ex: "15h", "de tarde", "à noite") → NÃO pergunte de novo
+  → Se já disse duração (ex: "1h", "3 horas", "30 min") → NÃO pergunte de novo
+  → Se já disse matéria (ex: "Álgebra Linear") → NÃO pergunte de novo
+- Quando tiver TODAS as 3 informações, GERE a proposta IMEDIATAMENTE
+
+⚠️ SUGESTÃO DE CADERNOS (SEJA RIGOROSO):
+- SOMENTE sugira cadernos se o conteúdo for MUITO relevante (mesmo assunto/matéria)
+- "Álgebra Linear" ≠ "Bhaskara" - são matérias diferentes, NÃO relacione!
+- Prefira NÃO sugerir se não tiver CERTEZA da relevância
+- NUNCA sugira cadernos no meio de um fluxo de coleta de dados para bloco de estudo
+
 TIPOS DE AÇÃO DISPONÍVEIS:
 - "configurar rotina" ou "criar rotina" ou "bloco de estudo" → PERGUNTE horário e duração primeiro, depois use action_type: "create_routine_block"
 - "ajuste rápido" ou "redistribuir" → action_type: "redistribute_tasks"
@@ -209,25 +229,65 @@ function buildContextPrompt(context: ChatContext | undefined): string {
   return sections.join('\n');
 }
 
-// Search for relevant notebooks based on user message
+// Search for relevant notebooks based on user message - MORE STRICT matching
 function findRelevantNotebooks(message: string, notebooks: NotebookContext[] | undefined): NotebookContext[] {
   if (!notebooks?.length) return [];
   
-  const keywords = message.toLowerCase()
+  // Palavras genéricas que não indicam matéria específica
+  const genericWords = [
+    'como', 'para', 'quero', 'preciso', 'estou', 'tenho', 'fazer', 'ajuda', 'pode', 'consegue',
+    'dificuldade', 'problema', 'estudar', 'bloco', 'rotina', 'criar', 'matéria', 'assunto',
+    'horário', 'tempo', 'hora', 'minutos', 'hoje', 'amanhã', 'noite', 'tarde', 'manhã',
+    'muito', 'pouco', 'mais', 'menos', 'ainda', 'agora', 'depois', 'antes', 'quando',
+    'isso', 'aqui', 'lá', 'onde', 'qual', 'quais', 'porque', 'então', 'assim', 'bem',
+    'foco', 'focado', 'concentração', 'estudando', 'revisar', 'revisão'
+  ];
+  
+  // Extrai palavras importantes (maiores que 4 chars e não genéricas)
+  const importantKeywords = message.toLowerCase()
     .split(/\s+/)
-    .filter(word => word.length > 3)
-    .filter(word => !['como', 'para', 'quero', 'preciso', 'estou', 'tenho', 'fazer', 'ajuda', 'pode', 'consegue'].includes(word));
+    .filter(word => word.length > 4)
+    .filter(word => !genericWords.includes(word));
+  
+  // Se não sobrou nenhuma palavra importante, não sugere cadernos
+  if (importantKeywords.length === 0) return [];
   
   return notebooks.filter(notebook => {
-    const searchableText = [
-      notebook.title,
-      notebook.discipline,
-      notebook.subject,
-      notebook.textNotes,
-    ].filter(Boolean).join(' ').toLowerCase();
+    const title = notebook.title?.toLowerCase() || '';
+    const discipline = notebook.discipline?.toLowerCase() || '';
+    const subject = notebook.subject?.toLowerCase() || '';
     
-    return keywords.some(keyword => searchableText.includes(keyword));
+    // Correspondência mais rigorosa: título, disciplina ou subject deve conter a palavra-chave
+    // NÃO busca em textNotes para evitar falsos positivos
+    return importantKeywords.some(keyword => 
+      title.includes(keyword) || 
+      discipline.includes(keyword) || 
+      subject.includes(keyword)
+    );
   });
+}
+
+// Check if AI is currently collecting info for a study block
+function isCollectingBlockInfo(history: Array<{role: string, content: string}> | null): boolean {
+  if (!history || history.length < 2) return false;
+  
+  // Check last 6 messages for block creation flow
+  const recentMessages = history.slice(-6);
+  const conversationText = recentMessages.map(m => m.content?.toLowerCase() || '').join(' ');
+  
+  // Indicators that we're in block creation flow
+  const blockFlowIndicators = [
+    'bloco de estudo',
+    'qual horário',
+    'quanto tempo',
+    'por quanto tempo',
+    'que horas',
+    'configurar rotina',
+    'criar rotina',
+    'criar bloco'
+  ];
+  
+  return blockFlowIndicators.some(indicator => conversationText.includes(indicator));
 }
 
 interface ChatRequest {
@@ -311,10 +371,14 @@ serve(async (req) => {
     const fullSystemPrompt = BASE_SYSTEM_PROMPT + contextPrompt;
     
     // Check for relevant notebooks to potentially suggest
+    // BUT NOT if we're in a block creation flow (to maintain focus)
     const relevantNotebooks = findRelevantNotebooks(message, context?.notebooks);
+    const collectingBlockInfo = isCollectingBlockInfo(history);
     let notebookHint = '';
-    if (relevantNotebooks.length > 0) {
-      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos possivelmente relevantes para esta conversa: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. Considere sugerir ao aluno se for útil.]`;
+    
+    // Only inject notebook hint if NOT in block collection flow
+    if (relevantNotebooks.length > 0 && !collectingBlockInfo) {
+      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos possivelmente relevantes para esta conversa: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. Considere sugerir ao aluno se for útil, mas SOMENTE se for realmente relevante para a matéria específica mencionada.]`;
     }
 
     // Build messages array for AI
@@ -329,6 +393,7 @@ serve(async (req) => {
       todayTasks: context?.todayTasks?.length || 0,
       notebooks: context?.notebooks?.length || 0,
       relevantNotebooks: relevantNotebooks.length,
+      collectingBlockInfo,
     });
 
     // Call Lovable AI
