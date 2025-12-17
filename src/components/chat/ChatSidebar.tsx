@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Trash2, MoreVertical } from 'lucide-react';
+import { Plus, Trash2, MoreVertical, MessageSquare } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -102,35 +102,32 @@ export function ChatSidebar({
                   )}
                   onClick={() => onSelectConversation(conv.id)}
                 >
-                  <MessageSquare className="w-4 h-4 mt-0.5 shrink-0" />
-                  <div className="flex-1 min-w-0 pr-6">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all shrink-0 -ml-1 mt-0.5"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start">
+                      <DropdownMenuItem 
+                        onClick={(e) => handleDeleteClick(e, conv.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">
                       {truncateTitle(conv.title)}
                     </p>
                     <p className="text-xs text-muted-foreground">
                       {formatDate(conv.created_at)}
                     </p>
-                  </div>
-                  <div className="absolute right-2 top-2">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          onClick={(e) => e.stopPropagation()}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all"
-                        >
-                          <MoreVertical className="w-4 h-4" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem 
-                          onClick={(e) => handleDeleteClick(e, conv.id)}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
                   </div>
                 </div>
               ))}
