@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Star, Calendar } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
@@ -11,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Task } from '@/types/task';
 import { extractTimeFromText } from '@/services/timeExtractor';
 import { extractDateFromText, formatDetectedDate } from '@/services/dateExtractor';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -23,6 +25,8 @@ const STORAGE_KEY = "nomos.tasks.today";
 export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskDialogProps) {
   const [inputValue, setInputValue] = useState(defaultText);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
+  const navigate = useNavigate();
+  const { toast } = useToast();
 
   // Update input when defaultText changes
   useEffect(() => {
@@ -64,6 +68,26 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
 
     // Dispatch event to notify other components
     window.dispatchEvent(new Event('tasksUpdated'));
+
+    // Mostrar toast informando onde a tarefa foi criada
+    const categoryName = category === 'hoje' ? 'Hoje' : category === 'em-breve' ? 'Em breve' : 'Entrada';
+    const categoryRoute = category === 'hoje' ? '/hoje' : category === 'em-breve' ? '/em-breve' : '/';
+    
+    toast({
+      title: "✅ Tarefa criada!",
+      description: detectedDate 
+        ? `Adicionada em "${categoryName}" para ${formatDetectedDate(detectedDate)}`
+        : `Adicionada em "${categoryName}"`,
+      action: (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(categoryRoute)}
+        >
+          Ver tarefa
+        </Button>
+      ),
+    });
 
     // Reset form
     setInputValue("");
