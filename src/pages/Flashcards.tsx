@@ -8,6 +8,7 @@ import { DeckDetail } from '@/components/flashcards/DeckDetail';
 import { StudySession } from '@/components/flashcards/StudySession';
 import { CreateDeckDialog } from '@/components/flashcards/CreateDeckDialog';
 import { CreateFlashcardDialog } from '@/components/flashcards/CreateFlashcardDialog';
+import { GenerateFlashcardsDialog } from '@/components/flashcards/GenerateFlashcardsDialog';
 import { Deck } from '@/types/flashcard';
 import { toast } from 'sonner';
 
@@ -20,6 +21,7 @@ export default function Flashcards() {
     createDeck,
     deleteDeck,
     createFlashcard,
+    createMultipleFlashcards,
     deleteFlashcard,
     reviewFlashcard,
     getDueCards,
@@ -32,6 +34,7 @@ export default function Flashcards() {
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
   const [isCreateDeckOpen, setIsCreateDeckOpen] = useState(false);
   const [isCreateCardOpen, setIsCreateCardOpen] = useState(false);
+  const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
 
   const totalDue = getTotalDueCount();
 
@@ -88,6 +91,11 @@ export default function Flashcards() {
     toast.success('Card excluído');
   };
 
+  const handleGenerateFlashcards = (cardsData: Array<{ front: string; back: string }>) => {
+    if (!selectedDeck) return;
+    createMultipleFlashcards(selectedDeck.id, cardsData);
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -128,6 +136,7 @@ export default function Flashcards() {
           onBack={handleBackToList}
           onStudy={() => setViewMode('study')}
           onAddCard={() => setIsCreateCardOpen(true)}
+          onGenerateWithAI={() => setIsGenerateDialogOpen(true)}
           onDeleteCard={handleDeleteCard}
         />
         <CreateFlashcardDialog
@@ -135,6 +144,12 @@ export default function Flashcards() {
           onOpenChange={setIsCreateCardOpen}
           deckTitle={selectedDeck.title}
           onCreateFlashcard={handleCreateFlashcard}
+        />
+        <GenerateFlashcardsDialog
+          open={isGenerateDialogOpen}
+          onOpenChange={setIsGenerateDialogOpen}
+          deckTitle={selectedDeck.title}
+          onSaveCards={handleGenerateFlashcards}
         />
       </div>
     );

@@ -234,6 +234,38 @@ export function useFlashcards() {
     return decks.filter(d => d.disciplineId === disciplineId);
   }, [decks]);
 
+  // Create multiple flashcards at once (for AI generation)
+  const createMultipleFlashcards = useCallback((
+    deckId: string,
+    cardsData: Array<{ front: string; back: string }>
+  ): Flashcard[] => {
+    const now = new Date().toISOString();
+    const newCards: Flashcard[] = cardsData.map(data => ({
+      id: crypto.randomUUID(),
+      deckId,
+      front: data.front,
+      back: data.back,
+      sourceType: 'ai' as const,
+      nextReview: now,
+      interval: 0,
+      easeFactor: SM2_INITIAL_EASE_FACTOR,
+      repetitions: 0,
+      createdAt: now,
+      updatedAt: now,
+    }));
+
+    const updatedCards = [...cards, ...newCards];
+    saveCards(updatedCards);
+
+    // Update deck card count
+    const deck = decks.find(d => d.id === deckId);
+    if (deck) {
+      updateDeck(deckId, { cardCount: deck.cardCount + newCards.length });
+    }
+
+    return newCards;
+  }, [cards, decks, saveCards, updateDeck]);
+
   return {
     decks,
     cards,
@@ -242,6 +274,7 @@ export function useFlashcards() {
     updateDeck,
     deleteDeck,
     createFlashcard,
+    createMultipleFlashcards,
     updateFlashcard,
     deleteFlashcard,
     reviewFlashcard,

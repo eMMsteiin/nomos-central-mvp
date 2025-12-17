@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.chat-nomos]
 verify_jwt = false
+
+[functions.generate-flashcards]
+verify_jwt = false
