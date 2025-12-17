@@ -20,12 +20,6 @@ export const useSummaries = () => {
     setIsLoading(false);
   }, []);
 
-  // Save summaries to localStorage
-  const saveSummaries = useCallback((newSummaries: Summary[]) => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSummaries));
-    setSummaries(newSummaries);
-  }, []);
-
   const createSummary = useCallback((data: {
     title: string;
     content: string;
@@ -54,24 +48,34 @@ export const useSummaries = () => {
       updatedAt: new Date().toISOString(),
     };
 
-    const updated = [newSummary, ...summaries];
-    saveSummaries(updated);
+    setSummaries(prevSummaries => {
+      const updated = [newSummary, ...prevSummaries];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
     return newSummary;
-  }, [summaries, saveSummaries]);
+  }, []);
 
   const updateSummary = useCallback((id: string, data: Partial<Summary>) => {
-    const updated = summaries.map(s => 
-      s.id === id 
-        ? { ...s, ...data, updatedAt: new Date().toISOString() }
-        : s
-    );
-    saveSummaries(updated);
-  }, [summaries, saveSummaries]);
+    setSummaries(prevSummaries => {
+      const updated = prevSummaries.map(s => 
+        s.id === id 
+          ? { ...s, ...data, updatedAt: new Date().toISOString() }
+          : s
+      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const deleteSummary = useCallback((id: string) => {
-    const updated = summaries.filter(s => s.id !== id);
-    saveSummaries(updated);
-  }, [summaries, saveSummaries]);
+    setSummaries(prevSummaries => {
+      const updated = prevSummaries.filter(s => s.id !== id);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
 
   const getSummaryById = useCallback((id: string) => {
     return summaries.find(s => s.id === id);
