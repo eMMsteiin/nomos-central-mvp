@@ -156,9 +156,9 @@ export function DeckDetail({
                             <p className="text-xs text-muted-foreground mb-1">Frente</p>
                             <p className="font-medium line-clamp-2">{card.front}</p>
                           </div>
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Verso</p>
-                            <p className="text-muted-foreground line-clamp-2">{card.back}</p>
+                          <div className="group/answer">
+                            <p className="text-xs text-muted-foreground mb-1">Verso <span className="text-[10px] opacity-50">(passe o mouse)</span></p>
+                            <p className="text-muted-foreground line-clamp-2 blur-sm group-hover/answer:blur-none transition-all cursor-pointer select-none">{card.back}</p>
                           </div>
                         </div>
                         <DropdownMenu>

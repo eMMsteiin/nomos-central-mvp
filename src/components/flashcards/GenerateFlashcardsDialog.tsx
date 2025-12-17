@@ -289,7 +289,7 @@ export function GenerateFlashcardsDialog({
                       />
                       <div className="flex-1 min-w-0 space-y-1">
                         <p className="text-sm font-medium">{card.front}</p>
-                        <p className="text-xs text-muted-foreground">{card.back}</p>
+                        <p className="text-xs text-muted-foreground italic">📝 Resposta oculta</p>
                       </div>
                     </div>
                   </div>
