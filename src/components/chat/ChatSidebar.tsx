@@ -1,4 +1,4 @@
-import { Plus, MessageSquare, Trash2 } from 'lucide-react';
+import { Plus, MessageSquare, Trash2, MoreVertical } from 'lucide-react';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -13,6 +13,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { cn } from '@/lib/utils';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Conversation } from '@/types/chat';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -105,13 +111,25 @@ export function ChatSidebar({
                       {formatDate(conv.created_at)}
                     </p>
                   </div>
-                  <button
-                    onClick={(e) => handleDeleteClick(e, conv.id)}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
-                    title="Apagar conversa"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        onClick={(e) => e.stopPropagation()}
+                        className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-muted transition-all"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem 
+                        onClick={(e) => handleDeleteClick(e, conv.id)}
+                        className="text-destructive focus:text-destructive"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               ))}
             </div>
