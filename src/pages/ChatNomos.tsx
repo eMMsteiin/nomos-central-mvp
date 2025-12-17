@@ -10,7 +10,7 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Bot, Sparkles, Archive, Menu } from 'lucide-react';
+import { Bot, Sparkles, Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function ChatNomos() {
@@ -19,11 +19,10 @@ export default function ChatNomos() {
   
   const {
     conversations,
-    activeConversations,
-    archivedConversations,
     activeConversationId,
     createConversation,
     selectConversation,
+    deleteConversation,
     updateConversationTitle,
     refresh: refreshConversations
   } = useChatConversations();
@@ -74,18 +73,13 @@ export default function ChatNomos() {
     setSidebarOpen(false);
   };
 
-  const handleArchive = async () => {
-    await clearConversation();
-    refreshConversations();
-  };
-
   const SidebarContent = (
     <ChatSidebar
-      activeConversations={activeConversations}
-      archivedConversations={archivedConversations}
+      conversations={conversations}
       activeConversationId={activeConversationId}
       onSelectConversation={handleSelectConversation}
       onNewConversation={handleNewConversation}
+      onDeleteConversation={deleteConversation}
       className="h-full"
     />
   );
@@ -128,20 +122,7 @@ export default function ChatNomos() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <RecentChangesSheet actions={recentActions} />
-              {messages.length > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={handleArchive}
-                  className="text-muted-foreground hover:text-foreground"
-                  title="Arquivar conversa"
-                >
-                  <Archive className="w-4 h-4" />
-                </Button>
-              )}
-            </div>
+            <RecentChangesSheet actions={recentActions} />
           </div>
         </div>
 
