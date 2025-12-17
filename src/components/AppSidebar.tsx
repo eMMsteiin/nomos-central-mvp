@@ -3,7 +3,7 @@ import {
   Inbox, 
   Calendar, 
   CalendarClock, 
-  Tag, 
+  FileText, 
   CheckCircle2, 
   Hash, 
   Plus, 
@@ -54,7 +54,7 @@ const menuItems = [
   { title: "Chat NOMOS", url: "/chat", icon: MessageCircle, color: "purple", canHide: false },
   { title: "Caderno Digital", url: "/caderno", icon: Book, canHide: true },
   { title: "Flashcards", url: "/flashcards", icon: Layers, color: "blue", canHide: true },
-  { title: "Filtros e Etiquetas", url: "/filtros", icon: Tag, canHide: true },
+  { title: "Resumos", url: "/resumos", icon: FileText, canHide: true },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
 ];
 
