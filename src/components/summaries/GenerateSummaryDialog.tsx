@@ -79,14 +79,27 @@ export const GenerateSummaryDialog = ({ open, onOpenChange, onSave }: GenerateSu
 
       if (data.error) {
         toast.error(data.error);
+        setGeneratedContent(null);
         return;
       }
 
-      setGeneratedContent(data);
+      // Validate response has required fields
+      if (!data.title || !data.content) {
+        toast.error('Resposta incompleta da IA. Tente novamente.');
+        setGeneratedContent(null);
+        return;
+      }
+
+      setGeneratedContent({
+        title: data.title,
+        content: data.content,
+        tags: data.tags || [],
+      });
       toast.success('Resumo gerado com sucesso!');
     } catch (error) {
       console.error('Error generating summary:', error);
       toast.error('Erro ao gerar resumo. Tente novamente.');
+      setGeneratedContent(null);
     } finally {
       setIsGenerating(false);
     }
