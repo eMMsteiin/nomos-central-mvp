@@ -11,13 +11,23 @@ serve(async (req) => {
   }
 
   try {
-    const { text, maxCards = 10 } = await req.json();
+    const { text, topic, mode = 'text', maxCards = 10, difficulty = 'intermediate' } = await req.json();
 
-    if (!text || text.length < 50) {
-      return new Response(
-        JSON.stringify({ error: 'Texto muito curto. Cole pelo menos 50 caracteres.' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Validate based on mode
+    if (mode === 'text') {
+      if (!text || text.length < 50) {
+        return new Response(
+          JSON.stringify({ error: 'Texto muito curto. Cole pelo menos 50 caracteres.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    } else if (mode === 'topic') {
+      if (!topic || topic.length < 3) {
+        return new Response(
+          JSON.stringify({ error: 'Digite um tópico com pelo menos 3 caracteres.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
@@ -25,20 +35,13 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY não configurada');
     }
 
-    console.log(`Generating flashcards from text (${text.length} chars), max: ${maxCards}`);
+    const difficultyLabels: Record<string, string> = {
+      basic: 'Básico (conceitos fundamentais, linguagem simples)',
+      intermediate: 'Intermediário (conceitos principais com detalhes importantes)',
+      advanced: 'Avançado (detalhes aprofundados, conexões complexas entre conceitos)'
+    };
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `Você é um especialista em criar flashcards para estudo eficiente.
+    const systemPromptText = `Você é um especialista em criar flashcards para estudo eficiente.
 
 Sua tarefa é analisar o texto fornecido e extrair os conceitos mais importantes, criando flashcards no formato pergunta/resposta.
 
@@ -54,13 +57,54 @@ REGRAS:
 EXEMPLOS de bons flashcards:
 - Front: "O que é velocidade média?" / Back: "É a razão entre o deslocamento total e o intervalo de tempo gasto. Fórmula: v = Δs/Δt"
 - Front: "Quando ocorreu a Proclamação da República no Brasil?" / Back: "15 de novembro de 1889"
-- Front: "Qual a diferença entre mitose e meiose?" / Back: "Mitose: divisão celular que gera 2 células idênticas. Meiose: gera 4 células com metade dos cromossomos (gametas)."
 
-Use a função generate_flashcards para retornar os flashcards estruturados.`
+Use a função generate_flashcards para retornar os flashcards estruturados.`;
+
+    const systemPromptTopic = `Você é um especialista em criar flashcards educacionais.
+
+Sua tarefa é gerar flashcards sobre o tópico solicitado, no nível de dificuldade especificado.
+
+NÍVEL: ${difficultyLabels[difficulty] || difficultyLabels.intermediate}
+
+REGRAS:
+- Gere exatamente ${maxCards} flashcards
+- Cubra os conceitos fundamentais e mais importantes do tópico
+- Inclua definições, fatos históricos, fórmulas (quando aplicável), relações importantes
+- Para nível básico: foque no essencial, use linguagem acessível
+- Para nível intermediário: inclua detalhes relevantes e contexto
+- Para nível avançado: aprofunde com conexões complexas, exceções, nuances
+- Flashcards devem ser educacionalmente precisos e valiosos
+- Cada pergunta (front) deve ser clara e específica
+- Cada resposta (back) deve ser concisa mas completa
+
+EXEMPLOS de bons flashcards:
+- Front: "O que foi a Queda da Bastilha?" / Back: "Evento de 14 de julho de 1789 que marcou o início da Revolução Francesa, quando a população de Paris invadiu a fortaleza-prisão da Bastilha."
+- Front: "Qual a fórmula da área do círculo?" / Back: "A = π × r², onde r é o raio do círculo."
+
+Use a função generate_flashcards para retornar os flashcards estruturados.`;
+
+    const userMessage = mode === 'text' 
+      ? `Analise o seguinte texto e gere flashcards para estudo:\n\n${text}`
+      : `Gere ${maxCards} flashcards sobre o tópico: "${topic}"`;
+
+    console.log(`Generating flashcards - mode: ${mode}, ${mode === 'text' ? `text length: ${text?.length}` : `topic: ${topic}`}, max: ${maxCards}, difficulty: ${difficulty}`);
+
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash',
+        messages: [
+          {
+            role: 'system',
+            content: mode === 'text' ? systemPromptText : systemPromptTopic
           },
           {
             role: 'user',
-            content: `Analise o seguinte texto e gere flashcards para estudo:\n\n${text}`
+            content: userMessage
           }
         ],
         tools: [
