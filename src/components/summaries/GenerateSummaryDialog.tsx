@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Sparkles, ClipboardPaste, Target, Lightbulb } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { SummaryRenderer } from './SummaryRenderer';
 import { 
   SummaryTemplate, 
   SummaryDifficulty, 
@@ -17,7 +18,6 @@ import {
   SUMMARY_DIFFICULTIES,
   DEFAULT_DISCIPLINES 
 } from '@/types/summary';
-
 interface GenerateSummaryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -259,18 +259,18 @@ export const GenerateSummaryDialog = ({ open, onOpenChange, onSave }: GenerateSu
             </Button>
 
             {generatedContent && (
-              <div className="mt-4 border rounded-lg">
+              <div className="mt-4 border rounded-lg overflow-hidden">
                 <div className="p-3 border-b bg-muted/30">
                   <h3 className="font-semibold">{generatedContent.title}</h3>
                   <div className="flex gap-1 mt-1 flex-wrap">
                     {generatedContent.tags.map(tag => (
-                      <span key={tag} className="text-xs text-muted-foreground">#{tag}</span>
+                      <span key={tag} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">#{tag}</span>
                     ))}
                   </div>
                 </div>
-                <ScrollArea className="h-[200px] p-4">
-                  <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                    {generatedContent.content}
+                <ScrollArea className="h-[300px]">
+                  <div className="p-4">
+                    <SummaryRenderer content={generatedContent.content} template={template} />
                   </div>
                 </ScrollArea>
               </div>
