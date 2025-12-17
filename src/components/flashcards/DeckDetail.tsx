@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Play, Trash2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Trash2, MoreVertical, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -29,6 +29,7 @@ interface DeckDetailProps {
   onBack: () => void;
   onStudy: () => void;
   onAddCard: () => void;
+  onGenerateWithAI: () => void;
   onDeleteCard: (cardId: string) => void;
 }
 
@@ -39,6 +40,7 @@ export function DeckDetail({
   onBack,
   onStudy,
   onAddCard,
+  onGenerateWithAI,
   onDeleteCard,
 }: DeckDetailProps) {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
@@ -69,10 +71,14 @@ export function DeckDetail({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" onClick={onAddCard}>
             <Plus className="w-4 h-4 mr-2" />
             Adicionar card
+          </Button>
+          <Button variant="outline" onClick={onGenerateWithAI}>
+            <Sparkles className="w-4 h-4 mr-2" />
+            Gerar com IA
           </Button>
           {dueCount > 0 && (
             <Button onClick={onStudy}>
