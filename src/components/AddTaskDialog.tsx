@@ -11,8 +11,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Task } from '@/types/task';
 import { extractTimeFromText } from '@/services/timeExtractor';
-import { extractDateFromText, formatDetectedDate } from '@/services/dateExtractor';
+import { extractDateFromText, formatDetectedDate, categorizeByDetectedDate } from '@/services/dateExtractor';
 import { useToast } from '@/hooks/use-toast';
+import { TimePickerPopover } from './task/TimePickerPopover';
+import { DatePickerPopover } from './task/DatePickerPopover';
 
 interface AddTaskDialogProps {
   open: boolean;
@@ -25,6 +27,8 @@ const STORAGE_KEY = "nomos.tasks.today";
 export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskDialogProps) {
   const [inputValue, setInputValue] = useState(defaultText);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
+  const [manualTime, setManualTime] = useState<string | undefined>();
+  const [manualDate, setManualDate] = useState<Date | undefined>();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,11 +42,16 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
   const addTask = () => {
     if (!inputValue.trim()) return;
 
-    // Primeiro extrair data
-    const { cleanText: textWithoutDate, detectedDate, category } = extractDateFromText(inputValue.trim());
+    // Primeiro extrair data do texto
+    const { cleanText: textWithoutDate, detectedDate: textDate } = extractDateFromText(inputValue.trim());
     
     // Depois extrair horário do texto restante
-    const { cleanText, time } = extractTimeFromText(textWithoutDate);
+    const { cleanText, time: textTime } = extractTimeFromText(textWithoutDate);
+
+    // Usar valores manuais se existirem, senão usar os detectados do texto
+    const finalTime = manualTime || textTime;
+    const finalDate = manualDate || textDate;
+    const finalCategory = categorizeByDetectedDate(finalDate);
 
     const newTask: Task = {
       id: Date.now().toString(),
@@ -51,11 +60,11 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
         hour: "2-digit",
         minute: "2-digit",
       }),
-      dueTime: time,
-      dueDate: detectedDate,
+      dueTime: finalTime,
+      dueDate: finalDate,
       priority: priority,
       sourceType: 'manual',
-      category: category,
+      category: finalCategory,
     };
 
     // Get existing tasks from localStorage
@@ -70,13 +79,13 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     window.dispatchEvent(new Event('tasksUpdated'));
 
     // Mostrar toast informando onde a tarefa foi criada
-    const categoryName = category === 'hoje' ? 'Hoje' : category === 'em-breve' ? 'Em breve' : 'Entrada';
-    const categoryRoute = category === 'hoje' ? '/hoje' : category === 'em-breve' ? '/em-breve' : '/';
+    const categoryName = finalCategory === 'hoje' ? 'Hoje' : finalCategory === 'em-breve' ? 'Em breve' : 'Entrada';
+    const categoryRoute = finalCategory === 'hoje' ? '/hoje' : finalCategory === 'em-breve' ? '/em-breve' : '/';
     
     toast({
       title: "✅ Tarefa criada!",
-      description: detectedDate 
-        ? `Adicionada em "${categoryName}" para ${formatDetectedDate(detectedDate)}`
+      description: finalDate 
+        ? `Adicionada em "${categoryName}" para ${formatDetectedDate(finalDate)}`
         : `Adicionada em "${categoryName}"`,
       action: (
         <Button
@@ -92,6 +101,8 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     // Reset form
     setInputValue("");
     setPriority('baixa');
+    setManualTime(undefined);
+    setManualDate(undefined);
     onOpenChange(false);
   };
 
@@ -115,9 +126,13 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     return 'fill-secondary text-secondary';
   };
 
-  // Extrair data e horário para preview
-  const { detectedDate, category } = extractDateFromText(inputValue);
-  const { time: detectedTime } = extractTimeFromText(inputValue);
+  // Extrair data e horário para preview (combina texto + manual)
+  const { detectedDate: textDate } = extractDateFromText(inputValue);
+  const { time: textTime } = extractTimeFromText(inputValue);
+  
+  const previewDate = manualDate || textDate;
+  const previewTime = manualTime || textTime;
+  const previewCategory = categorizeByDetectedDate(previewDate);
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -127,7 +142,7 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
         </DialogHeader>
         
         <div className="space-y-4 py-4">
-          <div className="flex gap-3 items-center">
+          <div className="flex gap-2 items-center">
             <Button
               onClick={togglePriority}
               size="icon"
@@ -145,6 +160,9 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
               </span>
             </Button>
 
+            <TimePickerPopover value={manualTime} onChange={setManualTime} />
+            <DatePickerPopover value={manualDate} onChange={setManualDate} />
+
             <Input
               type="text"
               placeholder="Nome da tarefa"
@@ -157,15 +175,15 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
           </div>
 
           {/* Preview de data e horário detectados */}
-          {(detectedDate || detectedTime) && (
+          {(previewDate || previewTime) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-md">
               <Calendar className="h-4 w-4" />
               <span>
-                {detectedDate && formatDetectedDate(detectedDate)}
-                {detectedDate && detectedTime && ' • '}
-                {detectedTime && `🕐 ${detectedTime}`}
+                {previewDate && formatDetectedDate(previewDate)}
+                {previewDate && previewTime && ' • '}
+                {previewTime && `🕐 ${previewTime}`}
                 <span className="ml-2 font-medium">
-                  → {category === 'hoje' ? 'Hoje' : category === 'em-breve' ? 'Em breve' : 'Entrada'}
+                  → {previewCategory === 'hoje' ? 'Hoje' : previewCategory === 'em-breve' ? 'Em breve' : 'Entrada'}
                 </span>
               </span>
             </div>
@@ -183,6 +201,8 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
             onClick={() => {
               setInputValue("");
               setPriority('baixa');
+              setManualTime(undefined);
+              setManualDate(undefined);
               onOpenChange(false);
             }}
           >
