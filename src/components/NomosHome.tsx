@@ -9,13 +9,15 @@ import { Task } from "@/types/task";
 import { ImportCalendarModal } from "@/components/ImportCalendarModal";
 import { ICSEvent, categorizeByDate } from "@/services/icsImporter";
 import { extractTimeFromText, formatDateToTime } from "@/services/timeExtractor";
-import { extractDateFromText } from "@/services/dateExtractor";
+import { extractDateFromText, categorizeByDetectedDate } from "@/services/dateExtractor";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
 import { useCanvaSession } from "@/contexts/CanvaSessionContext";
 import { isCanvaRelatedTask } from "@/types/canva";
 import { toast } from "@/hooks/use-toast";
 import { StudyBlockItem } from "@/components/StudyBlockItem";
 import { AddTaskDialog } from "@/components/AddTaskDialog";
+import { TimePickerPopover } from "@/components/task/TimePickerPopover";
+import { DatePickerPopover } from "@/components/task/DatePickerPopover";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -69,6 +71,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [addTaskDialogOpen, setAddTaskDialogOpen] = useState(false);
   const [prefilledTaskText, setPrefilledTaskText] = useState('');
+  const [manualTime, setManualTime] = useState<string | undefined>();
+  const [manualDate, setManualDate] = useState<Date | undefined>();
   const isInitialMount = useRef(true);
 
   const { session, settings, startSession, openCanvaPopout } = useCanvaSession();
@@ -145,9 +149,13 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     const { cleanText: textWithoutDate, detectedDate, category: detectedCategory } = extractDateFromText(inputValue.trim());
     const { cleanText, time } = extractTimeFromText(textWithoutDate);
 
+    // Priorizar valores manuais sobre valores extraídos do texto
+    const finalTime = manualTime || time;
+    const finalDate = manualDate || detectedDate;
+
     // Se nenhuma data foi detectada, usar a aba atual como categoria
-    let finalCategory = detectedCategory;
-    if (!detectedDate && (filterMode === 'hoje' || filterMode === 'entrada')) {
+    let finalCategory = finalDate ? categorizeByDetectedDate(finalDate) : detectedCategory;
+    if (!finalDate && (filterMode === 'hoje' || filterMode === 'entrada')) {
       finalCategory = filterMode;
     }
 
@@ -158,8 +166,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         hour: "2-digit",
         minute: "2-digit",
       }),
-      dueTime: time,
-      dueDate: detectedDate,
+      dueTime: finalTime,
+      dueDate: finalDate,
       priority: priority,
       sourceType: 'manual',
       category: finalCategory,
@@ -174,6 +182,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     setTasks(nextTasks);
     setInputValue("");
     setPriority('baixa');
+    setManualTime(undefined);
+    setManualDate(undefined);
 
     window.dispatchEvent(new Event('tasksUpdated'));
   };
@@ -381,6 +391,16 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                   {priority === 'alta' ? 'Alta' : priority === 'media' ? 'Média' : 'Baixa'}
                 </span>
               </Button>
+              
+              <TimePickerPopover 
+                value={manualTime} 
+                onChange={setManualTime} 
+              />
+              
+              <DatePickerPopover 
+                value={manualDate} 
+                onChange={setManualDate} 
+              />
               
               <Input
                 value={inputValue}
