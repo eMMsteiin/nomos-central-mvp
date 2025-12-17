@@ -12,7 +12,7 @@ import { FocusSidebar } from "@/components/canva/FocusSidebar";
 import Index from "./pages/Index";
 import Hoje from "./pages/Hoje";
 import EmBreve from "./pages/EmBreve";
-import Filtros from "./pages/Filtros";
+import Resumos from "./pages/Resumos";
 import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
@@ -45,7 +45,7 @@ const App = () => (
                     <Route path="/" element={<Index />} />
                     <Route path="/hoje" element={<Hoje />} />
                     <Route path="/em-breve" element={<EmBreve />} />
-                    <Route path="/filtros" element={<Filtros />} />
+                    <Route path="/resumos" element={<Resumos />} />
                     <Route path="/concluido" element={<Concluido />} />
                     <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
                     <Route path="/caderno" element={<Caderno />} />
