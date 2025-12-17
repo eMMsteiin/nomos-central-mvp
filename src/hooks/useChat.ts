@@ -435,6 +435,54 @@ export function useChat(options: UseChatOptions = {}) {
     }
   }, []);
 
+  const getActionDescription = useCallback((action: ChatAction): string => {
+    const payload = action.payload as Record<string, unknown> | null;
+    
+    switch (action.action_type) {
+      case 'create_routine_block': {
+        // Try to extract block info from various payload formats
+        const studyBlocks = payload?.study_blocks as Array<Record<string, unknown>> | undefined;
+        const blocks = payload?.blocks as Array<Record<string, unknown>> | undefined;
+        const block = studyBlocks?.[0] || blocks?.[0] || payload?.evening_study_block as Record<string, unknown>;
+        
+        if (block) {
+          const focus = block.focus || block.subject || payload?.focus || payload?.subject || 'Estudos';
+          const duration = block.duration || block.duration_minutes || payload?.duration || payload?.duration_minutes || '1h';
+          const time = block.time_start || block.start_time || block.time || payload?.start_time || payload?.time || '';
+          return `Bloco de estudo de ${focus} (${duration}) ${time ? `às ${time}` : ''} criado com sucesso`;
+        }
+        
+        const activity = payload?.activity || payload?.task_name || payload?.subject || payload?.focus || 'Estudos';
+        const duration = payload?.duration || payload?.duration_minutes || '1h';
+        const startTime = payload?.start_time || payload?.time_start || payload?.time || '';
+        return `Bloco de estudo de ${activity} (${duration}) ${startTime ? `às ${startTime}` : ''} criado com sucesso`;
+      }
+      case 'start_study_session': {
+        const subject = payload?.subject as string || 'Sessão de Estudo';
+        const duration = payload?.duration as string || '25min';
+        return `Sessão de estudo "${subject}" (${duration}) iniciada`;
+      }
+      case 'complete_task':
+        return 'Tarefa marcada como concluída';
+      case 'move_task': {
+        const to = payload?.to as string || 'destino';
+        return `Tarefa movida para ${to}`;
+      }
+      case 'redistribute_tasks':
+        return 'Redistribuição de tarefas aplicada';
+      case 'reduce_workload':
+        return 'Carga de trabalho reduzida';
+      case 'focus_mode':
+        return 'Modo foco ativado';
+      case 'suggest_notebook': {
+        const title = payload?.notebookTitle || payload?.title || 'caderno';
+        return `Sugestão de caderno "${title}" registrada`;
+      }
+      default:
+        return 'Ação aplicada com sucesso';
+    }
+  }, []);
+
   const applyProposal = useCallback(async (actionId: string) => {
     try {
       const actionToApply = recentActions.find(a => a.id === actionId);
@@ -456,13 +504,16 @@ export function useChat(options: UseChatOptions = {}) {
       );
 
       executeProposalAction(actionToApply);
-      await sendMessage('Ok, pode aplicar essa mudança!');
+      
+      // Send specific message so AI knows what was done and can continue conversation
+      const actionDescription = getActionDescription(actionToApply);
+      await sendMessage(`[AÇÃO APLICADA: ${actionDescription}]`);
 
     } catch (error) {
       console.error('[applyProposal] Erro:', error);
       toast.error('Erro ao aplicar ação.');
     }
-  }, [recentActions, executeProposalAction, sendMessage]);
+  }, [recentActions, executeProposalAction, sendMessage, getActionDescription]);
 
   const cancelProposal = useCallback(async (actionId: string) => {
     try {
