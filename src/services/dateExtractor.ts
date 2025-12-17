@@ -94,7 +94,7 @@ export function extractDateFromText(text: string): DateExtractionResult {
   };
 }
 
-function categorizeByDetectedDate(date?: Date): 'entrada' | 'hoje' | 'em-breve' {
+export function categorizeByDetectedDate(date?: Date): 'entrada' | 'hoje' | 'em-breve' {
   if (!date) return 'entrada';
   
   const today = startOfDay(new Date());
