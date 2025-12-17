@@ -8,6 +8,7 @@ import { FileText, Plus, Sparkles, Search, BookOpen } from 'lucide-react';
 import { useSummaries } from '@/hooks/useSummaries';
 import { SummaryCard } from '@/components/summaries/SummaryCard';
 import { GenerateSummaryDialog } from '@/components/summaries/GenerateSummaryDialog';
+import { SummaryRenderer } from '@/components/summaries/SummaryRenderer';
 import { DEFAULT_DISCIPLINES, Summary, SUMMARY_TEMPLATES } from '@/types/summary';
 import { toast } from 'sonner';
 
@@ -146,25 +147,26 @@ const Resumos = () => {
       {/* View Summary Dialog */}
       {selectedSummary && (
         <Dialog open={!!selectedSummary} onOpenChange={() => setSelectedSummary(null)}>
-          <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 {DEFAULT_DISCIPLINES.find(d => d.id === selectedSummary.disciplineId)?.emoji}
                 {selectedSummary.title}
               </DialogTitle>
-            </DialogHeader>
-            <ScrollArea className="max-h-[60vh] pr-4">
-              <div className="flex gap-2 mb-4 flex-wrap">
-                <span className="text-xs bg-muted px-2 py-1 rounded">
+              <div className="flex gap-2 flex-wrap pt-2">
+                <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
                   {SUMMARY_TEMPLATES[selectedSummary.template].emoji} {SUMMARY_TEMPLATES[selectedSummary.template].name}
                 </span>
                 {selectedSummary.tags.map(tag => (
-                  <span key={tag} className="text-xs text-muted-foreground">#{tag}</span>
+                  <span key={tag} className="text-xs bg-muted px-2 py-1 rounded-full">#{tag}</span>
                 ))}
               </div>
-              <div className="prose prose-sm dark:prose-invert max-w-none whitespace-pre-wrap">
-                {selectedSummary.content}
-              </div>
+            </DialogHeader>
+            <ScrollArea className="flex-1 pr-4">
+              <SummaryRenderer 
+                content={selectedSummary.content} 
+                template={selectedSummary.template} 
+              />
             </ScrollArea>
           </DialogContent>
         </Dialog>
