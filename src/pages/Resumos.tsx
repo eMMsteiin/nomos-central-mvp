@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
+// ScrollArea removido: usamos scroll nativo no dialog de visualização
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { FileText, Plus, Sparkles, Search, BookOpen } from 'lucide-react';
 import { useSummaries } from '@/hooks/useSummaries';
@@ -162,12 +162,12 @@ const Resumos = () => {
                 ))}
               </div>
             </DialogHeader>
-            <ScrollArea className="flex-1 min-h-0 pr-4">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-4">
               <SummaryRenderer 
                 content={selectedSummary.content} 
                 template={selectedSummary.template} 
               />
-            </ScrollArea>
+            </div>
           </DialogContent>
         </Dialog>
       )}
