@@ -110,14 +110,14 @@ function categorizeByDetectedDate(date?: Date): 'entrada' | 'hoje' | 'em-breve' 
     return 'hoje';
   }
   
-  // Se é amanhã ou nos próximos 7 dias
+  // Se é amanhã ou nos próximos 7 dias → vai para ENTRADA
   const sevenDaysFromNow = addDays(today, 7);
   if (isBefore(dateStart, sevenDaysFromNow) || dateStart.getTime() === sevenDaysFromNow.getTime()) {
-    return 'em-breve';
+    return 'entrada';
   }
   
-  // Mais de 7 dias no futuro
-  return 'entrada';
+  // Mais de 7 dias no futuro → vai para EM BREVE
+  return 'em-breve';
 }
 
 export function formatDetectedDate(date: Date): string {
