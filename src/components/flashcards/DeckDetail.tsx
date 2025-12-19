@@ -119,10 +119,13 @@ export function DeckDetail({
             <Sparkles className="w-4 h-4 mr-2" />
             Gerar com IA
           </Button>
-          {dueCount > 0 && (
-            <Button onClick={onStudy}>
+          {cards.length > 0 && (
+            <Button 
+              onClick={onStudy} 
+              variant={dueCount > 0 ? "default" : "outline"}
+            >
               <Play className="w-4 h-4 mr-2" />
-              Estudar ({dueCount})
+              {dueCount > 0 ? `Estudar (${dueCount})` : 'Praticar'}
             </Button>
           )}
         </div>

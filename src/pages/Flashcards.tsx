@@ -55,7 +55,11 @@ export default function Flashcards() {
 
   const handleStudyDeck = (deck: Deck) => {
     // Congelar os cards no início da sessão
-    const cardsToStudy = getDueCards(deck.id);
+    let cardsToStudy = getDueCards(deck.id);
+    // Se não há cards pendentes, usar todos os cards para praticar
+    if (cardsToStudy.length === 0) {
+      cardsToStudy = getCardsByDeck(deck.id);
+    }
     setSessionCards(cardsToStudy);
     setSelectedDeck(deck);
     setViewMode('study');
@@ -201,7 +205,11 @@ export default function Flashcards() {
           onBack={handleBackToList}
           onStudy={() => {
             // Congelar cards ao iniciar estudo da tela de detalhes
-            const cardsToStudy = getDueCards(selectedDeck.id);
+            let cardsToStudy = getDueCards(selectedDeck.id);
+            // Se não há cards pendentes, usar todos os cards para praticar
+            if (cardsToStudy.length === 0) {
+              cardsToStudy = getCardsByDeck(selectedDeck.id);
+            }
             setSessionCards(cardsToStudy);
             setViewMode('study');
           }}
