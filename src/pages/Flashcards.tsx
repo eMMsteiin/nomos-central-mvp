@@ -38,6 +38,7 @@ export default function Flashcards() {
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
+  const [sessionCards, setSessionCards] = useState<Flashcard[]>([]); // Cards congelados para a sessão
   const [isCreateDeckOpen, setIsCreateDeckOpen] = useState(false);
   const [isCreateCardOpen, setIsCreateCardOpen] = useState(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
@@ -53,17 +54,23 @@ export default function Flashcards() {
   };
 
   const handleStudyDeck = (deck: Deck) => {
+    // Congelar os cards no início da sessão
+    const cardsToStudy = getDueCards(deck.id);
+    setSessionCards(cardsToStudy);
     setSelectedDeck(deck);
     setViewMode('study');
   };
 
   const handleStudyAll = () => {
+    // Congelar os cards no início da sessão
+    const cardsToStudy = getDueCards();
+    setSessionCards(cardsToStudy);
     setSelectedDeck({
       id: 'all',
       title: 'Todos os cards',
       emoji: '🧠',
       color: 'hsl(260, 60%, 55%)',
-      cardCount: totalDue,
+      cardCount: cardsToStudy.length,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -72,6 +79,7 @@ export default function Flashcards() {
 
   const handleBackToList = () => {
     setSelectedDeck(null);
+    setSessionCards([]); // Limpar cards da sessão
     setViewMode('list');
   };
 
@@ -163,17 +171,13 @@ export default function Flashcards() {
     );
   }
 
-  // Study mode
+  // Study mode - usar sessionCards congelados
   if (viewMode === 'study' && selectedDeck) {
-    const studyCards = selectedDeck.id === 'all'
-      ? getDueCards()
-      : getDueCards(selectedDeck.id);
-
     return (
       <div className="p-4 md:p-6 max-w-3xl mx-auto min-h-[calc(100vh-4rem)]">
         <StudySession
           deck={selectedDeck}
-          cards={studyCards}
+          cards={sessionCards}
           onReview={reviewFlashcard}
           onClose={handleBackToList}
           onSessionStart={handleSessionStart}
@@ -195,7 +199,12 @@ export default function Flashcards() {
           cards={deckCards}
           dueCount={dueCount}
           onBack={handleBackToList}
-          onStudy={() => setViewMode('study')}
+          onStudy={() => {
+            // Congelar cards ao iniciar estudo da tela de detalhes
+            const cardsToStudy = getDueCards(selectedDeck.id);
+            setSessionCards(cardsToStudy);
+            setViewMode('study');
+          }}
           onAddCard={() => setIsCreateCardOpen(true)}
           onGenerateWithAI={() => setIsGenerateDialogOpen(true)}
           onDeleteCard={handleDeleteCard}
