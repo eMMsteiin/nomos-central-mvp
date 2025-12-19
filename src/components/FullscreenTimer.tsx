@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Play, Pause, SkipForward, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ export function FullscreenTimer({
   onSkip,
   onClose
 }: FullscreenTimerProps) {
-  // Close on ESC key
+  // Close on ESC key and block body scroll
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -34,8 +35,14 @@ export function FullscreenTimer({
       }
     };
     
+    // Block body scroll
+    document.body.style.overflow = 'hidden';
+    
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      document.body.style.overflow = '';
+    };
   }, [onClose]);
 
   // Color based on progress - matches the design system
@@ -51,7 +58,7 @@ export function FullscreenTimer({
   const circumference = 2 * Math.PI * normalizedRadius;
   const strokeDashoffset = circumference - (progress / 100) * circumference;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
@@ -202,6 +209,7 @@ export function FullscreenTimer({
           ESC para sair
         </motion.span>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
