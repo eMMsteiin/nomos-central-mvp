@@ -98,7 +98,7 @@ export function StudySession({
     onClose();
   }, [onSessionEnd, sessionId, reviewedCount, isComplete, stats, onClose]);
 
-  if (cards.length === 0) {
+  if (cards.length === 0 || !currentCard) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Brain className="w-16 h-16 text-muted-foreground" />
