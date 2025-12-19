@@ -1,9 +1,10 @@
-import React, { forwardRef } from "react";
+import React, { forwardRef, useState } from "react";
 import { motion } from "framer-motion";
 import { BookOpen, Clock } from "lucide-react";
 import { Task } from "@/types/task";
 import { useStudyTimer } from "@/hooks/useStudyTimer";
 import { StudyBlockTimer } from "./StudyBlockTimer";
+import { FullscreenTimer } from "./FullscreenTimer";
 
 interface StudyBlockItemProps {
   task: Task;
@@ -15,6 +16,8 @@ interface StudyBlockItemProps {
 
 export const StudyBlockItem = forwardRef<HTMLDivElement, StudyBlockItemProps>(
   function StudyBlockItem({ task, index, isCompleting, onComplete, onTimerStateChange }, ref) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  
   const { 
     formattedTime, 
     progress, 
@@ -51,7 +54,7 @@ export const StudyBlockItem = forwardRef<HTMLDivElement, StudyBlockItemProps>(
 
   const handleSkip = () => {
     skip();
-    onComplete(); // Marcar como concluído imediatamente
+    onComplete();
   };
 
   const formatDuration = (minutes: number) => {
@@ -64,70 +67,87 @@ export const StudyBlockItem = forwardRef<HTMLDivElement, StudyBlockItemProps>(
   };
 
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, scale: 0.95, y: 20 }}
-      animate={
-        isCompleting || isFinished
-          ? {
-              opacity: 0,
-              scale: 0.9,
-              x: 100,
-              transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-            }
-          : {
-              opacity: 1,
-              scale: 1,
-              y: 0,
-              transition: {
-                duration: 0.4,
-                ease: [0.4, 0, 0.2, 1],
-                delay: index * 0.03
+    <>
+      <motion.div
+        ref={ref}
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={
+          isCompleting || isFinished
+            ? {
+                opacity: 0,
+                scale: 0.9,
+                x: 100,
+                transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
               }
-            }
-      }
-      exit={{ opacity: 0, scale: 0.9, x: 100, transition: { duration: 0.3 } }}
-      className="bg-primary/5 border border-primary/20 rounded-lg p-4 hover:bg-primary/10 transition-all duration-200"
-    >
-      <div className="flex items-center justify-between gap-4">
-        {/* Left side - Info */}
-        <div className="flex items-center gap-3 flex-1 min-w-0">
-          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-            <BookOpen className="h-5 w-5 text-primary" />
-          </div>
-          
-          <div className="min-w-0">
-            <h3 className="font-medium text-foreground truncate">
-              {task.text}
-            </h3>
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              {task.startTime && (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {task.startTime}
-                  {task.endTime && ` - ${task.endTime}`}
-                </span>
-              )}
-              {task.durationMinutes && (
-                <>
-                  {task.startTime && <span>•</span>}
-                  <span>{formatDuration(task.durationMinutes)}</span>
-                </>
-              )}
-              {task.focusSubject && (
-                <>
-                  <span>•</span>
-                  <span className="bg-primary/10 text-primary px-2 py-0.5 rounded">
-                    {task.focusSubject}
+            : {
+                opacity: 1,
+                scale: 1,
+                y: 0,
+                transition: {
+                  duration: 0.4,
+                  ease: [0.4, 0, 0.2, 1],
+                  delay: index * 0.03
+                }
+              }
+        }
+        exit={{ opacity: 0, scale: 0.9, x: 100, transition: { duration: 0.3 } }}
+        className="bg-primary/5 border border-primary/20 rounded-lg p-4 hover:bg-primary/10 transition-all duration-200"
+      >
+        <div className="flex items-center justify-between gap-4">
+          {/* Left side - Info */}
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+              <BookOpen className="h-5 w-5 text-primary" />
+            </div>
+            
+            <div className="min-w-0">
+              <h3 className="font-medium text-foreground truncate">
+                {task.text}
+              </h3>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                {task.startTime && (
+                  <span className="flex items-center gap-1">
+                    <Clock className="h-3 w-3" />
+                    {task.startTime}
+                    {task.endTime && ` - ${task.endTime}`}
                   </span>
-                </>
-              )}
+                )}
+                {task.durationMinutes && (
+                  <>
+                    {task.startTime && <span>•</span>}
+                    <span>{formatDuration(task.durationMinutes)}</span>
+                  </>
+                )}
+                {task.focusSubject && (
+                  <>
+                    <span>•</span>
+                    <span className="bg-primary/10 text-primary px-2 py-0.5 rounded">
+                      {task.focusSubject}
+                    </span>
+                  </>
+                )}
+              </div>
             </div>
           </div>
-        </div>
 
-        {/* Right side - Timer */}
-        <StudyBlockTimer
+          {/* Right side - Timer */}
+          <StudyBlockTimer
+            formattedTime={formattedTime}
+            progress={progress}
+            isRunning={isRunning}
+            isFinished={isFinished}
+            onStart={handleStart}
+            onPause={handlePause}
+            onSkip={handleSkip}
+            onExpand={() => setIsFullscreen(true)}
+          />
+        </div>
+      </motion.div>
+
+      {/* Fullscreen Timer Modal */}
+      {isFullscreen && (
+        <FullscreenTimer
+          taskName={task.text}
           formattedTime={formattedTime}
           progress={progress}
           isRunning={isRunning}
@@ -135,8 +155,9 @@ export const StudyBlockItem = forwardRef<HTMLDivElement, StudyBlockItemProps>(
           onStart={handleStart}
           onPause={handlePause}
           onSkip={handleSkip}
+          onClose={() => setIsFullscreen(false)}
         />
-      </div>
-    </motion.div>
+      )}
+    </>
   );
 });
