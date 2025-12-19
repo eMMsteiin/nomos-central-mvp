@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, RotateCcw, X, Check, Zap, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,12 @@ interface StudySessionProps {
   cards: Flashcard[];
   onReview: (cardId: string, rating: FlashcardRating) => void;
   onClose: () => void;
+  onSessionStart?: () => Promise<string | null>;
+  onSessionEnd?: (sessionId: string, stats: {
+    cardsReviewed: number;
+    cardsCorrect: number;
+    ratingDistribution: Record<FlashcardRating, number>;
+  }) => Promise<void>;
 }
 
 const RATING_BUTTONS: { rating: FlashcardRating; label: string; icon: React.ReactNode; color: string }[] = [
@@ -21,25 +27,42 @@ const RATING_BUTTONS: { rating: FlashcardRating; label: string; icon: React.Reac
   { rating: 'easy', label: 'Fácil', icon: <Zap className="w-4 h-4" />, color: 'bg-blue-500 hover:bg-blue-600' },
 ];
 
-export function StudySession({ deck, cards, onReview, onClose }: StudySessionProps) {
+export function StudySession({ 
+  deck, 
+  cards, 
+  onReview, 
+  onClose,
+  onSessionStart,
+  onSessionEnd,
+}: StudySessionProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isFlipped, setIsFlipped] = useState(false);
   const [reviewedCount, setReviewedCount] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [stats, setStats] = useState({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [stats, setStats] = useState<Record<FlashcardRating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   const currentCard = cards[currentIndex];
   const progress = cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0;
+
+  // Start session on mount
+  useEffect(() => {
+    if (onSessionStart && cards.length > 0) {
+      onSessionStart().then(id => setSessionId(id));
+    }
+  }, []);
 
   const handleFlip = useCallback(() => {
     setIsFlipped(true);
   }, []);
 
-  const handleRating = useCallback((rating: FlashcardRating) => {
+  const handleRating = useCallback(async (rating: FlashcardRating) => {
     if (!currentCard) return;
 
     onReview(currentCard.id, rating);
-    setStats(prev => ({ ...prev, [rating]: prev[rating] + 1 }));
+    
+    const newStats = { ...stats, [rating]: stats[rating] + 1 };
+    setStats(newStats);
     setReviewedCount(prev => prev + 1);
     setIsFlipped(false);
 
@@ -49,8 +72,31 @@ export function StudySession({ deck, cards, onReview, onClose }: StudySessionPro
       }, 200);
     } else {
       setIsComplete(true);
+      
+      // End session
+      if (onSessionEnd && sessionId) {
+        const cardsCorrect = newStats.good + newStats.easy;
+        await onSessionEnd(sessionId, {
+          cardsReviewed: reviewedCount + 1,
+          cardsCorrect,
+          ratingDistribution: newStats,
+        });
+      }
     }
-  }, [currentCard, currentIndex, cards.length, onReview]);
+  }, [currentCard, currentIndex, cards.length, onReview, stats, sessionId, onSessionEnd, reviewedCount]);
+
+  const handleClose = useCallback(async () => {
+    // End session early if leaving
+    if (onSessionEnd && sessionId && reviewedCount > 0 && !isComplete) {
+      const cardsCorrect = stats.good + stats.easy;
+      await onSessionEnd(sessionId, {
+        cardsReviewed: reviewedCount,
+        cardsCorrect,
+        ratingDistribution: stats,
+      });
+    }
+    onClose();
+  }, [onSessionEnd, sessionId, reviewedCount, isComplete, stats, onClose]);
 
   if (cards.length === 0) {
     return (
@@ -100,7 +146,7 @@ export function StudySession({ deck, cards, onReview, onClose }: StudySessionPro
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
-        <Button variant="ghost" size="sm" onClick={onClose}>
+        <Button variant="ghost" size="sm" onClick={handleClose}>
           <ArrowLeft className="w-4 h-4 mr-2" />
           Sair
         </Button>

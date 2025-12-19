@@ -9,7 +9,9 @@ import { StudySession } from '@/components/flashcards/StudySession';
 import { CreateDeckDialog } from '@/components/flashcards/CreateDeckDialog';
 import { CreateFlashcardDialog } from '@/components/flashcards/CreateFlashcardDialog';
 import { GenerateFlashcardsDialog } from '@/components/flashcards/GenerateFlashcardsDialog';
-import { Deck } from '@/types/flashcard';
+import { EditFlashcardDialog } from '@/components/flashcards/EditFlashcardDialog';
+import { EditDeckDialog } from '@/components/flashcards/EditDeckDialog';
+import { Deck, Flashcard } from '@/types/flashcard';
 import { toast } from 'sonner';
 
 type ViewMode = 'list' | 'detail' | 'study';
@@ -19,15 +21,19 @@ export default function Flashcards() {
     decks,
     isLoading,
     createDeck,
+    updateDeck,
     deleteDeck,
     createFlashcard,
     createMultipleFlashcards,
+    updateFlashcard,
     deleteFlashcard,
     reviewFlashcard,
     getDueCards,
     getCardsByDeck,
     getDeckDueCount,
     getTotalDueCount,
+    startSession,
+    endSession,
   } = useFlashcards();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
@@ -35,6 +41,9 @@ export default function Flashcards() {
   const [isCreateDeckOpen, setIsCreateDeckOpen] = useState(false);
   const [isCreateCardOpen, setIsCreateCardOpen] = useState(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
+  const [isEditCardOpen, setIsEditCardOpen] = useState(false);
+  const [isEditDeckOpen, setIsEditDeckOpen] = useState(false);
+  const [cardToEdit, setCardToEdit] = useState<Flashcard | null>(null);
 
   const totalDue = getTotalDueCount();
 
@@ -49,7 +58,6 @@ export default function Flashcards() {
   };
 
   const handleStudyAll = () => {
-    // Create a virtual "all" deck for study
     setSelectedDeck({
       id: 'all',
       title: 'Todos os cards',
@@ -67,33 +75,84 @@ export default function Flashcards() {
     setViewMode('list');
   };
 
-  const handleCreateDeck = (
+  const handleCreateDeck = async (
     title: string,
     options?: { description?: string; disciplineId?: string; color?: string; emoji?: string }
   ) => {
-    createDeck(title, options);
-    toast.success('Baralho criado com sucesso!');
+    try {
+      await createDeck(title, options);
+      toast.success('Baralho criado com sucesso!');
+    } catch (error) {
+      toast.error('Erro ao criar baralho');
+    }
   };
 
-  const handleDeleteDeck = (deckId: string) => {
-    deleteDeck(deckId);
-    toast.success('Baralho excluído');
+  const handleDeleteDeck = async (deckId: string) => {
+    try {
+      await deleteDeck(deckId);
+      toast.success('Baralho excluído');
+    } catch (error) {
+      toast.error('Erro ao excluir baralho');
+    }
   };
 
-  const handleCreateFlashcard = (front: string, back: string) => {
+  const handleCreateFlashcard = async (front: string, back: string) => {
     if (!selectedDeck) return;
-    createFlashcard(selectedDeck.id, front, back);
-    toast.success('Card criado!');
+    try {
+      await createFlashcard(selectedDeck.id, front, back);
+      toast.success('Card criado!');
+    } catch (error) {
+      toast.error('Erro ao criar card');
+    }
   };
 
-  const handleDeleteCard = (cardId: string) => {
-    deleteFlashcard(cardId);
-    toast.success('Card excluído');
+  const handleDeleteCard = async (cardId: string) => {
+    try {
+      await deleteFlashcard(cardId);
+      toast.success('Card excluído');
+    } catch (error) {
+      toast.error('Erro ao excluir card');
+    }
   };
 
-  const handleGenerateFlashcards = (cardsData: Array<{ front: string; back: string }>) => {
+  const handleGenerateFlashcards = async (cardsData: Array<{ front: string; back: string }>) => {
     if (!selectedDeck) return;
-    createMultipleFlashcards(selectedDeck.id, cardsData);
+    try {
+      await createMultipleFlashcards(selectedDeck.id, cardsData);
+    } catch (error) {
+      toast.error('Erro ao criar cards');
+    }
+  };
+
+  const handleEditCard = (card: Flashcard) => {
+    setCardToEdit(card);
+    setIsEditCardOpen(true);
+  };
+
+  const handleSaveCard = async (id: string, front: string, back: string) => {
+    try {
+      await updateFlashcard(id, { front, back });
+      toast.success('Card atualizado!');
+    } catch (error) {
+      toast.error('Erro ao atualizar card');
+    }
+  };
+
+  const handleSaveDeck = async (id: string, updates: Partial<Deck>) => {
+    try {
+      await updateDeck(id, updates);
+      // Update local selected deck
+      if (selectedDeck && selectedDeck.id === id) {
+        setSelectedDeck({ ...selectedDeck, ...updates });
+      }
+      toast.success('Baralho atualizado!');
+    } catch (error) {
+      toast.error('Erro ao atualizar baralho');
+    }
+  };
+
+  const handleSessionStart = async () => {
+    return startSession(selectedDeck?.id);
   };
 
   if (isLoading) {
@@ -117,6 +176,8 @@ export default function Flashcards() {
           cards={studyCards}
           onReview={reviewFlashcard}
           onClose={handleBackToList}
+          onSessionStart={handleSessionStart}
+          onSessionEnd={endSession}
         />
       </div>
     );
@@ -138,6 +199,8 @@ export default function Flashcards() {
           onAddCard={() => setIsCreateCardOpen(true)}
           onGenerateWithAI={() => setIsGenerateDialogOpen(true)}
           onDeleteCard={handleDeleteCard}
+          onEditCard={handleEditCard}
+          onEditDeck={() => setIsEditDeckOpen(true)}
         />
         <CreateFlashcardDialog
           open={isCreateCardOpen}
@@ -150,6 +213,18 @@ export default function Flashcards() {
           onOpenChange={setIsGenerateDialogOpen}
           deckTitle={selectedDeck.title}
           onSaveCards={handleGenerateFlashcards}
+        />
+        <EditFlashcardDialog
+          open={isEditCardOpen}
+          onOpenChange={setIsEditCardOpen}
+          flashcard={cardToEdit}
+          onSave={handleSaveCard}
+        />
+        <EditDeckDialog
+          open={isEditDeckOpen}
+          onOpenChange={setIsEditDeckOpen}
+          deck={selectedDeck}
+          onSave={handleSaveDeck}
         />
       </div>
     );
