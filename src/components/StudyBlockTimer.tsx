@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Play, Pause, SkipForward, BookOpen } from "lucide-react";
+import { Play, Pause, SkipForward, BookOpen, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface StudyBlockTimerProps {
@@ -10,6 +10,7 @@ interface StudyBlockTimerProps {
   onStart: () => void;
   onPause: () => void;
   onSkip: () => void;
+  onExpand?: () => void;
 }
 
 export function StudyBlockTimer({
@@ -19,7 +20,8 @@ export function StudyBlockTimer({
   isFinished,
   onStart,
   onPause,
-  onSkip
+  onSkip,
+  onExpand
 }: StudyBlockTimerProps) {
   // Color based on progress
   const getProgressColor = () => {
@@ -114,6 +116,19 @@ export function StudyBlockTimer({
         >
           <SkipForward className="h-4 w-4" />
         </Button>
+        
+        {/* Expand to fullscreen button */}
+        {onExpand && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6 text-muted-foreground/50 hover:text-muted-foreground"
+            onClick={onExpand}
+            title="Tela cheia"
+          >
+            <Maximize2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
       </div>
     </div>
   );
