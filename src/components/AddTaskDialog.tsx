@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Star, Calendar } from 'lucide-react';
+import { Plus, Star, Calendar, Clock, CheckSquare, Timer } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -24,11 +24,20 @@ interface AddTaskDialogProps {
 
 const STORAGE_KEY = "nomos.tasks.today";
 
+const DURATION_PRESETS = [
+  { value: 25, label: '25min' },
+  { value: 45, label: '45min' },
+  { value: 60, label: '1h' },
+  { value: 90, label: '1h30' },
+];
+
 export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskDialogProps) {
   const [inputValue, setInputValue] = useState(defaultText);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
   const [manualTime, setManualTime] = useState<string | undefined>();
   const [manualDate, setManualDate] = useState<Date | undefined>();
+  const [taskType, setTaskType] = useState<'task' | 'study-block'>('task');
+  const [durationMinutes, setDurationMinutes] = useState<number>(25);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,6 +47,15 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
       setInputValue(defaultText);
     }
   }, [defaultText]);
+
+  const resetForm = () => {
+    setInputValue("");
+    setPriority('baixa');
+    setManualTime(undefined);
+    setManualDate(undefined);
+    setTaskType('task');
+    setDurationMinutes(25);
+  };
 
   const addTask = () => {
     if (!inputValue.trim()) return;
@@ -51,7 +69,9 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     // Usar valores manuais se existirem, senão usar os detectados do texto
     const finalTime = manualTime || textTime;
     const finalDate = manualDate || textDate;
-    const finalCategory = categorizeByDetectedDate(finalDate);
+    
+    // Blocos de estudo sempre vão para "hoje"
+    const finalCategory = taskType === 'study-block' ? 'hoje' : categorizeByDetectedDate(finalDate);
 
     const newTask: Task = {
       id: Date.now().toString(),
@@ -65,6 +85,12 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
       priority: priority,
       sourceType: 'manual',
       category: finalCategory,
+      // Campos específicos de study-block
+      ...(taskType === 'study-block' && {
+        type: 'study-block' as const,
+        durationMinutes: durationMinutes,
+        focusSubject: cleanText,
+      }),
     };
 
     // Get existing tasks from localStorage
@@ -79,30 +105,30 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     window.dispatchEvent(new Event('tasksUpdated'));
 
     // Mostrar toast informando onde a tarefa foi criada
+    const isStudyBlock = taskType === 'study-block';
     const categoryName = finalCategory === 'hoje' ? 'Hoje' : finalCategory === 'em-breve' ? 'Em breve' : 'Entrada';
     const categoryRoute = finalCategory === 'hoje' ? '/hoje' : finalCategory === 'em-breve' ? '/em-breve' : '/';
     
     toast({
-      title: "✅ Tarefa criada!",
-      description: finalDate 
-        ? `Adicionada em "${categoryName}" para ${formatDetectedDate(finalDate)}`
-        : `Adicionada em "${categoryName}"`,
+      title: isStudyBlock ? "⏱️ Bloco de estudo criado!" : "✅ Tarefa criada!",
+      description: isStudyBlock 
+        ? `Bloco de ${durationMinutes}min adicionado em "Hoje"`
+        : finalDate 
+          ? `Adicionada em "${categoryName}" para ${formatDetectedDate(finalDate)}`
+          : `Adicionada em "${categoryName}"`,
       action: (
         <Button
           variant="outline"
           size="sm"
           onClick={() => navigate(categoryRoute)}
         >
-          Ver tarefa
+          {isStudyBlock ? 'Iniciar' : 'Ver tarefa'}
         </Button>
       ),
     });
 
     // Reset form
-    setInputValue("");
-    setPriority('baixa');
-    setManualTime(undefined);
-    setManualDate(undefined);
+    resetForm();
     onOpenChange(false);
   };
 
@@ -132,16 +158,70 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
   
   const previewDate = manualDate || textDate;
   const previewTime = manualTime || textTime;
-  const previewCategory = categorizeByDetectedDate(previewDate);
+  const previewCategory = taskType === 'study-block' ? 'hoje' : categorizeByDetectedDate(previewDate);
   
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Adicionar tarefa</DialogTitle>
+          <DialogTitle>
+            {taskType === 'task' ? 'Adicionar tarefa' : 'Adicionar bloco de estudo'}
+          </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4 py-4">
+          {/* Toggle entre Tarefa e Bloco de Estudo */}
+          <div className="flex gap-2">
+            <Button 
+              variant={taskType === 'task' ? 'default' : 'outline'}
+              onClick={() => setTaskType('task')}
+              size="sm"
+              className="flex-1"
+            >
+              <CheckSquare className="h-4 w-4 mr-2" />
+              Tarefa
+            </Button>
+            <Button 
+              variant={taskType === 'study-block' ? 'default' : 'outline'}
+              onClick={() => setTaskType('study-block')}
+              size="sm"
+              className="flex-1"
+            >
+              <Timer className="h-4 w-4 mr-2" />
+              Bloco de Estudo
+            </Button>
+          </div>
+
+          {/* Seletor de duração para blocos de estudo */}
+          {taskType === 'study-block' && (
+            <div className="space-y-2">
+              <label className="text-sm text-muted-foreground">Duração do bloco</label>
+              <div className="flex gap-2 items-center flex-wrap">
+                {DURATION_PRESETS.map((preset) => (
+                  <Button 
+                    key={preset.value}
+                    variant={durationMinutes === preset.value ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setDurationMinutes(preset.value)}
+                  >
+                    {preset.label}
+                  </Button>
+                ))}
+                <div className="flex items-center gap-1">
+                  <Input 
+                    type="number"
+                    value={durationMinutes}
+                    onChange={(e) => setDurationMinutes(Math.max(1, Math.min(480, Number(e.target.value))))}
+                    className="w-16 h-8 text-center"
+                    min={1}
+                    max={480}
+                  />
+                  <span className="text-sm text-muted-foreground">min</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2 items-center">
             <Button
               onClick={togglePriority}
@@ -160,12 +240,16 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
               </span>
             </Button>
 
-            <TimePickerPopover value={manualTime} onChange={setManualTime} />
-            <DatePickerPopover value={manualDate} onChange={setManualDate} />
+            {taskType === 'task' && (
+              <>
+                <TimePickerPopover value={manualTime} onChange={setManualTime} />
+                <DatePickerPopover value={manualDate} onChange={setManualDate} />
+              </>
+            )}
 
             <Input
               type="text"
-              placeholder="Nome da tarefa"
+              placeholder={taskType === 'task' ? 'Nome da tarefa' : 'O que você vai estudar?'}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
@@ -174,8 +258,8 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
             />
           </div>
 
-          {/* Preview de data e horário detectados */}
-          {(previewDate || previewTime) && (
+          {/* Preview para tarefas normais */}
+          {taskType === 'task' && (previewDate || previewTime) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground bg-muted/30 px-3 py-2 rounded-md">
               <Calendar className="h-4 w-4" />
               <span>
@@ -189,20 +273,35 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
             </div>
           )}
 
-          <div className="text-xs text-muted-foreground space-y-1">
-            <p>💡 Dica: Use datas e horários para organizar automaticamente</p>
-            <p className="text-[10px]">Exemplos: "Jogar bola 11:10 22/12", "Reunião 15h amanhã", "Estudar 14h30 25/12"</p>
-          </div>
+          {/* Preview para blocos de estudo */}
+          {taskType === 'study-block' && (
+            <div className="flex items-center gap-2 text-sm text-primary bg-primary/10 px-3 py-2 rounded-md">
+              <Clock className="h-4 w-4" />
+              <span>
+                Bloco de <strong>{durationMinutes}min</strong> → Categoria: <strong>Hoje</strong>
+              </span>
+            </div>
+          )}
+
+          {taskType === 'task' && (
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p>💡 Dica: Use datas e horários para organizar automaticamente</p>
+              <p className="text-[10px]">Exemplos: "Jogar bola 11:10 22/12", "Reunião 15h amanhã", "Estudar 14h30 25/12"</p>
+            </div>
+          )}
+
+          {taskType === 'study-block' && (
+            <div className="text-xs text-muted-foreground">
+              <p>⏱️ Blocos de estudo têm cronômetro integrado para ajudar no foco</p>
+            </div>
+          )}
         </div>
 
         <div className="flex justify-end gap-2">
           <Button
             variant="ghost"
             onClick={() => {
-              setInputValue("");
-              setPriority('baixa');
-              setManualTime(undefined);
-              setManualDate(undefined);
+              resetForm();
               onOpenChange(false);
             }}
           >
@@ -214,7 +313,7 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
             className="bg-[hsl(var(--todoist-red))] hover:bg-[hsl(var(--todoist-red-hover))] text-white"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Adicionar tarefa
+            {taskType === 'task' ? 'Adicionar tarefa' : 'Criar bloco'}
           </Button>
         </div>
       </DialogContent>
