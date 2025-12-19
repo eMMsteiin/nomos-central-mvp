@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Play, Trash2, MoreVertical, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Trash2, MoreVertical, Sparkles, Pencil, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
@@ -19,6 +20,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { Deck, Flashcard } from '@/types/flashcard';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +37,8 @@ interface DeckDetailProps {
   onAddCard: () => void;
   onGenerateWithAI: () => void;
   onDeleteCard: (cardId: string) => void;
+  onEditCard: (card: Flashcard) => void;
+  onEditDeck: () => void;
 }
 
 export function DeckDetail({
@@ -42,14 +50,42 @@ export function DeckDetail({
   onAddCard,
   onGenerateWithAI,
   onDeleteCard,
+  onEditCard,
+  onEditDeck,
 }: DeckDetailProps) {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
+  const [revealedCards, setRevealedCards] = useState<Set<string>>(new Set());
+  const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
 
   const handleDeleteConfirm = () => {
     if (cardToDelete) {
       onDeleteCard(cardToDelete);
       setCardToDelete(null);
     }
+  };
+
+  const toggleReveal = (cardId: string) => {
+    setRevealedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
+  };
+
+  const toggleExpand = (cardId: string) => {
+    setExpandedCards(prev => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else {
+        next.add(cardId);
+      }
+      return next;
+    });
   };
 
   return (
@@ -72,6 +108,9 @@ export function DeckDetail({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <Button variant="outline" size="icon" onClick={onEditDeck}>
+            <Pencil className="w-4 h-4" />
+          </Button>
           <Button variant="outline" onClick={onAddCard}>
             <Plus className="w-4 h-4 mr-2" />
             Adicionar card
@@ -134,7 +173,10 @@ export function DeckDetail({
           <div className="grid gap-3">
             {cards.map((card, index) => {
               const isDue = new Date(card.nextReview) <= new Date();
-              
+              const isRevealed = revealedCards.has(card.id);
+              const isExpanded = expandedCards.has(card.id);
+              const needsExpand = card.front.length > 100 || card.back.length > 100;
+
               return (
                 <motion.div
                   key={card.id}
@@ -151,16 +193,64 @@ export function DeckDetail({
                             isDue ? 'bg-orange-500' : 'bg-green-500'
                           )}
                         />
-                        <div className="flex-1 min-w-0 grid md:grid-cols-2 gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">Frente</p>
-                            <p className="font-medium line-clamp-2">{card.front}</p>
+                        <Collapsible 
+                          open={isExpanded} 
+                          onOpenChange={() => needsExpand && toggleExpand(card.id)}
+                          className="flex-1 min-w-0"
+                        >
+                          <div className="grid md:grid-cols-2 gap-4">
+                            <div>
+                              <p className="text-xs text-muted-foreground mb-1">Frente</p>
+                              <CollapsibleContent forceMount>
+                                <p className={cn(
+                                  "font-medium",
+                                  !isExpanded && needsExpand && "line-clamp-2"
+                                )}>
+                                  {card.front}
+                                </p>
+                              </CollapsibleContent>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-xs text-muted-foreground">Verso</p>
+                                <button
+                                  onClick={() => toggleReveal(card.id)}
+                                  className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
+                                >
+                                  {isRevealed ? (
+                                    <>
+                                      <EyeOff className="w-3 h-3" />
+                                      Ocultar
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Eye className="w-3 h-3" />
+                                      Revelar
+                                    </>
+                                  )}
+                                </button>
+                              </div>
+                              <CollapsibleContent forceMount>
+                                <p className={cn(
+                                  "text-muted-foreground transition-all cursor-pointer select-none",
+                                  !isRevealed && "blur-sm",
+                                  !isExpanded && needsExpand && "line-clamp-2"
+                                )}
+                                onClick={() => toggleReveal(card.id)}
+                                >
+                                  {card.back}
+                                </p>
+                              </CollapsibleContent>
+                            </div>
                           </div>
-                          <div className="group/answer">
-                            <p className="text-xs text-muted-foreground mb-1">Verso <span className="text-[10px] opacity-50">(passe o mouse)</span></p>
-                            <p className="text-muted-foreground line-clamp-2 blur-sm group-hover/answer:blur-none transition-all cursor-pointer select-none">{card.back}</p>
-                          </div>
-                        </div>
+                          {needsExpand && (
+                            <CollapsibleTrigger asChild>
+                              <Button variant="ghost" size="sm" className="mt-2 h-6 text-xs">
+                                {isExpanded ? 'Ver menos' : 'Ver mais'}
+                              </Button>
+                            </CollapsibleTrigger>
+                          )}
+                        </Collapsible>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
@@ -172,6 +262,11 @@ export function DeckDetail({
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => onEditCard(card)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Editar card
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
                             <DropdownMenuItem
                               onClick={() => setCardToDelete(card.id)}
                               className="text-destructive focus:text-destructive"
