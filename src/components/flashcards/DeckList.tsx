@@ -137,14 +137,22 @@ export function DeckList({
                       <Play className="w-3 h-3" />
                       {dueCount} para revisar
                     </Button>
+                  ) : deck.cardCount > 0 ? (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onStudyDeck(deck);
+                      }}
+                      className="gap-1"
+                    >
+                      <Play className="w-3 h-3" />
+                      Praticar
+                    </Button>
                   ) : (
-                    <span className={cn(
-                      'text-xs px-2 py-1 rounded-full',
-                      deck.cardCount > 0
-                        ? 'bg-green-500/20 text-green-600 dark:text-green-400'
-                        : 'bg-muted text-muted-foreground'
-                    )}>
-                      {deck.cardCount > 0 ? 'Em dia ✓' : 'Vazio'}
+                    <span className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                      Vazio
                     </span>
                   )}
                 </div>
