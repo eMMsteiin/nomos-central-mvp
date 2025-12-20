@@ -476,10 +476,17 @@ function shouldSuggestConsolidation(context: ChatContext | undefined, message: s
   
   const lowerMessage = message.toLowerCase();
   
+  // Skip if user is clearly asking about something else or already received an action
+  const skipPhrases = ['[ação aplicada', 'criar tarefa', 'criar bloco', 'configurar rotina', 'ajuda com', 'como faço'];
+  if (skipPhrases.some(phrase => lowerMessage.includes(phrase))) {
+    return { should: false, trigger: '', subject: '' };
+  }
+  
   // Check if user just mentioned completing study
   const studyCompletionPhrases = [
     'acabei de estudar', 'terminei de estudar', 'finalizei o estudo',
-    'estudei', 'acabei a sessão', 'terminei o bloco', 'finalizei o bloco'
+    'estudei', 'acabei a sessão', 'terminei o bloco', 'finalizei o bloco',
+    'acabei', 'terminei', 'finalizei', 'concluí', 'encerrei'
   ];
   
   const mentionedStudyCompletion = studyCompletionPhrases.some(phrase => lowerMessage.includes(phrase));
@@ -489,17 +496,37 @@ function shouldSuggestConsolidation(context: ChatContext | undefined, message: s
     b => (b.durationMinutes || 0) >= 25
   ) || [];
   
-  if (significantBlocks.length > 0 && mentionedStudyCompletion) {
+  // PROACTIVE: If there are significant completed blocks today and user is engaging
+  // Suggest consolidation even without explicit mention
+  if (significantBlocks.length > 0) {
     const block = significantBlocks[0];
-    return {
-      should: true,
-      trigger: 'study_block_completed',
-      subject: block.focusSubject || block.text || 'o conteúdo estudado',
-      studyDuration: block.durationMinutes
-    };
+    
+    // If user mentioned studying or completing, definitely suggest
+    if (mentionedStudyCompletion) {
+      return {
+        should: true,
+        trigger: 'study_block_completed',
+        subject: block.focusSubject || block.text || 'o conteúdo estudado',
+        studyDuration: block.durationMinutes
+      };
+    }
+    
+    // If user is just chatting and has significant study time, gently suggest
+    const totalMinutes = context.stats?.totalStudyMinutesToday || 0;
+    if (totalMinutes >= 30 && !lowerMessage.includes('resumo') && !lowerMessage.includes('flashcard')) {
+      // Only suggest if the message seems like a good moment (short, casual)
+      if (message.length < 100) {
+        return {
+          should: true,
+          trigger: 'study_block_completed',
+          subject: block.focusSubject || block.text || 'o conteúdo estudado',
+          studyDuration: totalMinutes
+        };
+      }
+    }
   }
   
-  // Check for upcoming exams
+  // Check for upcoming exams - high priority trigger
   if (context.upcomingExams?.length > 0) {
     const examSubjects = context.upcomingExams.map(e => e.text.toLowerCase());
     const mentionedExamSubject = examSubjects.some(subj => 
@@ -511,6 +538,28 @@ function shouldSuggestConsolidation(context: ChatContext | undefined, message: s
         should: true,
         trigger: 'exam_approaching',
         subject: context.upcomingExams[0].text
+      };
+    }
+  }
+  
+  // Check for many post-its on same subject (consolidation opportunity)
+  if (context.postIts && context.postIts.length >= 3) {
+    const blockTitles = context.postIts
+      .filter(p => p.blockTitle)
+      .map(p => p.blockTitle!.toLowerCase());
+    
+    // Find if any block has 3+ post-its
+    const counts: Record<string, number> = {};
+    blockTitles.forEach(title => {
+      counts[title] = (counts[title] || 0) + 1;
+    });
+    
+    const frequentBlock = Object.entries(counts).find(([_, count]) => count >= 3);
+    if (frequentBlock && lowerMessage.includes(frequentBlock[0].split(' ')[0])) {
+      return {
+        should: true,
+        trigger: 'recurring_study',
+        subject: frequentBlock[0]
       };
     }
   }
