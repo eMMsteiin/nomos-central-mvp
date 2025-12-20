@@ -116,6 +116,10 @@ export function useSummaries() {
     return Array.from(subjects);
   };
 
+  const reloadSummaries = () => {
+    loadSummaries();
+  };
+
   return {
     summaries,
     isLoading,
@@ -125,5 +129,6 @@ export function useSummaries() {
     getSummariesBySubject,
     getSummariesByType,
     getSubjects,
+    reloadSummaries,
   };
 }

@@ -261,3 +261,61 @@ export function searchNotebooksByKeywords(context: ChatContext, keywords: string
     return normalizedKeywords.some(keyword => searchableText.includes(keyword));
   });
 }
+
+// Extract source content for summary generation
+export function extractSourceContentForSummary(subject: string): string {
+  const context = collectChatContext();
+  const contentParts: string[] = [];
+  
+  const normalizedSubject = subject.toLowerCase().trim();
+  
+  // Find relevant notebooks
+  const relevantNotebooks = context.notebooks.filter(notebook => {
+    const searchableText = [
+      notebook.title,
+      notebook.discipline,
+      notebook.subject,
+    ].filter(Boolean).join(' ').toLowerCase();
+    
+    return searchableText.includes(normalizedSubject) || 
+           normalizedSubject.split(' ').some(word => searchableText.includes(word));
+  });
+  
+  // Add notebook content
+  relevantNotebooks.forEach(notebook => {
+    if (notebook.textNotes) {
+      contentParts.push(`## Caderno: ${notebook.title}\n${notebook.textNotes}`);
+    }
+  });
+  
+  // Find relevant post-its
+  const relevantPostIts = context.postIts.filter(postIt => {
+    const text = postIt.text.toLowerCase();
+    const blockTitle = postIt.blockTitle?.toLowerCase() || '';
+    
+    return text.includes(normalizedSubject) || 
+           blockTitle.includes(normalizedSubject) ||
+           normalizedSubject.split(' ').some(word => text.includes(word) || blockTitle.includes(word));
+  });
+  
+  if (relevantPostIts.length > 0) {
+    contentParts.push(`## Lembretes Relacionados\n${relevantPostIts.map(p => `• ${p.text}`).join('\n')}`);
+  }
+  
+  // Find completed study blocks for this subject
+  const relevantStudyBlocks = context.completedStudyBlocks.filter(block => {
+    const focusSubject = block.focusSubject?.toLowerCase() || '';
+    const text = block.text.toLowerCase();
+    
+    return focusSubject.includes(normalizedSubject) || 
+           text.includes(normalizedSubject) ||
+           normalizedSubject.split(' ').some(word => focusSubject.includes(word) || text.includes(word));
+  });
+  
+  if (relevantStudyBlocks.length > 0) {
+    const totalMinutes = relevantStudyBlocks.reduce((sum, b) => sum + (b.durationMinutes || 0), 0);
+    contentParts.push(`## Sessões de Estudo Completadas\n• ${relevantStudyBlocks.length} sessão(ões) concluída(s)\n• Total: ${totalMinutes} minutos de estudo`);
+  }
+  
+  return contentParts.join('\n\n');
+}
