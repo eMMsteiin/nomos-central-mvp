@@ -220,10 +220,8 @@ Organização de Rotina:
 - "hoje desandou" → action_type: "reschedule_day"
 - "modo provas" → action_type: "activate_exam_mode"
 - "estudar agora" → action_type: "start_study_session"
-- "abrir caderno" → action_type: "suggest_notebook"
 - "concluir tarefa" → action_type: "complete_task"
 - "mover tarefa" → action_type: "move_task"
-- "anotar/lembrar algo" → action_type: "suggest_choice"
 
 Consolidação de Aprendizado:
 - detectou momento de consolidar → RESPONDA POR TEXTO (não gere PROPOSAL!)
@@ -232,34 +230,44 @@ Consolidação de Aprendizado:
 - adiar consolidação → responda por texto ("ok, deixamos pra depois")
 - criar bloco de revisão → action_type: "create_review_block"
 
-FORMATO DE PROPOSTA (JSON no final da resposta):
-[PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {dados específicos}, "choices": [...]}[/PROPOSAL]
+🚫🚫🚫 REGRA CRÍTICA - NUNCA GERE [PROPOSAL] COM CHOICES! 🚫🚫🚫
 
-PAYLOADS POR TIPO:
+NUNCA use [PROPOSAL] para:
+❌ suggest_notebook - pergunte por TEXTO qual caderno o aluno quer
+❌ suggest_choice - pergunte por TEXTO onde salvar (post-it, tarefa, etc)
+❌ suggest_consolidation - pergunte por TEXTO se quer resumo ou flashcards
+❌ Qualquer sugestão com múltiplas opções - sempre TEXTO CONVERSACIONAL
+
+Quando o aluno fizer perguntas sobre cadernos:
+1. Responda POR TEXTO: "Vi que você tem o caderno X de Cálculo. Quer que eu abra?"
+2. Se ele responder "sim" → aí sim gere [PROPOSAL] com action_type: "open_notebook"
+
+Quando o aluno pedir para anotar algo:
+1. Responda POR TEXTO: "Posso salvar como post-it ou tarefa. O que prefere?"
+2. Se ele responder "post-it" → aí sim gere [PROPOSAL] com action_type: "create_postit"
+3. Se ele responder "tarefa" → aí sim gere [PROPOSAL] com action_type: "create_task"
+
+FORMATO DE PROPOSTA (SOMENTE para ações únicas confirmadas):
+[PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {dados específicos}}[/PROPOSAL]
+
+⚠️ NUNCA inclua "choices" no PROPOSAL! Perguntas de múltipla escolha = TEXTO!
+
+PAYLOADS POR TIPO (ações únicas, sem choices):
 
 create_routine_block:
 {"study_blocks": [{"focus": "matéria", "duration": "duração", "time_start": "horário"}]}
 
-suggest_notebook:
-{"notebookId": "id", "notebookTitle": "título", "reason": "por que é relevante"}
+open_notebook (só após confirmação do aluno):
+{"notebookId": "id", "notebookTitle": "título"}
 
 complete_task / move_task:
 {"taskId": "id", "category": "hoje|em-breve", "from": "origem", "to": "destino"}
 
-suggest_choice (onde salvar algo):
-{
-  "text": "conteúdo a salvar",
-  "choices": [
-    {"id": "postit", "label": "📝 Post-it", "description": "Em Lembretes", "targetRoute": "/lembretes"},
-    {"id": "task_hoje", "label": "✅ Tarefa", "description": "Em Hoje", "targetRoute": "/hoje"},
-    {"id": "task_entrada", "label": "📥 Entrada", "description": "Na caixa de entrada", "targetRoute": "/"}
-  ]
-}
+create_postit (só após aluno escolher post-it):
+{"text": "conteúdo a salvar", "blockId": "id do bloco (opcional)"}
 
-⚠️ IMPORTANTE: NÃO GERE suggest_consolidation COM CHOICES!
-Quando detectar momento de consolidação, responda APENAS POR TEXTO.
-Os tipos create_summary e create_flashcards_from_study só devem ser usados 
-APÓS o aluno responder por texto o que prefere.
+create_task (só após aluno escolher tarefa):
+{"text": "conteúdo da tarefa", "category": "hoje|entrada|em-breve"}
 
 create_summary:
 {
@@ -673,7 +681,7 @@ serve(async (req) => {
     let notebookHint = '';
     
     if (relevantNotebooks.length > 0 && !collectingBlockInfo) {
-      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos possivelmente relevantes: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. Considere sugerir se for útil.]`;
+      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos relevantes: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. IMPORTANTE: Mencione por TEXTO CONVERSACIONAL ("Vi que você tem o caderno X..."). NÃO gere [PROPOSAL] para sugestão de cadernos! Só gere [PROPOSAL] com action_type "open_notebook" APÓS o aluno confirmar que quer abrir.]`;
     }
 
     // Build messages array for AI
