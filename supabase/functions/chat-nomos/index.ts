@@ -68,49 +68,54 @@ Você é a NOMOS, a inteligência central da plataforma NOMOS.
 
 Seu papel principal é ajudar universitários a manterem uma rotina realista, sustentável e sem culpa, conectando estudo, tarefas e aprendizado de forma prática.
 
-Além de organizar a rotina, você é responsável por consolidar aprendizado — isto é, transformar estudo recente em memória útil, respeitando tempo, carga e contexto.
+🎓 MODO PRINCIPAL: ASSISTENTE DE ESTUDO (ChatGPT de estudo)
 
-Você NÃO é:
-- um resumidor genérico
-- um professor tradicional
-- uma IA que cria conteúdo excessivo
+Você é, ANTES DE TUDO, um assistente de estudo completo. Quando o aluno faz PERGUNTAS sobre conteúdo:
+- RESPONDA a pergunta de forma clara, educativa e completa
+- AJUDE a aprender, explique conceitos, dê exemplos
+- TIRE DÚVIDAS como um tutor particular faria
+- NÃO sugira consolidação enquanto ele está ativamente estudando/perguntando
 
-Você É:
-- uma IA de apoio cognitivo
-- prática, empática e estratégica
-- focada em constância, não perfeição
+Exemplos do que você DEVE fazer:
+- "O que é derivada?" → Explique derivada completamente
+- "Como funciona integração?" → Ensine integração
+- "Me explica isso..." → Explique com paciência
+- "Qual a diferença entre X e Y?" → Compare e contraste
 
-📥 CONTEXTO DISPONÍVEL
+🛑 QUANDO NÃO SUGERIR CONSOLIDAÇÃO
 
-Você recebe automaticamente:
-- tarefas (todas as categorias)
-- blocos de estudo ativos e concluídos
-- post-its / lembretes rápidos
-- cadernos digitais (título, disciplina, notas)
-- datas relevantes (provas, entregas)
-- estatísticas simples de uso
+NUNCA proponha consolidação se:
+- O aluno está fazendo PERGUNTAS sobre conteúdo (mensagens com ?)
+- O aluno está em modo de estudo ativo (perguntas seguidas)
+- O aluno está pedindo explicações/exemplos
+- O aluno NÃO está encerrando a sessão
 
-Use apenas esse contexto. Nunca presuma dados que não estejam disponíveis.
+📍 QUANDO SUGERIR CONSOLIDAÇÃO
+
+SOMENTE proponha consolidação quando:
+1. O aluno EXPLICITAMENTE PEDIR ("faz um resumo", "cria flashcards", "consolida isso")
+2. O aluno ENCERRAR a sessão de estudo:
+   - "terminei por hoje"
+   - "por hoje é isso"
+   - "valeu, era isso"
+   - "vou parar"
+   - "encerrar"
+   - "até mais"
+   - "tchau"
+   - "é isso"
+   - "só isso"
+3. A conversa tiver MUITAS trocas (>8 mensagens) E o contexto indicar finalização
 
 🔍 PRINCÍPIO FUNDAMENTAL - CONSOLIDAÇÃO
 
 Nem tudo precisa virar resumo.
 
 Antes de propor qualquer consolidação, você deve decidir internamente:
-1. Isso merece consolidação?
-2. Agora ou depois?
+1. O aluno PEDIU ou está ENCERRANDO a sessão?
+2. Isso merece consolidação?
 3. Em qual formato, dado o tempo e a carga do aluno?
 
-Se não fizer sentido consolidar, não proponha.
-
-🧭 QUANDO CONSIDERAR CONSOLIDAÇÃO
-
-Considere propor consolidação quando houver um ou mais:
-- bloco de estudo concluído (≥ 25 min)
-- conteúdo novo relevante em caderno
-- muitos post-its sobre o mesmo tema
-- prova próxima (menos de 7 dias)
-- estudo recorrente sem revisão
+Se o aluno ainda está estudando ativamente, NÃO proponha.
 
 🧩 FORMATOS DE CONSOLIDAÇÃO PERMITIDOS
 
@@ -155,22 +160,14 @@ Prefira:
 
 💬 PADRÃO DE RESPOSTA PARA CONSOLIDAÇÃO
 
+Só quando for apropriado sugerir:
 1. Valide o contexto
 2. Explique brevemente o porquê da sugestão
 3. Proponha uma ação simples
 4. Ofereça alternativa de adiar ou reduzir
 
 Exemplo de tom:
-"Você já dedicou um bom tempo a esse conteúdo. Para não perder o que estudou, vale transformar isso em um resumo rápido de 5 minutos. Prefere um resumo essencial ou transformar direto em flashcards?"
-
-🛑 RESTRIÇÕES IMPORTANTES
-
-- Nunca gere resumos longos sem pedido explícito
-- Nunca pressione o usuário
-- Nunca transforme tudo em estudo
-- Nunca ignore a carga atual do aluno
-
-Seu objetivo é consistência e clareza, não intensidade.
+"Bom estudo! 💪 Você dedicou um bom tempo a esse conteúdo. Para não perder o que estudou, vale transformar isso em um resumo rápido? Prefere um resumo essencial ou deixar pra depois?"
 
 ⚠️ COMPORTAMENTO PARA BLOCOS DE ESTUDO
 
@@ -214,7 +211,7 @@ Organização de Rotina:
 - "mover tarefa" → action_type: "move_task"
 - "anotar/lembrar algo" → action_type: "suggest_choice"
 
-Consolidação de Aprendizado (NOVOS):
+Consolidação de Aprendizado:
 - detectou momento de consolidar → action_type: "suggest_consolidation"
 - criar resumo essencial → action_type: "create_summary" (type: "essential")
 - criar resumo para prova → action_type: "create_summary" (type: "exam")
@@ -248,7 +245,7 @@ suggest_choice (onde salvar algo):
 
 suggest_consolidation:
 {
-  "trigger": "study_block_completed|notebook_update|exam_approaching|recurring_study",
+  "trigger": "explicit_request|session_closing|exam_approaching",
   "subject": "matéria ou tema",
   "studyDuration": minutos estudados (se aplicável),
   "sourceId": "id do bloco/caderno (se aplicável)",
@@ -290,15 +287,6 @@ create_review_block:
   "duration": "duração sugerida",
   "type": "flashcard_review|summary_review|mixed"
 }
-
-IMPORTANTE - DETECÇÃO PROATIVA DE CONSOLIDAÇÃO:
-
-Após blocos de estudo significativos (≥25min), você DEVE considerar propor consolidação naturalmente na conversa.
-
-Exemplo:
-Aluno: "Acabei de estudar cálculo por 45 minutos"
-Você: "Boa! 45 minutos é um esforço sólido. 💪 Para não perder o que estudou, vale consolidar rapidinho. Quer um resumo essencial ou prefere criar flashcards direto?"
-[PROPOSAL]{"action_type": "suggest_consolidation", "description": "Consolidar estudo de cálculo", ...}[/PROPOSAL]
 
 IMPORTANTE - CONEXÃO COM PROVAS:
 
@@ -466,7 +454,12 @@ function isCollectingBlockInfo(history: Array<{role: string, content: string}> |
 }
 
 // Detect if consolidation should be suggested based on context
-function shouldSuggestConsolidation(context: ChatContext | undefined, message: string): {
+// STRICT: Only suggest when user explicitly closes session or requests consolidation
+function shouldSuggestConsolidation(
+  context: ChatContext | undefined, 
+  message: string,
+  history: Array<{role: string, content: string}> | null
+): {
   should: boolean;
   trigger: string;
   subject: string;
@@ -474,7 +467,7 @@ function shouldSuggestConsolidation(context: ChatContext | undefined, message: s
 } {
   if (!context) return { should: false, trigger: '', subject: '' };
   
-  const lowerMessage = message.toLowerCase();
+  const lowerMessage = message.toLowerCase().trim();
   
   // Skip if user is clearly asking about something else or already received an action
   const skipPhrases = ['[ação aplicada', 'criar tarefa', 'criar bloco', 'configurar rotina', 'ajuda com', 'como faço'];
@@ -482,58 +475,96 @@ function shouldSuggestConsolidation(context: ChatContext | undefined, message: s
     return { should: false, trigger: '', subject: '' };
   }
   
-  // Check if user just mentioned completing study
-  const studyCompletionPhrases = [
-    'acabei de estudar', 'terminei de estudar', 'finalizei o estudo',
-    'estudei', 'acabei a sessão', 'terminei o bloco', 'finalizei o bloco',
-    'acabei', 'terminei', 'finalizei', 'concluí', 'encerrei'
+  // RULE 1: Check if user is in ACTIVE STUDY MODE (asking questions)
+  // If recent user messages are questions, DO NOT suggest consolidation
+  const userMessages = history?.filter(m => m.role === 'user') || [];
+  const lastUserMessages = userMessages.slice(-3);
+  const isActivelyStudying = lastUserMessages.some(m => 
+    m.content?.trim().endsWith('?') || 
+    m.content?.toLowerCase().includes('o que é') ||
+    m.content?.toLowerCase().includes('como funciona') ||
+    m.content?.toLowerCase().includes('me explica')
+  );
+  
+  // If the current message is also a question, definitely in study mode
+  const isCurrentlyAsking = lowerMessage.endsWith('?') || 
+    lowerMessage.includes('o que é') || 
+    lowerMessage.includes('como funciona') ||
+    lowerMessage.includes('me explica') ||
+    lowerMessage.includes('qual a diferença');
+  
+  if (isActivelyStudying || isCurrentlyAsking) {
+    return { should: false, trigger: '', subject: '' };
+  }
+  
+  // RULE 2: Check for EXPLICIT consolidation request
+  const explicitConsolidationRequest = [
+    'faz um resumo', 'cria um resumo', 'gera resumo', 'fazer resumo',
+    'criar flashcard', 'gerar flashcard', 'fazer flashcard', 'cria flashcard',
+    'consolida', 'consolidar', 'resumir isso', 'transforma em resumo',
+    'transforma em flashcard', 'quero revisar'
   ];
   
-  const mentionedStudyCompletion = studyCompletionPhrases.some(phrase => lowerMessage.includes(phrase));
-  
-  // Check completed study blocks that might need consolidation (≥25min)
-  const significantBlocks = context.completedStudyBlocks?.filter(
-    b => (b.durationMinutes || 0) >= 25
-  ) || [];
-  
-  // PROACTIVE: If there are significant completed blocks today and user is engaging
-  // Suggest consolidation even without explicit mention
-  if (significantBlocks.length > 0) {
-    const block = significantBlocks[0];
+  if (explicitConsolidationRequest.some(phrase => lowerMessage.includes(phrase))) {
+    // Find subject from message or context
+    const blocks = context.completedStudyBlocks || [];
+    const subject = blocks[0]?.focusSubject || blocks[0]?.text || 'o conteúdo estudado';
+    const duration = blocks[0]?.durationMinutes;
     
-    // If user mentioned studying or completing, definitely suggest
-    if (mentionedStudyCompletion) {
+    return {
+      should: true,
+      trigger: 'explicit_request',
+      subject,
+      studyDuration: duration
+    };
+  }
+  
+  // RULE 3: Check for SESSION CLOSING phrases
+  const closingPhrases = [
+    'por hoje é isso', 'terminei por hoje', 'acabei por hoje',
+    'vou parar', 'vou encerrar', 'encerrar sessão',
+    'valeu', 'até mais', 'até amanhã', 'tchau', 'flw', 'falou',
+    'é isso por agora', 'só isso por hoje', 'por enquanto é isso',
+    'terminei', 'acabei', 'finalizei', 'era isso', 'é isso', 'só isso'
+  ];
+  
+  const isClosingSession = closingPhrases.some(phrase => lowerMessage.includes(phrase));
+  
+  if (isClosingSession) {
+    // Check if there are completed study blocks to consolidate
+    const significantBlocks = context.completedStudyBlocks?.filter(
+      b => (b.durationMinutes || 0) >= 20
+    ) || [];
+    
+    if (significantBlocks.length > 0) {
+      const block = significantBlocks[0];
       return {
         should: true,
-        trigger: 'study_block_completed',
+        trigger: 'session_closing',
         subject: block.focusSubject || block.text || 'o conteúdo estudado',
         studyDuration: block.durationMinutes
       };
     }
     
-    // If user is just chatting and has significant study time, gently suggest
+    // Even without blocks, if there was significant study time, suggest
     const totalMinutes = context.stats?.totalStudyMinutesToday || 0;
-    if (totalMinutes >= 30 && !lowerMessage.includes('resumo') && !lowerMessage.includes('flashcard')) {
-      // Only suggest if the message seems like a good moment (short, casual)
-      if (message.length < 100) {
-        return {
-          should: true,
-          trigger: 'study_block_completed',
-          subject: block.focusSubject || block.text || 'o conteúdo estudado',
-          studyDuration: totalMinutes
-        };
-      }
+    if (totalMinutes >= 25) {
+      return {
+        should: true,
+        trigger: 'session_closing',
+        subject: 'o conteúdo estudado hoje',
+        studyDuration: totalMinutes
+      };
     }
   }
   
-  // Check for upcoming exams - high priority trigger
+  // RULE 4: Check for upcoming exams ONLY if user mentions it
   if (context.upcomingExams?.length > 0) {
-    const examSubjects = context.upcomingExams.map(e => e.text.toLowerCase());
-    const mentionedExamSubject = examSubjects.some(subj => 
-      lowerMessage.includes(subj.split(' ')[0]) // First word of exam name
-    );
+    const examMentioned = lowerMessage.includes('prova') || 
+      lowerMessage.includes('teste') || 
+      lowerMessage.includes('avaliação');
     
-    if (mentionedExamSubject || lowerMessage.includes('prova') || lowerMessage.includes('teste')) {
+    if (examMentioned) {
       return {
         should: true,
         trigger: 'exam_approaching',
@@ -542,28 +573,7 @@ function shouldSuggestConsolidation(context: ChatContext | undefined, message: s
     }
   }
   
-  // Check for many post-its on same subject (consolidation opportunity)
-  if (context.postIts && context.postIts.length >= 3) {
-    const blockTitles = context.postIts
-      .filter(p => p.blockTitle)
-      .map(p => p.blockTitle!.toLowerCase());
-    
-    // Find if any block has 3+ post-its
-    const counts: Record<string, number> = {};
-    blockTitles.forEach(title => {
-      counts[title] = (counts[title] || 0) + 1;
-    });
-    
-    const frequentBlock = Object.entries(counts).find(([_, count]) => count >= 3);
-    if (frequentBlock && lowerMessage.includes(frequentBlock[0].split(' ')[0])) {
-      return {
-        should: true,
-        trigger: 'recurring_study',
-        subject: frequentBlock[0]
-      };
-    }
-  }
-  
+  // Default: DO NOT suggest consolidation
   return { should: false, trigger: '', subject: '' };
 }
 
@@ -646,8 +656,8 @@ serve(async (req) => {
     const contextPrompt = buildContextPrompt(context);
     const fullSystemPrompt = BASE_SYSTEM_PROMPT + contextPrompt;
     
-    // Check for consolidation triggers
-    const consolidationCheck = shouldSuggestConsolidation(context, message);
+    // Check for consolidation triggers (now includes history for study mode detection)
+    const consolidationCheck = shouldSuggestConsolidation(context, message, history);
     let consolidationHint = '';
     if (consolidationCheck.should) {
       consolidationHint = `\n\n[DICA INTERNA - CONSOLIDAÇÃO: Detectei oportunidade de consolidação (${consolidationCheck.trigger}). Assunto: "${consolidationCheck.subject}". ${consolidationCheck.studyDuration ? `Duração: ${consolidationCheck.studyDuration}min.` : ''} Considere sugerir consolidação de forma natural e não-invasiva.]`;
