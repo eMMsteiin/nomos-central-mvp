@@ -8,6 +8,10 @@ export interface TaskContext {
   dueDate?: string;
   type?: string;
   focusSubject?: string;
+  durationMinutes?: number;
+  timerStartedAt?: string;
+  timerPausedAt?: string;
+  timerElapsed?: number;
 }
 
 export interface PostItContext {
@@ -41,8 +45,9 @@ export interface ChatContext {
   embreveTasks: TaskContext[];
   completedTasks: TaskContext[];
   
-  // Study blocks
+  // Study blocks (active and completed)
   studyBlocks: TaskContext[];
+  completedStudyBlocks: TaskContext[];
   
   // Lembretes Rápidos
   postIts: PostItContext[];
@@ -51,11 +56,16 @@ export interface ChatContext {
   // Cadernos
   notebooks: NotebookContext[];
   
+  // Upcoming exams (tasks with "prova" or "teste" in text, within 7 days)
+  upcomingExams: TaskContext[];
+  
   // Statistics
   stats: {
     completedToday: number;
     pendingTotal: number;
     studyBlocksToday: number;
+    completedStudyBlocksToday: number;
+    totalStudyMinutesToday: number;
     totalPostIts: number;
     totalNotebooks: number;
   };
@@ -92,7 +102,32 @@ function extractTaskContext(task: Record<string, unknown>): TaskContext {
     dueDate: task.dueDate ? new Date(task.dueDate as string).toLocaleDateString('pt-BR') : undefined,
     type: task.type as string | undefined,
     focusSubject: task.focusSubject as string | undefined,
+    durationMinutes: task.durationMinutes as number | undefined,
+    timerStartedAt: task.timerStartedAt as string | undefined,
+    timerPausedAt: task.timerPausedAt as string | undefined,
+    timerElapsed: task.timerElapsed as number | undefined,
   };
+}
+
+// Check if a task looks like an exam (prova, teste, avaliação)
+function isExamTask(task: Record<string, unknown>): boolean {
+  const text = (task.text as string || '').toLowerCase();
+  const examKeywords = ['prova', 'teste', 'avaliação', 'exame', 'p1', 'p2', 'p3', 'av1', 'av2', 'av3'];
+  return examKeywords.some(keyword => text.includes(keyword));
+}
+
+// Check if date is within N days from now
+function isWithinDays(dateStr: string | undefined, days: number): boolean {
+  if (!dateStr) return false;
+  try {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffTime = date.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays >= 0 && diffDays <= days;
+  } catch {
+    return false;
+  }
 }
 
 export function collectChatContext(): ChatContext {
@@ -109,8 +144,14 @@ export function collectChatContext(): ChatContext {
     .filter(t => t.type !== 'study-block' && !t.completed)
     .map(extractTaskContext);
   
+  // Active study blocks (not completed)
   const studyBlocks = todayRaw
     .filter(t => t.type === 'study-block' && !t.completed)
+    .map(extractTaskContext);
+  
+  // Completed study blocks today (for consolidation triggers)
+  const completedStudyBlocks = todayRaw
+    .filter(t => t.type === 'study-block' && t.completed)
     .map(extractTaskContext);
   
   const entradaTasks = entradaRaw
@@ -122,9 +163,16 @@ export function collectChatContext(): ChatContext {
     .map(extractTaskContext);
   
   const completedTasks = [
-    ...todayRaw.filter(t => t.completed),
+    ...todayRaw.filter(t => t.completed && t.type !== 'study-block'),
     ...completedRaw
-  ].slice(0, 10).map(extractTaskContext); // Last 10 completed
+  ].slice(0, 10).map(extractTaskContext);
+  
+  // Find upcoming exams (within 7 days)
+  const allTasks = [...todayRaw, ...embreveRaw, ...entradaRaw];
+  const upcomingExams = allTasks
+    .filter(t => isExamTask(t) && !t.completed && isWithinDays(t.dueDate as string, 7))
+    .map(extractTaskContext)
+    .slice(0, 5);
   
   // Load post-its and blocks
   const postItsRaw = safeParseJSON<Record<string, unknown>[]>(POSTITS_KEY, []);
@@ -166,6 +214,12 @@ export function collectChatContext(): ChatContext {
   // Calculate stats
   const completedToday = todayRaw.filter(t => t.completed).length;
   const pendingTotal = todayTasks.length + entradaTasks.length + embreveTasks.length;
+  const completedStudyBlocksToday = completedStudyBlocks.length;
+  
+  // Calculate total study minutes today
+  const totalStudyMinutesToday = completedStudyBlocks.reduce((total, block) => {
+    return total + (block.durationMinutes || 0);
+  }, 0);
   
   return {
     todayTasks,
@@ -173,13 +227,17 @@ export function collectChatContext(): ChatContext {
     embreveTasks,
     completedTasks,
     studyBlocks,
+    completedStudyBlocks,
     postIts,
     blocks,
     notebooks,
+    upcomingExams,
     stats: {
       completedToday,
       pendingTotal,
       studyBlocksToday: studyBlocks.length,
+      completedStudyBlocksToday,
+      totalStudyMinutesToday,
       totalPostIts: postIts.length,
       totalNotebooks: notebooks.length,
     },

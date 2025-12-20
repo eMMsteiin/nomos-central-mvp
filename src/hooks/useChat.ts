@@ -430,6 +430,141 @@ export function useChat(options: UseChatOptions = {}) {
         break;
       }
       
+      // ===== NEW CONSOLIDATION ACTIONS =====
+      
+      case 'suggest_consolidation': {
+        // This action presents choices to the user via ProposalCard
+        // The actual consolidation happens when they pick an option
+        const subject = payload?.subject as string || 'seu estudo';
+        toast.info(`📚 Sugestão de consolidação para "${subject}"`, {
+          description: 'Escolha uma das opções no card acima.',
+          duration: 5000
+        });
+        break;
+      }
+      
+      case 'create_summary': {
+        const summaryType = payload?.type as string || 'essential';
+        const subject = payload?.subject as string || 'Estudo';
+        const content = payload?.content as string;
+        
+        // Navigate to Resumos page with the summary data
+        const params = new URLSearchParams({
+          newSummary: 'true',
+          type: summaryType,
+          subject: subject,
+          ...(content ? { content } : {})
+        });
+        
+        toast.success(`📋 Resumo ${summaryType === 'exam' ? 'para prova' : 'essencial'} criado!`, {
+          description: `Tema: ${subject}`,
+          action: {
+            label: 'Ver Resumo',
+            onClick: () => window.location.href = `/resumos?${params.toString()}`
+          },
+          duration: 8000
+        });
+        break;
+      }
+      
+      case 'create_flashcards_from_study': {
+        const subject = payload?.subject as string || 'Estudo';
+        const flashcards = payload?.flashcards as Array<{front: string, back: string}> || [];
+        
+        if (flashcards.length > 0) {
+          // Store flashcards temporarily for the Flashcards page to pick up
+          localStorage.setItem('nomos-pending-flashcards', JSON.stringify({
+            subject,
+            flashcards,
+            createdAt: new Date().toISOString()
+          }));
+          
+          toast.success(`🎴 ${flashcards.length} flashcards criados!`, {
+            description: `Tema: ${subject}`,
+            action: {
+              label: 'Estudar Agora',
+              onClick: () => window.location.href = '/flashcards?fromChat=true'
+            },
+            duration: 8000
+          });
+        } else {
+          toast.info('Flashcards serão criados. Vá para a aba Flashcards para visualizar.', {
+            action: {
+              label: 'Ir para Flashcards',
+              onClick: () => window.location.href = '/flashcards'
+            }
+          });
+        }
+        break;
+      }
+      
+      case 'defer_consolidation': {
+        const subject = payload?.subject as string || 'o estudo';
+        const deferTo = payload?.deferTo as string || 'later_today';
+        const createReminder = payload?.createReminder as boolean;
+        
+        const deferLabels: Record<string, string> = {
+          'later_today': 'mais tarde hoje',
+          'tomorrow': 'amanhã',
+          'next_week': 'próxima semana'
+        };
+        
+        if (createReminder) {
+          // Create a post-it reminder
+          const postIts = JSON.parse(localStorage.getItem(POSTITS_KEY) || '[]');
+          postIts.push({
+            id: `reminder-${Date.now()}`,
+            text: `📚 Consolidar: ${subject}`,
+            color: '#FEF3C7', // Yellow
+            createdAt: new Date().toISOString()
+          });
+          localStorage.setItem(POSTITS_KEY, JSON.stringify(postIts));
+          window.dispatchEvent(new Event('postItsUpdated'));
+        }
+        
+        toast.info(`⏰ Consolidação de "${subject}" adiada para ${deferLabels[deferTo] || deferTo}`, {
+          description: createReminder ? 'Lembrete criado nos Post-its!' : undefined
+        });
+        break;
+      }
+      
+      case 'create_review_block': {
+        const subject = payload?.subject as string || 'Revisão';
+        const duration = payload?.duration as string || '25min';
+        const reviewType = payload?.type as string || 'mixed';
+        
+        const existingTasks = JSON.parse(localStorage.getItem(TASKS_STORAGE_KEY) || '[]');
+        
+        const reviewBlock: Task = {
+          id: `review-${Date.now()}`,
+          type: 'study-block',
+          text: `Revisão: ${subject}`,
+          createdAt: new Date().toISOString(),
+          category: 'hoje',
+          sourceType: 'chat',
+          durationMinutes: parseDuration(duration),
+          focusSubject: subject,
+        };
+        
+        localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify([reviewBlock, ...existingTasks]));
+        window.dispatchEvent(new Event('tasksUpdated'));
+        
+        const typeLabels: Record<string, string> = {
+          'flashcard_review': 'com flashcards',
+          'summary_review': 'de resumos',
+          'mixed': 'geral'
+        };
+        
+        toast.success(`📖 Bloco de revisão ${typeLabels[reviewType] || ''} criado!`, {
+          description: `${subject} - ${duration}`,
+          action: {
+            label: 'Ver em Hoje',
+            onClick: () => window.location.href = '/hoje'
+          }
+        });
+        break;
+      }
+      
       default:
         toast.info('Ação aplicada!');
     }
@@ -478,6 +613,16 @@ export function useChat(options: UseChatOptions = {}) {
         const title = payload?.notebookTitle || payload?.title || 'caderno';
         return `Sugestão de caderno "${title}" registrada`;
       }
+      case 'suggest_consolidation':
+        return `Sugestão de consolidação para "${payload?.subject || 'estudo'}"`;
+      case 'create_summary':
+        return `Resumo ${payload?.type === 'exam' ? 'para prova' : 'essencial'} criado`;
+      case 'create_flashcards_from_study':
+        return `Flashcards criados a partir do estudo`;
+      case 'defer_consolidation':
+        return `Consolidação adiada para ${payload?.deferTo || 'depois'}`;
+      case 'create_review_block':
+        return `Bloco de revisão criado`;
       default:
         return 'Ação aplicada com sucesso';
     }
