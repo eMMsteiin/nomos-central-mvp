@@ -107,8 +107,13 @@ export function useChat(options: UseChatOptions = {}) {
             created_at: raw.created_at as string
           };
           setMessages(prev => {
-            if (prev.some(m => m.id === newMessage.id)) return prev;
-            return [...prev, newMessage];
+            // Remove any temp message with same content and role (fixes duplication)
+            const withoutTemp = prev.filter(m => 
+              !(m.id.startsWith('temp-') && m.content === newMessage.content && m.role === newMessage.role)
+            );
+            // Check for duplication by real ID
+            if (withoutTemp.some(m => m.id === newMessage.id)) return withoutTemp;
+            return [...withoutTemp, newMessage];
           });
         }
       )
