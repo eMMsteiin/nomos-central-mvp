@@ -1,4 +1,5 @@
 export type SummaryType = 'essential' | 'exam';
+export type SummarySourceType = 'notebook' | 'study_block' | 'manual' | 'chat';
 
 export interface Summary {
   id: string;
@@ -8,7 +9,7 @@ export interface Summary {
   content: string;
   createdAt: string;
   updatedAt: string;
-  sourceType?: 'notebook' | 'study_block' | 'manual';
+  sourceType?: SummarySourceType;
   sourceId?: string;
   emoji?: string;
   color?: string;

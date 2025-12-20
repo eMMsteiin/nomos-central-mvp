@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { FileText, Plus, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -14,10 +14,53 @@ type ViewMode = 'list' | 'detail';
 
 const Resumos = () => {
   const navigate = useNavigate();
-  const { summaries, isLoading, deleteSummary } = useSummaries();
+  const { summaries, isLoading, deleteSummary, reloadSummaries } = useSummaries();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedSummary, setSelectedSummary] = useState<Summary | null>(null);
   const [activeFilter, setActiveFilter] = useState<SummaryType | 'all'>('all');
+
+  // Listen for new summaries created via Chat NOMOS
+  useEffect(() => {
+    const handleSummariesUpdated = () => {
+      reloadSummaries();
+      
+      // Check if there's a new summary to auto-select
+      const newSummaryId = localStorage.getItem('nomos-new-summary-id');
+      if (newSummaryId) {
+        localStorage.removeItem('nomos-new-summary-id');
+        
+        // Wait for state update then auto-select
+        setTimeout(() => {
+          const stored = localStorage.getItem('nomos-summaries');
+          if (stored) {
+            const allSummaries = JSON.parse(stored);
+            const newSummary = allSummaries.find((s: Summary) => s.id === newSummaryId);
+            if (newSummary) {
+              setSelectedSummary(newSummary);
+              setViewMode('detail');
+            }
+          }
+        }, 100);
+      }
+    };
+
+    window.addEventListener('summariesUpdated', handleSummariesUpdated);
+    
+    // Check on mount if there's a new summary to show
+    const newSummaryId = localStorage.getItem('nomos-new-summary-id');
+    if (newSummaryId) {
+      localStorage.removeItem('nomos-new-summary-id');
+      const summary = summaries.find(s => s.id === newSummaryId);
+      if (summary) {
+        setSelectedSummary(summary);
+        setViewMode('detail');
+      }
+    }
+
+    return () => {
+      window.removeEventListener('summariesUpdated', handleSummariesUpdated);
+    };
+  }, [reloadSummaries, summaries]);
 
   const counts = {
     all: summaries.length,
@@ -83,6 +126,9 @@ const Resumos = () => {
     );
   }
 
+  // Check if we only have demo summaries (no real ones from chat)
+  const hasRealSummaries = summaries.some(s => s.sourceType === 'chat');
+
   // List view
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
@@ -112,8 +158,8 @@ const Resumos = () => {
         </div>
       </motion.div>
 
-      {/* Info banner about Chat NOMOS */}
-      {summaries.length > 0 && (
+      {/* Info banner about Chat NOMOS - show only if no real summaries yet */}
+      {!hasRealSummaries && (
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -127,9 +173,17 @@ const Resumos = () => {
                 O Chat NOMOS cria resumos para você automaticamente!
               </p>
               <p className="text-sm text-muted-foreground">
-                Após sessões de estudo, ele sugere consolidar seu aprendizado com resumos personalizados.
+                Após sessões de estudo, ele sugere consolidar seu aprendizado com resumos personalizados gerados por IA.
               </p>
             </div>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate('/chat')}
+              className="ml-auto flex-shrink-0"
+            >
+              Ir para Chat
+            </Button>
           </div>
         </motion.div>
       )}

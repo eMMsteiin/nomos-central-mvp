@@ -4,12 +4,13 @@ import { useDeviceId } from './useDeviceId';
 import { Message, Proposal, ChatAction } from '@/types/chat';
 import { Task } from '@/types/task';
 import { toast } from 'sonner';
-import { collectChatContext } from '@/utils/chatContext';
+import { collectChatContext, extractSourceContentForSummary } from '@/utils/chatContext';
 
 const TASKS_STORAGE_KEY = "nomos.tasks.today";
 const TASKS_EMBREVE_KEY = "nomos.tasks.embreve";
 const POSTITS_KEY = "nomos-postits";
 const BLOCKS_KEY = "nomos-blocks";
+const SUMMARIES_KEY = "nomos-summaries";
 
 interface UseChatOptions {
   externalConversationId?: string | null;
@@ -444,26 +445,71 @@ export function useChat(options: UseChatOptions = {}) {
       }
       
       case 'create_summary': {
-        const summaryType = payload?.type as string || 'essential';
+        const summaryType = (payload?.type as string || 'essential') as 'essential' | 'exam';
         const subject = payload?.subject as string || 'Estudo';
-        const content = payload?.content as string;
         
-        // Navigate to Resumos page with the summary data
-        const params = new URLSearchParams({
-          newSummary: 'true',
-          type: summaryType,
-          subject: subject,
-          ...(content ? { content } : {})
+        // Show loading toast
+        const loadingToastId = toast.loading(`Gerando resumo ${summaryType === 'exam' ? 'para prova' : 'essencial'}...`, {
+          description: `Tema: ${subject}`
         });
         
-        toast.success(`📋 Resumo ${summaryType === 'exam' ? 'para prova' : 'essencial'} criado!`, {
-          description: `Tema: ${subject}`,
-          action: {
-            label: 'Ver Resumo',
-            onClick: () => window.location.href = `/resumos?${params.toString()}`
-          },
-          duration: 8000
+        // Extract source content from context
+        const sourceContent = extractSourceContentForSummary(subject);
+        
+        // Call edge function to generate summary
+        supabase.functions.invoke('generate-summary', {
+          body: {
+            subject,
+            type: summaryType,
+            sourceContent,
+            sourceType: 'chat'
+          }
+        }).then(({ data, error }) => {
+          toast.dismiss(loadingToastId);
+          
+          if (error || data?.error) {
+            console.error('[create_summary] Error:', error || data?.error);
+            toast.error('Erro ao gerar resumo', {
+              description: 'Tente novamente em alguns segundos.'
+            });
+            return;
+          }
+          
+          // Save summary to localStorage
+          const existingSummaries = JSON.parse(localStorage.getItem(SUMMARIES_KEY) || '[]');
+          const newSummary = {
+            id: `summary-${Date.now()}`,
+            title: data.title,
+            subject: data.subject,
+            content: data.content,
+            type: data.type as 'essential' | 'exam',
+            sourceType: data.sourceType || 'chat',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          
+          localStorage.setItem(SUMMARIES_KEY, JSON.stringify([newSummary, ...existingSummaries]));
+          
+          // Store the new summary ID for auto-selection
+          localStorage.setItem('nomos-new-summary-id', newSummary.id);
+          
+          // Dispatch event to notify Resumos page
+          window.dispatchEvent(new Event('summariesUpdated'));
+          
+          toast.success(`📋 Resumo ${summaryType === 'exam' ? 'para prova' : 'essencial'} criado!`, {
+            description: `"${data.title}"`,
+            action: {
+              label: 'Ver Resumo',
+              onClick: () => window.location.href = '/resumos'
+            },
+            duration: 10000
+          });
+        }).catch(err => {
+          toast.dismiss(loadingToastId);
+          console.error('[create_summary] Exception:', err);
+          toast.error('Erro ao gerar resumo');
         });
+        
         break;
       }
       
