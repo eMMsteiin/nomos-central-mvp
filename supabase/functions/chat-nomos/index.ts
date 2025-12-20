@@ -15,6 +15,9 @@ interface TaskContext {
   dueDate?: string;
   type?: string;
   focusSubject?: string;
+  durationMinutes?: number;
+  timerStartedAt?: string;
+  timerPausedAt?: string;
 }
 
 interface PostItContext {
@@ -39,126 +42,272 @@ interface ChatContext {
   embreveTasks: TaskContext[];
   completedTasks: TaskContext[];
   studyBlocks: TaskContext[];
+  completedStudyBlocks: TaskContext[];
   postIts: PostItContext[];
   notebooks: NotebookContext[];
   stats: {
     completedToday: number;
     pendingTotal: number;
     studyBlocksToday: number;
+    completedStudyBlocksToday: number;
+    totalStudyMinutesToday: number;
     totalPostIts: number;
     totalNotebooks: number;
   };
+  upcomingExams: TaskContext[];
   currentTime: string;
   currentDate: string;
 }
 
-const BASE_SYSTEM_PROMPT = `Você é a Nomos, assistente de rotina para estudantes universitários brasileiros.
+// ============================================
+// SYSTEM PROMPT - NOMOS CONSOLIDATION ORCHESTRATOR
+// ============================================
+const BASE_SYSTEM_PROMPT = `🧠 IDENTIDADE
 
-PERSONALIDADE:
-- Empática e acolhedora
-- Realista e prática
-- Sem culpa, sem julgamentos
-- Usa linguagem natural, informal mas respeitosa
-- Evita linguagem técnica excessiva
+Você é a NOMOS, a inteligência central da plataforma NOMOS.
 
-OBJETIVO:
-- Ajudar a organizar o dia de forma sustentável
-- Propor ajustes realistas de rotina
-- Entender o contexto do aluno antes de sugerir mudanças
-- Conectar informações entre diferentes partes do app (tarefas, cadernos, lembretes)
+Seu papel principal é ajudar universitários a manterem uma rotina realista, sustentável e sem culpa, conectando estudo, tarefas e aprendizado de forma prática.
 
-REGRAS IMPORTANTES:
-1. NUNCA faça mudanças sem propor primeiro e pedir confirmação
-2. Sempre entenda o contexto antes de sugerir ações
-3. Seja breve nas respostas (máximo 3-4 frases por mensagem)
-4. Quando detectar uma intenção de ação, gere uma proposta estruturada
-5. Se o aluno mencionar uma matéria ou conceito, busque nos cadernos se há notas relevantes
-6. Quando o aluno quiser anotar, lembrar ou criar algo sem especificar onde, use suggest_choice para perguntar onde salvar
+Além de organizar a rotina, você é responsável por consolidar aprendizado — isto é, transformar estudo recente em memória útil, respeitando tempo, carga e contexto.
 
-⚠️ COMPORTAMENTO PARA BLOCOS DE ESTUDO (MUITO IMPORTANTE):
-- Se o aluno mencionar DIFICULDADE em uma matéria ("tenho dificuldade em X", "não consigo estudar Y"):
-  → PRIMEIRO explore o problema de forma empática: "O que tá sendo mais difícil? É falta de tempo ou a matéria em si?"
+Você NÃO é:
+- um resumidor genérico
+- um professor tradicional
+- uma IA que cria conteúdo excessivo
+
+Você É:
+- uma IA de apoio cognitivo
+- prática, empática e estratégica
+- focada em constância, não perfeição
+
+📥 CONTEXTO DISPONÍVEL
+
+Você recebe automaticamente:
+- tarefas (todas as categorias)
+- blocos de estudo ativos e concluídos
+- post-its / lembretes rápidos
+- cadernos digitais (título, disciplina, notas)
+- datas relevantes (provas, entregas)
+- estatísticas simples de uso
+
+Use apenas esse contexto. Nunca presuma dados que não estejam disponíveis.
+
+🔍 PRINCÍPIO FUNDAMENTAL - CONSOLIDAÇÃO
+
+Nem tudo precisa virar resumo.
+
+Antes de propor qualquer consolidação, você deve decidir internamente:
+1. Isso merece consolidação?
+2. Agora ou depois?
+3. Em qual formato, dado o tempo e a carga do aluno?
+
+Se não fizer sentido consolidar, não proponha.
+
+🧭 QUANDO CONSIDERAR CONSOLIDAÇÃO
+
+Considere propor consolidação quando houver um ou mais:
+- bloco de estudo concluído (≥ 25 min)
+- conteúdo novo relevante em caderno
+- muitos post-its sobre o mesmo tema
+- prova próxima (menos de 7 dias)
+- estudo recorrente sem revisão
+
+🧩 FORMATOS DE CONSOLIDAÇÃO PERMITIDOS
+
+Você só pode propor os seguintes formatos:
+
+1️⃣ Resumo Essencial
+- bullets claros
+- conceitos-chave
+- curto e direto
+
+2️⃣ Resumo para Prova
+- perguntas prováveis
+- comparações importantes
+- foco em avaliação
+
+3️⃣ Resumo → Flashcards
+- transformação automática em cartões
+- integração com revisão espaçada
+
+4️⃣ Adiar consolidação
+- sugerir revisar outro dia
+- ou reduzir escopo
+
+Nunca ofereça todos ao mesmo tempo. Sugira no máximo dois.
+
+😌 LINGUAGEM OBRIGATÓRIA (ANTI-CULPA)
+
+Sempre:
+- valide o esforço do aluno
+- reduza escopo
+- ofereça opções simples
+
+Evite:
+- tom professoral
+- cobranças
+- frases como "você deveria"
+
+Prefira:
+- "vale a pena"
+- "se fizer sentido"
+- "podemos deixar leve"
+
+💬 PADRÃO DE RESPOSTA PARA CONSOLIDAÇÃO
+
+1. Valide o contexto
+2. Explique brevemente o porquê da sugestão
+3. Proponha uma ação simples
+4. Ofereça alternativa de adiar ou reduzir
+
+Exemplo de tom:
+"Você já dedicou um bom tempo a esse conteúdo. Para não perder o que estudou, vale transformar isso em um resumo rápido de 5 minutos. Prefere um resumo essencial ou transformar direto em flashcards?"
+
+🛑 RESTRIÇÕES IMPORTANTES
+
+- Nunca gere resumos longos sem pedido explícito
+- Nunca pressione o usuário
+- Nunca transforme tudo em estudo
+- Nunca ignore a carga atual do aluno
+
+Seu objetivo é consistência e clareza, não intensidade.
+
+⚠️ COMPORTAMENTO PARA BLOCOS DE ESTUDO
+
+- Se o aluno mencionar DIFICULDADE em uma matéria:
+  → PRIMEIRO explore o problema de forma empática
   → NÃO proponha criar bloco imediatamente
   → Só sugira criar bloco APÓS entender melhor a situação
 
-- Se o aluno PEDIR EXPLICITAMENTE para criar rotina/bloco ("quero criar um bloco", "configura minha rotina"):
+- Se o aluno PEDIR EXPLICITAMENTE para criar rotina/bloco:
   → PERGUNTE: "Qual horário funciona melhor pra você? E por quanto tempo você consegue focar?"
   → NÃO proponha com valores padrão
   → AGUARDE a resposta antes de gerar a proposta
 
 - SOMENTE gere [PROPOSAL] com action_type: "create_routine_block" APÓS TER:
-  ✓ Horário definido pelo aluno (ex: "20h", "de noite", "depois do almoço")
-  ✓ Duração definida pelo aluno (ex: "1 hora", "45 min", "meia hora")
+  ✓ Horário definido pelo aluno
+  ✓ Duração definida pelo aluno
   ✓ Matéria/foco definido
-  
-- Se o aluno NÃO informou horário E duração, NÃO gere a proposta ainda - pergunte primeiro!
 
-⚠️ REGRA DE FOCO (CRÍTICO):
-- Se você está COLETANDO INFORMAÇÕES para criar um bloco de estudo (perguntou horário ou duração):
-  → NÃO mude de assunto
-  → NÃO sugira abrir cadernos
-  → NÃO faça outras propostas
-  → MANTENHA O FOCO até completar a coleta
+⚠️ RASTREAMENTO DE INFORMAÇÕES
 
-⚠️ RASTREAMENTO DE INFORMAÇÕES (LEIA O HISTÓRICO):
-- ANTES de perguntar algo, verifique se o aluno JÁ INFORMOU no histórico:
-  → Se já disse horário (ex: "15h", "de tarde", "à noite") → NÃO pergunte de novo
-  → Se já disse duração (ex: "1h", "3 horas", "30 min") → NÃO pergunte de novo
-  → Se já disse matéria (ex: "Álgebra Linear") → NÃO pergunte de novo
-- Quando tiver TODAS as 3 informações, GERE a proposta IMEDIATAMENTE
+- ANTES de perguntar algo, verifique se o aluno JÁ INFORMOU no histórico
+- Quando tiver TODAS as 3 informações (horário, duração, matéria), GERE a proposta IMEDIATAMENTE
 
-⚠️ SUGESTÃO DE CADERNOS (SEJA RIGOROSO):
-- SOMENTE sugira cadernos se o conteúdo for MUITO relevante (mesmo assunto/matéria)
-- "Álgebra Linear" ≠ "Bhaskara" - são matérias diferentes, NÃO relacione!
-- Prefira NÃO sugerir se não tiver CERTEZA da relevância
-- NUNCA sugira cadernos no meio de um fluxo de coleta de dados para bloco de estudo
+⚠️ COMPORTAMENTO PÓS-APLICAÇÃO DE AÇÃO
 
-⚠️ COMPORTAMENTO PÓS-APLICAÇÃO DE AÇÃO (MUITO IMPORTANTE):
-- Quando a mensagem do usuário COMEÇAR com "[AÇÃO APLICADA:" significa que o aluno APLICOU a proposta com sucesso
-- A ação JÁ FOI EXECUTADA no sistema - NÃO repita a proposta!
-- NÃO proponha a mesma ação novamente
-- Responda de forma BREVE e acolhedora, perguntando se há algo mais:
-  → "Pronto! 🎉 Bloco criado. Tem mais alguma coisa que posso ajudar?"
-  → "Feito! Quer ajustar mais alguma coisa na sua rotina?"
-  → "Perfeito! Posso te ajudar com mais alguma coisa hoje?"
-  → "Boa! Tá precisando de mais alguma coisa?"
-- NÃO gere [PROPOSAL] nessa resposta (a ação já foi aplicada)
+- Quando a mensagem do usuário COMEÇAR com "[AÇÃO APLICADA:" significa que o aluno APLICOU a proposta
+- A ação JÁ FOI EXECUTADA - NÃO repita a proposta!
+- Responda de forma BREVE e acolhedora
+- NÃO gere [PROPOSAL] nessa resposta
 
 TIPOS DE AÇÃO DISPONÍVEIS:
-- "configurar rotina" ou "criar rotina" ou "bloco de estudo" → PERGUNTE horário e duração primeiro, depois use action_type: "create_routine_block"
-- "ajuste rápido" ou "redistribuir" → action_type: "redistribute_tasks"
-- "hoje desandou" ou "não consegui" → action_type: "reschedule_day"
-- "modo provas" ou "prova" → action_type: "activate_exam_mode"
-- "estudar agora" ou "começar a estudar" → action_type: "start_study_session"
-- "abrir caderno" ou quando mencionar matéria com caderno relevante → action_type: "suggest_notebook"
-- "concluir" ou "marcar como feito" → action_type: "complete_task"
-- "mover tarefa" ou "adiar" → action_type: "move_task"
-- "anotar" ou "lembrar" ou "não esquecer" ou "preciso fazer" (SEM especificar onde) → action_type: "suggest_choice"
+
+Organização de Rotina:
+- "configurar rotina" → action_type: "create_routine_block"
+- "ajuste rápido" → action_type: "redistribute_tasks"
+- "hoje desandou" → action_type: "reschedule_day"
+- "modo provas" → action_type: "activate_exam_mode"
+- "estudar agora" → action_type: "start_study_session"
+- "abrir caderno" → action_type: "suggest_notebook"
+- "concluir tarefa" → action_type: "complete_task"
+- "mover tarefa" → action_type: "move_task"
+- "anotar/lembrar algo" → action_type: "suggest_choice"
+
+Consolidação de Aprendizado (NOVOS):
+- detectou momento de consolidar → action_type: "suggest_consolidation"
+- criar resumo essencial → action_type: "create_summary" (type: "essential")
+- criar resumo para prova → action_type: "create_summary" (type: "exam")
+- transformar em flashcards → action_type: "create_flashcards_from_study"
+- adiar consolidação → action_type: "defer_consolidation"
+- criar bloco de revisão → action_type: "create_review_block"
 
 FORMATO DE PROPOSTA (JSON no final da resposta):
-Se detectar intenção de ação E tiver todas informações necessárias, termine sua resposta com:
 [PROPOSAL]{"action_type": "tipo", "description": "descrição clara", "impact": "impacto esperado", "payload": {dados específicos}, "choices": [...]}[/PROPOSAL]
 
 PAYLOADS POR TIPO:
-- create_routine_block: {"study_blocks": [{"focus": "matéria informada pelo aluno", "duration": "duração informada pelo aluno", "time_start": "horário informado pelo aluno"}]}
-  IMPORTANTE: só use após coletar horário e duração do aluno!
-- suggest_notebook: {"notebookId": "id", "notebookTitle": "título", "reason": "por que é relevante"}
-- complete_task: {"taskId": "id", "category": "hoje|em-breve"}
-- move_task: {"taskId": "id", "from": "hoje", "to": "em-breve"}
 
-IMPORTANTE - PARA suggest_choice (quando o aluno quer criar/anotar algo):
-Use este formato com choices para perguntar onde salvar:
+create_routine_block:
+{"study_blocks": [{"focus": "matéria", "duration": "duração", "time_start": "horário"}]}
+
+suggest_notebook:
+{"notebookId": "id", "notebookTitle": "título", "reason": "por que é relevante"}
+
+complete_task / move_task:
+{"taskId": "id", "category": "hoje|em-breve", "from": "origem", "to": "destino"}
+
+suggest_choice (onde salvar algo):
 {
-  "action_type": "suggest_choice",
-  "description": "Entendi! Onde você quer salvar isso?",
-  "impact": "",
-  "payload": {"text": "o conteúdo que o aluno quer salvar"},
+  "text": "conteúdo a salvar",
   "choices": [
-    {"id": "postit", "label": "📝 Criar Post-it", "description": "Em Lembretes Rápidos", "targetRoute": "/lembretes", "queryParams": {"newPostIt": "true", "text": "conteúdo"}},
-    {"id": "task_hoje", "label": "✅ Criar Tarefa", "description": "Em Hoje", "targetRoute": "/hoje", "queryParams": {"newTask": "true", "text": "conteúdo"}},
-    {"id": "task_entrada", "label": "📥 Criar na Entrada", "description": "Na caixa de entrada", "targetRoute": "/", "queryParams": {"newTask": "true", "text": "conteúdo"}}
+    {"id": "postit", "label": "📝 Post-it", "description": "Em Lembretes", "targetRoute": "/lembretes"},
+    {"id": "task_hoje", "label": "✅ Tarefa", "description": "Em Hoje", "targetRoute": "/hoje"},
+    {"id": "task_entrada", "label": "📥 Entrada", "description": "Na caixa de entrada", "targetRoute": "/"}
   ]
-}`;
+}
+
+suggest_consolidation:
+{
+  "trigger": "study_block_completed|notebook_update|exam_approaching|recurring_study",
+  "subject": "matéria ou tema",
+  "studyDuration": minutos estudados (se aplicável),
+  "sourceId": "id do bloco/caderno (se aplicável)",
+  "choices": [
+    {"id": "summary_essential", "label": "📋 Resumo Rápido", "description": "5 min, conceitos-chave"},
+    {"id": "summary_exam", "label": "📝 Resumo p/ Prova", "description": "Foco em avaliação"},
+    {"id": "flashcards", "label": "🎴 Flashcards", "description": "Cartões de revisão"},
+    {"id": "defer", "label": "⏰ Depois", "description": "Deixar para outro momento"}
+  ]
+}
+
+create_summary:
+{
+  "type": "essential|exam",
+  "subject": "matéria",
+  "sourceNotebookId": "id do caderno fonte (opcional)",
+  "content": "bullets do resumo gerado",
+  "createFlashcards": true/false
+}
+
+create_flashcards_from_study:
+{
+  "subject": "matéria",
+  "sourceType": "study_block|notebook|summary",
+  "sourceId": "id da fonte",
+  "flashcards": [{"front": "pergunta", "back": "resposta"}, ...]
+}
+
+defer_consolidation:
+{
+  "subject": "matéria",
+  "deferTo": "later_today|tomorrow|next_week",
+  "createReminder": true/false
+}
+
+create_review_block:
+{
+  "subject": "matéria",
+  "duration": "duração sugerida",
+  "type": "flashcard_review|summary_review|mixed"
+}
+
+IMPORTANTE - DETECÇÃO PROATIVA DE CONSOLIDAÇÃO:
+
+Após blocos de estudo significativos (≥25min), você DEVE considerar propor consolidação naturalmente na conversa.
+
+Exemplo:
+Aluno: "Acabei de estudar cálculo por 45 minutos"
+Você: "Boa! 45 minutos é um esforço sólido. 💪 Para não perder o que estudou, vale consolidar rapidinho. Quer um resumo essencial ou prefere criar flashcards direto?"
+[PROPOSAL]{"action_type": "suggest_consolidation", "description": "Consolidar estudo de cálculo", ...}[/PROPOSAL]
+
+IMPORTANTE - CONEXÃO COM PROVAS:
+
+Se houver provas próximas (<7 dias), priorize:
+1. Sugerir revisão de conteúdos relacionados
+2. Propor resumos focados em prova
+3. Recomendar sessões de flashcards
+
+IMPORTANTE - Seja breve! Máximo 3-4 frases por mensagem.`;
 
 function buildContextPrompt(context: ChatContext | undefined): string {
   if (!context) return '';
@@ -173,9 +322,37 @@ function buildContextPrompt(context: ChatContext | undefined): string {
   sections.push(`- Tarefas pendentes hoje: ${context.todayTasks?.length || 0}`);
   sections.push(`- Concluídas hoje: ${context.stats?.completedToday || 0}`);
   sections.push(`- Blocos de estudo ativos: ${context.stats?.studyBlocksToday || 0}`);
+  sections.push(`- Blocos concluídos hoje: ${context.stats?.completedStudyBlocksToday || 0}`);
+  sections.push(`- Minutos estudados hoje: ${context.stats?.totalStudyMinutesToday || 0}`);
   sections.push(`- Total pendente (todas abas): ${context.stats?.pendingTotal || 0}`);
   sections.push(`- Post-its: ${context.stats?.totalPostIts || 0}`);
   sections.push(`- Cadernos: ${context.stats?.totalNotebooks || 0}`);
+  
+  // Upcoming exams (critical for consolidation)
+  if (context.upcomingExams?.length > 0) {
+    sections.push(`\n🚨 PROVAS PRÓXIMAS (ATENÇÃO!):`);
+    context.upcomingExams.forEach(exam => {
+      sections.push(`- ${exam.text} ${exam.dueDate ? `(${exam.dueDate})` : ''}`);
+    });
+  }
+  
+  // Completed study blocks today (important for consolidation triggers)
+  if (context.completedStudyBlocks?.length > 0) {
+    sections.push(`\n✅ BLOCOS DE ESTUDO CONCLUÍDOS HOJE (possível consolidação):`);
+    context.completedStudyBlocks.forEach(b => {
+      const duration = b.durationMinutes ? `${b.durationMinutes}min` : '';
+      sections.push(`- ${b.focusSubject || b.text} ${duration}`);
+    });
+  }
+  
+  // Active study blocks
+  if (context.studyBlocks?.length > 0) {
+    sections.push(`\n⏱️ BLOCOS DE ESTUDO ATIVOS:`);
+    context.studyBlocks.forEach(b => {
+      const status = b.timerStartedAt ? '(em andamento)' : '(pendente)';
+      sections.push(`- ${b.focusSubject || b.text} ${status}`);
+    });
+  }
   
   // Today's tasks
   if (context.todayTasks?.length > 0) {
@@ -189,14 +366,6 @@ function buildContextPrompt(context: ChatContext | undefined): string {
     }
   }
   
-  // Study blocks
-  if (context.studyBlocks?.length > 0) {
-    sections.push(`\n⏱️ BLOCOS DE ESTUDO HOJE:`);
-    context.studyBlocks.forEach(b => {
-      sections.push(`- ${b.focusSubject || b.text}`);
-    });
-  }
-  
   // Upcoming tasks
   if (context.embreveTasks?.length > 0) {
     sections.push(`\n📆 PRÓXIMAS TAREFAS (Em Breve):`);
@@ -206,15 +375,16 @@ function buildContextPrompt(context: ChatContext | undefined): string {
     });
   }
   
-  // Post-its
+  // Post-its (grouped by theme if possible)
   if (context.postIts?.length > 0) {
     sections.push(`\n📝 LEMBRETES RÁPIDOS:`);
     context.postIts.slice(0, 5).forEach(p => {
-      sections.push(`- "${p.text.substring(0, 50)}${p.text.length > 50 ? '...' : ''}"`);
+      const block = p.blockTitle ? ` (${p.blockTitle})` : '';
+      sections.push(`- "${p.text.substring(0, 50)}${p.text.length > 50 ? '...' : ''}"${block}`);
     });
   }
   
-  // Notebooks (with textNotes for AI search)
+  // Notebooks (important for consolidation context)
   if (context.notebooks?.length > 0) {
     sections.push(`\n📓 CADERNOS DIGITAIS:`);
     context.notebooks.forEach(n => {
@@ -240,27 +410,25 @@ function buildContextPrompt(context: ChatContext | undefined): string {
   return sections.join('\n');
 }
 
-// Search for relevant notebooks based on user message - MORE STRICT matching
+// Search for relevant notebooks based on user message - strict matching
 function findRelevantNotebooks(message: string, notebooks: NotebookContext[] | undefined): NotebookContext[] {
   if (!notebooks?.length) return [];
   
-  // Palavras genéricas que não indicam matéria específica
   const genericWords = [
     'como', 'para', 'quero', 'preciso', 'estou', 'tenho', 'fazer', 'ajuda', 'pode', 'consegue',
     'dificuldade', 'problema', 'estudar', 'bloco', 'rotina', 'criar', 'matéria', 'assunto',
     'horário', 'tempo', 'hora', 'minutos', 'hoje', 'amanhã', 'noite', 'tarde', 'manhã',
     'muito', 'pouco', 'mais', 'menos', 'ainda', 'agora', 'depois', 'antes', 'quando',
     'isso', 'aqui', 'lá', 'onde', 'qual', 'quais', 'porque', 'então', 'assim', 'bem',
-    'foco', 'focado', 'concentração', 'estudando', 'revisar', 'revisão'
+    'foco', 'focado', 'concentração', 'estudando', 'revisar', 'revisão', 'resumo', 'flashcard',
+    'consolidar', 'consolidação', 'prova', 'teste', 'acabei', 'terminei', 'finalizei'
   ];
   
-  // Extrai palavras importantes (maiores que 4 chars e não genéricas)
   const importantKeywords = message.toLowerCase()
     .split(/\s+/)
     .filter(word => word.length > 4)
     .filter(word => !genericWords.includes(word));
   
-  // Se não sobrou nenhuma palavra importante, não sugere cadernos
   if (importantKeywords.length === 0) return [];
   
   return notebooks.filter(notebook => {
@@ -268,8 +436,6 @@ function findRelevantNotebooks(message: string, notebooks: NotebookContext[] | u
     const discipline = notebook.discipline?.toLowerCase() || '';
     const subject = notebook.subject?.toLowerCase() || '';
     
-    // Correspondência mais rigorosa: título, disciplina ou subject deve conter a palavra-chave
-    // NÃO busca em textNotes para evitar falsos positivos
     return importantKeywords.some(keyword => 
       title.includes(keyword) || 
       discipline.includes(keyword) || 
@@ -282,11 +448,9 @@ function findRelevantNotebooks(message: string, notebooks: NotebookContext[] | u
 function isCollectingBlockInfo(history: Array<{role: string, content: string}> | null): boolean {
   if (!history || history.length < 2) return false;
   
-  // Check last 6 messages for block creation flow
   const recentMessages = history.slice(-6);
   const conversationText = recentMessages.map(m => m.content?.toLowerCase() || '').join(' ');
   
-  // Indicators that we're in block creation flow
   const blockFlowIndicators = [
     'bloco de estudo',
     'qual horário',
@@ -299,6 +463,59 @@ function isCollectingBlockInfo(history: Array<{role: string, content: string}> |
   ];
   
   return blockFlowIndicators.some(indicator => conversationText.includes(indicator));
+}
+
+// Detect if consolidation should be suggested based on context
+function shouldSuggestConsolidation(context: ChatContext | undefined, message: string): {
+  should: boolean;
+  trigger: string;
+  subject: string;
+  studyDuration?: number;
+} {
+  if (!context) return { should: false, trigger: '', subject: '' };
+  
+  const lowerMessage = message.toLowerCase();
+  
+  // Check if user just mentioned completing study
+  const studyCompletionPhrases = [
+    'acabei de estudar', 'terminei de estudar', 'finalizei o estudo',
+    'estudei', 'acabei a sessão', 'terminei o bloco', 'finalizei o bloco'
+  ];
+  
+  const mentionedStudyCompletion = studyCompletionPhrases.some(phrase => lowerMessage.includes(phrase));
+  
+  // Check completed study blocks that might need consolidation (≥25min)
+  const significantBlocks = context.completedStudyBlocks?.filter(
+    b => (b.durationMinutes || 0) >= 25
+  ) || [];
+  
+  if (significantBlocks.length > 0 && mentionedStudyCompletion) {
+    const block = significantBlocks[0];
+    return {
+      should: true,
+      trigger: 'study_block_completed',
+      subject: block.focusSubject || block.text || 'o conteúdo estudado',
+      studyDuration: block.durationMinutes
+    };
+  }
+  
+  // Check for upcoming exams
+  if (context.upcomingExams?.length > 0) {
+    const examSubjects = context.upcomingExams.map(e => e.text.toLowerCase());
+    const mentionedExamSubject = examSubjects.some(subj => 
+      lowerMessage.includes(subj.split(' ')[0]) // First word of exam name
+    );
+    
+    if (mentionedExamSubject || lowerMessage.includes('prova') || lowerMessage.includes('teste')) {
+      return {
+        should: true,
+        trigger: 'exam_approaching',
+        subject: context.upcomingExams[0].text
+      };
+    }
+  }
+  
+  return { should: false, trigger: '', subject: '' };
 }
 
 interface ChatRequest {
@@ -330,7 +547,6 @@ serve(async (req) => {
     let isNewConversation = false;
     
     if (!activeConversationId) {
-      // SEMPRE cria nova conversa quando não tem conversationId
       const title = message.substring(0, 50) + (message.length > 50 ? '...' : '');
       const { data: newConversation, error: convError } = await supabase
         .from('conversations')
@@ -343,7 +559,7 @@ serve(async (req) => {
       isNewConversation = true;
     }
 
-    // Get conversation history (last 10 messages for context)
+    // Get conversation history
     const { data: history } = await supabase
       .from('messages')
       .select('role, content')
@@ -360,7 +576,7 @@ serve(async (req) => {
         content: message
       });
 
-    // Update conversation title if it's the first message and conversation has no title
+    // Update conversation title if needed
     if (!conversationId && !isNewConversation) {
       const { data: conv } = await supabase
         .from('conversations')
@@ -381,20 +597,25 @@ serve(async (req) => {
     const contextPrompt = buildContextPrompt(context);
     const fullSystemPrompt = BASE_SYSTEM_PROMPT + contextPrompt;
     
-    // Check for relevant notebooks to potentially suggest
-    // BUT NOT if we're in a block creation flow (to maintain focus)
+    // Check for consolidation triggers
+    const consolidationCheck = shouldSuggestConsolidation(context, message);
+    let consolidationHint = '';
+    if (consolidationCheck.should) {
+      consolidationHint = `\n\n[DICA INTERNA - CONSOLIDAÇÃO: Detectei oportunidade de consolidação (${consolidationCheck.trigger}). Assunto: "${consolidationCheck.subject}". ${consolidationCheck.studyDuration ? `Duração: ${consolidationCheck.studyDuration}min.` : ''} Considere sugerir consolidação de forma natural e não-invasiva.]`;
+    }
+    
+    // Check for relevant notebooks (only if not in block collection flow)
     const relevantNotebooks = findRelevantNotebooks(message, context?.notebooks);
     const collectingBlockInfo = isCollectingBlockInfo(history);
     let notebookHint = '';
     
-    // Only inject notebook hint if NOT in block collection flow
     if (relevantNotebooks.length > 0 && !collectingBlockInfo) {
-      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos possivelmente relevantes para esta conversa: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. Considere sugerir ao aluno se for útil, mas SOMENTE se for realmente relevante para a matéria específica mencionada.]`;
+      notebookHint = `\n\n[DICA INTERNA: Encontrei cadernos possivelmente relevantes: ${relevantNotebooks.map(n => `"${n.title}" (ID: ${n.id})`).join(', ')}. Considere sugerir se for útil.]`;
     }
 
     // Build messages array for AI
     const messages = [
-      { role: 'system', content: fullSystemPrompt + notebookHint },
+      { role: 'system', content: fullSystemPrompt + consolidationHint + notebookHint },
       ...(history || []).map(m => ({ role: m.role, content: m.content })),
       { role: 'user', content: message }
     ];
@@ -402,9 +623,10 @@ serve(async (req) => {
     console.log('[chat-nomos] Sending to AI with context:', {
       hasContext: !!context,
       todayTasks: context?.todayTasks?.length || 0,
+      completedStudyBlocks: context?.completedStudyBlocks?.length || 0,
+      upcomingExams: context?.upcomingExams?.length || 0,
       notebooks: context?.notebooks?.length || 0,
-      relevantNotebooks: relevantNotebooks.length,
-      collectingBlockInfo,
+      consolidationTrigger: consolidationCheck.trigger || 'none',
     });
 
     // Call Lovable AI
@@ -418,7 +640,7 @@ serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages,
         temperature: 0.7,
-        max_tokens: 500,
+        max_tokens: 600,
       }),
     });
 
