@@ -15,6 +15,7 @@ import { Summary } from '@/types/summary';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useDeviceId } from '@/hooks/useDeviceId';
 
 interface GenerateFlashcardsFromSummaryDialogProps {
   open: boolean;
@@ -31,6 +32,7 @@ export function GenerateFlashcardsFromSummaryDialog({
   summary,
   onSuccess,
 }: GenerateFlashcardsFromSummaryDialogProps) {
+  const deviceId = useDeviceId();
   const [step, setStep] = useState<Step>('config');
   const [deckName, setDeckName] = useState('');
   const [maxCards, setMaxCards] = useState(8);
@@ -75,8 +77,7 @@ export function GenerateFlashcardsFromSummaryDialog({
 
       setGeneratedCards(flashcards);
 
-      // Get device ID from localStorage
-      const deviceId = localStorage.getItem('nomos-device-id');
+      // Use device ID from hook
       if (!deviceId) throw new Error('Device ID not found');
 
       // Create a new deck
