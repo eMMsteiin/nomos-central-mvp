@@ -6,6 +6,7 @@ import { useSummaries } from '@/hooks/useSummaries';
 import { SummaryList } from '@/components/summaries/SummaryList';
 import { SummaryViewer } from '@/components/summaries/SummaryViewer';
 import { SummaryFilters } from '@/components/summaries/SummaryFilters';
+import { GenerateFlashcardsFromSummaryDialog } from '@/components/summaries/GenerateFlashcardsFromSummaryDialog';
 import { Summary, SummaryType } from '@/types/summary';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +19,8 @@ const Resumos = () => {
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedSummary, setSelectedSummary] = useState<Summary | null>(null);
   const [activeFilter, setActiveFilter] = useState<SummaryType | 'all'>('all');
+  const [flashcardDialogOpen, setFlashcardDialogOpen] = useState(false);
+  const [summaryForFlashcards, setSummaryForFlashcards] = useState<Summary | null>(null);
 
   // Listen for new summaries created via Chat NOMOS
   useEffect(() => {
@@ -87,12 +90,20 @@ const Resumos = () => {
   };
 
   const handleConvertToFlashcards = (summary: Summary) => {
-    // Store summary for flashcard generation
-    localStorage.setItem('nomos-summary-to-flashcards', JSON.stringify(summary));
-    toast.success('Redirecionando para Flashcards...', {
-      description: 'Use a IA para gerar flashcards a partir deste resumo.',
+    setSummaryForFlashcards(summary);
+    setFlashcardDialogOpen(true);
+  };
+
+  const handleFlashcardsGenerated = (deckId: string, cardCount: number) => {
+    setFlashcardDialogOpen(false);
+    toast.success(`${cardCount} flashcards criados com sucesso!`, {
+      description: 'Você será redirecionado para o baralho.',
     });
-    navigate('/flashcards');
+    
+    // Navigate to flashcards page
+    setTimeout(() => {
+      navigate('/flashcards');
+    }, 500);
   };
 
   const handleCreateNew = () => {
@@ -121,6 +132,12 @@ const Resumos = () => {
           summary={selectedSummary}
           onBack={handleBackToList}
           onConvertToFlashcards={handleConvertToFlashcards}
+        />
+        <GenerateFlashcardsFromSummaryDialog
+          open={flashcardDialogOpen}
+          onOpenChange={setFlashcardDialogOpen}
+          summary={summaryForFlashcards}
+          onSuccess={handleFlashcardsGenerated}
         />
       </div>
     );
@@ -207,6 +224,14 @@ const Resumos = () => {
         onDelete={handleDelete}
         onConvertToFlashcards={handleConvertToFlashcards}
         onCreateNew={handleCreateNew}
+      />
+
+      {/* Flashcard generation dialog */}
+      <GenerateFlashcardsFromSummaryDialog
+        open={flashcardDialogOpen}
+        onOpenChange={setFlashcardDialogOpen}
+        summary={summaryForFlashcards}
+        onSuccess={handleFlashcardsGenerated}
       />
     </div>
   );
