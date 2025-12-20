@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Layers, Play, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -11,10 +11,16 @@ import { CreateFlashcardDialog } from '@/components/flashcards/CreateFlashcardDi
 import { GenerateFlashcardsDialog } from '@/components/flashcards/GenerateFlashcardsDialog';
 import { EditFlashcardDialog } from '@/components/flashcards/EditFlashcardDialog';
 import { EditDeckDialog } from '@/components/flashcards/EditDeckDialog';
+import { ImportFromChatDialog } from '@/components/flashcards/ImportFromChatDialog';
 import { Deck, Flashcard } from '@/types/flashcard';
 import { toast } from 'sonner';
 
 type ViewMode = 'list' | 'detail' | 'study';
+
+interface PendingFlashcards {
+  subject: string;
+  flashcards: Array<{ front: string; back: string }>;
+}
 
 export default function Flashcards() {
   const {
@@ -45,6 +51,36 @@ export default function Flashcards() {
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [isEditDeckOpen, setIsEditDeckOpen] = useState(false);
   const [cardToEdit, setCardToEdit] = useState<Flashcard | null>(null);
+  
+  // Estado para flashcards vindos do Chat NOMOS
+  const [pendingFlashcards, setPendingFlashcards] = useState<PendingFlashcards | null>(null);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+
+  // Verificar se há flashcards pendentes do Chat NOMOS
+  useEffect(() => {
+    const checkPendingFlashcards = () => {
+      const pendingData = localStorage.getItem('nomos-pending-flashcards');
+      if (pendingData) {
+        try {
+          const parsed = JSON.parse(pendingData) as PendingFlashcards;
+          setPendingFlashcards(parsed);
+          setIsImportDialogOpen(true);
+          // Limpar do localStorage após ler
+          localStorage.removeItem('nomos-pending-flashcards');
+        } catch (e) {
+          console.error('Error parsing pending flashcards:', e);
+          localStorage.removeItem('nomos-pending-flashcards');
+        }
+      }
+    };
+    
+    // Checar imediatamente
+    checkPendingFlashcards();
+    
+    // Também checar quando a aba ganha foco (caso venha de outra página)
+    window.addEventListener('focus', checkPendingFlashcards);
+    return () => window.removeEventListener('focus', checkPendingFlashcards);
+  }, []);
 
   const totalDue = getTotalDueCount();
 
@@ -167,6 +203,54 @@ export default function Flashcards() {
     return startSession(selectedDeck?.id);
   };
 
+  // Importar flashcards do Chat NOMOS para um baralho existente
+  const handleImportFromChat = async (deckId: string) => {
+    if (!pendingFlashcards) return;
+    try {
+      await createMultipleFlashcards(deckId, pendingFlashcards.flashcards);
+      toast.success(`${pendingFlashcards.flashcards.length} flashcards importados com sucesso!`);
+      
+      // Navegar para o baralho selecionado
+      const deck = decks.find(d => d.id === deckId);
+      if (deck) {
+        setSelectedDeck(deck);
+        setViewMode('detail');
+      }
+    } catch (error) {
+      toast.error('Erro ao importar flashcards');
+      throw error;
+    } finally {
+      setPendingFlashcards(null);
+      setIsImportDialogOpen(false);
+    }
+  };
+
+  // Criar novo baralho e importar flashcards do Chat NOMOS
+  const handleCreateDeckAndImportFromChat = async (title: string, color: string, emoji: string) => {
+    if (!pendingFlashcards) return;
+    try {
+      const newDeck = await createDeck(title, { color, emoji });
+      if (newDeck) {
+        await createMultipleFlashcards(newDeck.id, pendingFlashcards.flashcards);
+        toast.success(`Baralho "${title}" criado com ${pendingFlashcards.flashcards.length} flashcards!`);
+        
+        setSelectedDeck(newDeck);
+        setViewMode('detail');
+      }
+    } catch (error) {
+      toast.error('Erro ao criar baralho e importar flashcards');
+      throw error;
+    } finally {
+      setPendingFlashcards(null);
+      setIsImportDialogOpen(false);
+    }
+  };
+
+  // Cancelar importação do Chat NOMOS
+  const handleCancelImport = () => {
+    setPendingFlashcards(null);
+    toast.info('Importação cancelada');
+  };
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
@@ -315,6 +399,17 @@ export default function Flashcards() {
         open={isCreateDeckOpen}
         onOpenChange={setIsCreateDeckOpen}
         onCreateDeck={handleCreateDeck}
+      />
+
+      {/* Import from Chat NOMOS dialog */}
+      <ImportFromChatDialog
+        open={isImportDialogOpen}
+        onOpenChange={setIsImportDialogOpen}
+        pendingData={pendingFlashcards}
+        decks={decks}
+        onImport={handleImportFromChat}
+        onCreateDeckAndImport={handleCreateDeckAndImportFromChat}
+        onCancel={handleCancelImport}
       />
     </div>
   );
