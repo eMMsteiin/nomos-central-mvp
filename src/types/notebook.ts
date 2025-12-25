@@ -20,12 +20,13 @@ export interface NotebookPage {
   id: string;
   template: 'blank' | 'lined' | 'grid' | 'dotted';
   strokes: Stroke[];
+  textBoxes?: TextBox[];
   createdAt: string;
   backgroundImage?: string;
 }
 
 export type PenStyle = 'fountain' | 'ballpoint' | 'brush';
-export type ToolType = 'pen' | 'eraser' | 'highlighter';
+export type ToolType = 'pen' | 'eraser' | 'highlighter' | 'text';
 
 export interface Stroke {
   id: string;
@@ -41,6 +42,19 @@ export interface Point {
   y: number;
   pressure?: number;
   timestamp?: number;
+}
+
+export interface TextBox {
+  id: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  content: string;
+  fontSize: number;
+  fontFamily: string;
+  color: string;
+  backgroundColor?: string;
 }
 
 // Color palette presets (GoodNotes inspired)

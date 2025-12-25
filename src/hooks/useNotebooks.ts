@@ -48,6 +48,7 @@ export const useNotebooks = () => {
           id: crypto.randomUUID(),
           template,
           strokes: [],
+          textBoxes: [],
           createdAt: new Date().toISOString(),
         }
       ],
@@ -80,6 +81,7 @@ export const useNotebooks = () => {
       id: crypto.randomUUID(),
       template,
       strokes: [],
+      textBoxes: [],
       createdAt: new Date().toISOString(),
     };
 
