@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
-import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronLeft, ChevronRight, Type } from 'lucide-react';
+import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronLeft, ChevronRight, Type, MousePointer2 } from 'lucide-react';
 import { Slider } from './ui/slider';
 import { Stroke, Point, PenStyle, ToolType, PEN_STYLES, HIGHLIGHTER_COLORS, TextBox } from '@/types/notebook';
 import { ColorPicker } from './notebook/ColorPicker';
@@ -77,7 +77,7 @@ export const NotebookCanvas = ({
   });
   
   // Tool state
-  const [tool, setTool] = useState<ToolType>('pen');
+  const [tool, setTool] = useState<ToolType>('select');
   const [penStyle, setPenStyle] = useState<PenStyle>('fountain');
   const [color, setColor] = useState('#000000');
   const [highlighterColor, setHighlighterColor] = useState(HIGHLIGHTER_COLORS[0]);
@@ -436,15 +436,19 @@ export const NotebookCanvas = ({
     lastPointRef.current = point;
     lastTimeRef.current = performance.now();
 
-    // Handle text tool
-    if (tool === 'text') {
-      // Deselect any text box first
+    // Handle select tool - just deselect when clicking on canvas
+    if (tool === 'select') {
       if (selectedTextBoxId) {
         setSelectedTextBoxId(null);
         setEditingTextBoxId(null);
-      } else {
-        handleCreateTextBox(point);
       }
+      return;
+    }
+
+    // Handle text tool - create new text box and switch to select
+    if (tool === 'text') {
+      handleCreateTextBox(point);
+      setTool('select'); // Auto-switch to select tool after creating
       return;
     }
 
@@ -682,6 +686,15 @@ export const NotebookCanvas = ({
         {/* Tools */}
         <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
           <Button
+            variant={tool === 'select' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setTool('select')}
+            className="h-8"
+            title="Selecionar"
+          >
+            <MousePointer2 className="h-4 w-4" />
+          </Button>
+          <Button
             variant={tool === 'pen' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setTool('pen')}
@@ -867,6 +880,7 @@ export const NotebookCanvas = ({
             ref={canvasRef}
             className={`border shadow-lg touch-none bg-white rounded-sm ${
               tool === 'eraser' ? 'cursor-none' : 
+              tool === 'select' ? 'cursor-default' :
               tool === 'text' ? 'cursor-text' : 
               'cursor-crosshair'
             }`}

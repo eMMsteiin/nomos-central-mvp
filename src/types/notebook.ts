@@ -26,7 +26,7 @@ export interface NotebookPage {
 }
 
 export type PenStyle = 'fountain' | 'ballpoint' | 'brush';
-export type ToolType = 'pen' | 'eraser' | 'highlighter' | 'text';
+export type ToolType = 'select' | 'pen' | 'eraser' | 'highlighter' | 'text';
 
 export interface Stroke {
   id: string;
