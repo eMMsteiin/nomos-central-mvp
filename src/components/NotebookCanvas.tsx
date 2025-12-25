@@ -1,22 +1,31 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { Button } from './ui/button';
-import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Pen, Eraser, Highlighter, Undo, Redo, ZoomIn, ZoomOut, Maximize2, Minimize2, ChevronLeft, ChevronRight, Type } from 'lucide-react';
 import { Slider } from './ui/slider';
-import { Stroke, Point, PenStyle, ToolType, PEN_STYLES, HIGHLIGHTER_COLORS } from '@/types/notebook';
+import { Stroke, Point, PenStyle, ToolType, PEN_STYLES, HIGHLIGHTER_COLORS, TextBox } from '@/types/notebook';
 import { ColorPicker } from './notebook/ColorPicker';
 import { PenStyleSelector } from './notebook/PenStyleSelector';
 import { StrokeWidthSlider } from './notebook/StrokeWidthSlider';
+import { TextBoxOverlay } from './notebook/TextBoxOverlay';
 import { catmullRomSpline, smoothPoints, calculateVelocityPressure } from '@/utils/strokeSmoothing';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from './ui/select';
 
 interface NotebookCanvasProps {
   strokes: Stroke[];
   onStrokesChange: (strokes: Stroke[]) => void;
+  textBoxes?: TextBox[];
+  onTextBoxesChange?: (textBoxes: TextBox[]) => void;
   template?: 'blank' | 'lined' | 'grid' | 'dotted';
   backgroundImage?: string;
   isFullscreen?: boolean;
   onToggleFullscreen?: () => void;
   canvasRef?: React.RefObject<HTMLCanvasElement>;
-  // Page navigation props for fullscreen mode
   currentPage?: number;
   totalPages?: number;
   onPreviousPage?: () => void;
@@ -27,9 +36,13 @@ interface NotebookCanvasProps {
 const CANVAS_WIDTH = 1600;
 const CANVAS_HEIGHT = 2400;
 
+const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48];
+
 export const NotebookCanvas = ({ 
   strokes, 
   onStrokesChange, 
+  textBoxes = [],
+  onTextBoxesChange,
   template = 'blank', 
   backgroundImage,
   isFullscreen = false,
@@ -50,7 +63,7 @@ export const NotebookCanvas = ({
   const lastPointRef = useRef<Point | null>(null);
   const lastTimeRef = useRef<number>(0);
   
-  // Eraser session tracking - accumulate changes during erasing
+  // Eraser session tracking
   const eraserSessionRef = useRef<{
     isActive: boolean;
     initialStrokes: Stroke[];
@@ -72,17 +85,22 @@ export const NotebookCanvas = ({
   const [highlighterWidth, setHighlighterWidth] = useState(20);
   const [eraserWidth, setEraserWidth] = useState(30);
   
+  // Text tool state
+  const [textColor, setTextColor] = useState('#000000');
+  const [textFontSize, setTextFontSize] = useState(18);
+  const [selectedTextBoxId, setSelectedTextBoxId] = useState<string | null>(null);
+  const [editingTextBoxId, setEditingTextBoxId] = useState<string | null>(null);
+  
   // Eraser cursor position
   const [eraserPos, setEraserPos] = useState<{ x: number; y: number } | null>(null);
   
-  // History - use strokes as single source of truth
+  // History
   const [history, setHistory] = useState<Stroke[][]>([strokes]);
   const [historyIndex, setHistoryIndex] = useState(0);
   
   // Sync history when strokes prop changes externally
   useEffect(() => {
     if (!eraserSessionRef.current.isActive) {
-      // Only update history if this is an external change
       const lastHistoryState = history[historyIndex];
       if (lastHistoryState !== strokes && JSON.stringify(lastHistoryState) !== JSON.stringify(strokes)) {
         setHistory([strokes]);
@@ -105,15 +123,12 @@ export const NotebookCanvas = ({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    // Set display size
     canvas.style.width = `${CANVAS_WIDTH}px`;
     canvas.style.height = `${CANVAS_HEIGHT}px`;
 
-    // Set actual size in memory (scaled for HiDPI)
     canvas.width = CANVAS_WIDTH * dpr;
     canvas.height = CANVAS_HEIGHT * dpr;
 
-    // Scale context for HiDPI
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.scale(dpr, dpr);
@@ -126,17 +141,30 @@ export const NotebookCanvas = ({
     drawCanvas();
   }, [strokes, template, backgroundImage]);
 
-  // Keyboard shortcuts for fullscreen
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isFullscreen && onToggleFullscreen) {
-        onToggleFullscreen();
+      if (e.key === 'Escape') {
+        if (isFullscreen && onToggleFullscreen) {
+          onToggleFullscreen();
+        }
+        if (editingTextBoxId) {
+          setEditingTextBoxId(null);
+        }
+        if (selectedTextBoxId) {
+          setSelectedTextBoxId(null);
+        }
+      }
+      
+      // Delete selected text box
+      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedTextBoxId && !editingTextBoxId) {
+        handleDeleteTextBox(selectedTextBoxId);
       }
     };
     
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen, onToggleFullscreen]);
+  }, [isFullscreen, onToggleFullscreen, selectedTextBoxId, editingTextBoxId]);
 
   const drawTemplate = useCallback((ctx: CanvasRenderingContext2D) => {
     ctx.strokeStyle = '#e5e7eb';
@@ -183,7 +211,6 @@ export const NotebookCanvas = ({
 
     const styleConfig = stroke.penStyle ? PEN_STYLES[stroke.penStyle] : PEN_STYLES.ballpoint;
     
-    // Apply smoothing for pen strokes
     const smoothedPoints = stroke.tool === 'pen' 
       ? catmullRomSpline(smoothPoints(stroke.points, 3), styleConfig.smoothing)
       : smoothPoints(stroke.points, 2);
@@ -206,16 +233,13 @@ export const NotebookCanvas = ({
       return;
     }
 
-    // Draw pen strokes with variable width based on pressure
     ctx.strokeStyle = stroke.color;
     ctx.globalAlpha = styleConfig.opacity;
 
-    // Draw each segment with variable width for pressure sensitivity
     for (let i = 1; i < smoothedPoints.length; i++) {
       const p0 = smoothedPoints[i - 1];
       const p1 = smoothedPoints[i];
       
-      // Calculate width based on pressure
       const pressure0 = p0.pressure ?? 0.5;
       const pressure1 = p1.pressure ?? 0.5;
       const avgPressure = (pressure0 + pressure1) / 2;
@@ -230,7 +254,6 @@ export const NotebookCanvas = ({
       ctx.beginPath();
       ctx.moveTo(p0.x, p0.y);
       
-      // Use quadratic curve for smoother lines
       if (i < smoothedPoints.length - 1) {
         const p2 = smoothedPoints[i + 1];
         const midX = (p1.x + p2.x) / 2;
@@ -253,20 +276,16 @@ export const NotebookCanvas = ({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Get the strokes to render - during eraser session, use the session strokes
     const strokesToRender = eraserSessionRef.current.isActive 
       ? eraserSessionRef.current.currentStrokes 
       : strokes;
 
-    // Reset transform and clear
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Fill white background
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw background image if present
     if (backgroundImage) {
       const img = new Image();
       img.onload = () => {
@@ -297,7 +316,6 @@ export const NotebookCanvas = ({
     ctx.restore();
   };
 
-  // Check distance from point to line segment (for precise erasing)
   const pointToSegmentDistance = useCallback((point: Point, segStart: Point, segEnd: Point): number => {
     const dx = segEnd.x - segStart.x;
     const dy = segEnd.y - segStart.y;
@@ -316,30 +334,27 @@ export const NotebookCanvas = ({
     return Math.sqrt((point.x - projX) ** 2 + (point.y - projY) ** 2);
   }, []);
 
-  // Improved eraser - removes entire strokes that intersect with eraser
   const eraseStrokesAtPoint = useCallback((currentStrokes: Stroke[], point: Point, radius: number): Stroke[] => {
-    const effectiveRadius = radius * 1.2; // Slightly larger hit area for better UX
+    const effectiveRadius = radius * 1.2;
     
     return currentStrokes.filter(stroke => {
       if (stroke.points.length < 2) return true;
       
-      // Check if any point is within eraser radius
       for (const p of stroke.points) {
         const dist = Math.sqrt((p.x - point.x) ** 2 + (p.y - point.y) ** 2);
         if (dist < effectiveRadius + stroke.width / 2) {
-          return false; // Remove this stroke
+          return false;
         }
       }
       
-      // Check segments between points
       for (let i = 0; i < stroke.points.length - 1; i++) {
         const segDist = pointToSegmentDistance(point, stroke.points[i], stroke.points[i + 1]);
         if (segDist < effectiveRadius + stroke.width / 2) {
-          return false; // Remove this stroke
+          return false;
         }
       }
       
-      return true; // Keep this stroke
+      return true;
     });
   }, [pointToSegmentDistance]);
 
@@ -354,10 +369,8 @@ export const NotebookCanvas = ({
     const x = (e.clientX - rect.left) * scaleX;
     const y = (e.clientY - rect.top) * scaleY;
     
-    // Get pressure from pointer event (0-1 range)
     let pressure = e.pressure;
     
-    // If no pressure (mouse), simulate based on velocity
     if (pressure === 0 || pressure === 0.5) {
       const now = performance.now();
       const currentPoint = { x, y };
@@ -366,6 +379,45 @@ export const NotebookCanvas = ({
     }
 
     return { x, y, pressure, timestamp: performance.now() };
+  };
+
+  // Text box handlers
+  const handleCreateTextBox = (point: Point) => {
+    if (!onTextBoxesChange) return;
+    
+    const newTextBox: TextBox = {
+      id: crypto.randomUUID(),
+      x: point.x - 100,
+      y: point.y - 20,
+      width: 200,
+      height: 60,
+      content: '',
+      fontSize: textFontSize,
+      fontFamily: 'sans-serif',
+      color: textColor,
+    };
+    
+    onTextBoxesChange([...textBoxes, newTextBox]);
+    setSelectedTextBoxId(newTextBox.id);
+    setEditingTextBoxId(newTextBox.id);
+  };
+
+  const handleUpdateTextBox = (id: string, updates: Partial<TextBox>) => {
+    if (!onTextBoxesChange) return;
+    
+    const updated = textBoxes.map(tb =>
+      tb.id === id ? { ...tb, ...updates } : tb
+    );
+    onTextBoxesChange(updated);
+  };
+
+  const handleDeleteTextBox = (id: string) => {
+    if (!onTextBoxesChange) return;
+    
+    const updated = textBoxes.filter(tb => tb.id !== id);
+    onTextBoxesChange(updated);
+    setSelectedTextBoxId(null);
+    setEditingTextBoxId(null);
   };
 
   const startDrawing = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -384,11 +436,22 @@ export const NotebookCanvas = ({
     lastPointRef.current = point;
     lastTimeRef.current = performance.now();
 
-    // Handle eraser - start eraser session
+    // Handle text tool
+    if (tool === 'text') {
+      // Deselect any text box first
+      if (selectedTextBoxId) {
+        setSelectedTextBoxId(null);
+        setEditingTextBoxId(null);
+      } else {
+        handleCreateTextBox(point);
+      }
+      return;
+    }
+
+    // Handle eraser
     if (tool === 'eraser') {
       setIsDrawing(true);
       
-      // Initialize eraser session
       eraserSessionRef.current = {
         isActive: true,
         initialStrokes: [...strokes],
@@ -396,7 +459,6 @@ export const NotebookCanvas = ({
         hasChanges: false
       };
       
-      // Perform initial erase
       const newStrokes = eraseStrokesAtPoint(strokes, point, eraserWidth / 2);
       if (newStrokes.length !== strokes.length) {
         eraserSessionRef.current.currentStrokes = newStrokes;
@@ -433,14 +495,12 @@ export const NotebookCanvas = ({
 
     const point = getCanvasPoint(e);
 
-    // Show eraser cursor even when not drawing
     if (tool === 'eraser') {
       setEraserPos({ x: point.x, y: point.y });
       
       if (isDrawing && eraserSessionRef.current.isActive) {
         e.preventDefault();
         
-        // Erase from current session strokes
         const newStrokes = eraseStrokesAtPoint(eraserSessionRef.current.currentStrokes, point, eraserWidth / 2);
         if (newStrokes.length !== eraserSessionRef.current.currentStrokes.length) {
           eraserSessionRef.current.currentStrokes = newStrokes;
@@ -448,7 +508,6 @@ export const NotebookCanvas = ({
         }
       }
       
-      // Redraw with eraser cursor
       drawCanvas(null, { x: point.x, y: point.y, radius: eraserWidth / 2 });
       return;
     }
@@ -474,21 +533,17 @@ export const NotebookCanvas = ({
     }
 
     if (tool === 'eraser') {
-      // End eraser session and commit changes
       if (eraserSessionRef.current.isActive && eraserSessionRef.current.hasChanges) {
         const finalStrokes = eraserSessionRef.current.currentStrokes;
         
-        // Update history
         const newHistory = history.slice(0, historyIndex + 1);
         newHistory.push(finalStrokes);
         setHistory(newHistory);
         setHistoryIndex(newHistory.length - 1);
         
-        // Commit to parent
         onStrokesChange(finalStrokes);
       }
       
-      // Reset eraser session
       eraserSessionRef.current = {
         isActive: false,
         initialStrokes: [],
@@ -504,7 +559,6 @@ export const NotebookCanvas = ({
 
     if (!isDrawing || !currentStroke) return;
 
-    // Only save if we have enough points
     if (currentStroke.points.length > 1) {
       const newStrokes = [...strokes, currentStroke];
       
@@ -560,11 +614,17 @@ export const NotebookCanvas = ({
 
   const handleZoomChange = (value: number[]) => setZoom(value[0]);
 
+  const handleCanvasContainerClick = () => {
+    // Deselect text box when clicking outside
+    if (selectedTextBoxId && !editingTextBoxId) {
+      setSelectedTextBoxId(null);
+    }
+  };
+
   return (
     <div className={`flex flex-col h-full ${isFullscreen ? 'fixed inset-0 z-50 bg-background' : ''}`}>
-      {/* Toolbar - responsive with flex-wrap */}
+      {/* Toolbar */}
       <div className="flex items-center gap-1 sm:gap-2 p-2 sm:p-3 bg-background border-b flex-wrap">
-        {/* Fullscreen Toggle */}
         {/* Page Navigation in Fullscreen */}
         {isFullscreen && totalPages > 1 && (
           <>
@@ -626,6 +686,7 @@ export const NotebookCanvas = ({
             size="sm"
             onClick={() => setTool('pen')}
             className="h-8"
+            title="Caneta"
           >
             <Pen className="h-4 w-4" />
           </Button>
@@ -634,14 +695,25 @@ export const NotebookCanvas = ({
             size="sm"
             onClick={() => setTool('highlighter')}
             className="h-8"
+            title="Marcador"
           >
             <Highlighter className="h-4 w-4" />
+          </Button>
+          <Button
+            variant={tool === 'text' ? 'secondary' : 'ghost'}
+            size="sm"
+            onClick={() => setTool('text')}
+            className="h-8"
+            title="Caixa de texto"
+          >
+            <Type className="h-4 w-4" />
           </Button>
           <Button
             variant={tool === 'eraser' ? 'secondary' : 'ghost'}
             size="sm"
             onClick={() => setTool('eraser')}
             className="h-8"
+            title="Borracha"
           >
             <Eraser className="h-4 w-4" />
           </Button>
@@ -657,8 +729,35 @@ export const NotebookCanvas = ({
           </>
         )}
 
-        {/* Color Picker */}
-        {tool !== 'eraser' && (
+        {/* Text tool options */}
+        {tool === 'text' && (
+          <>
+            <ColorPicker
+              color={textColor}
+              onChange={setTextColor}
+              isHighlighter={false}
+            />
+            <Select
+              value={String(textFontSize)}
+              onValueChange={(val) => setTextFontSize(Number(val))}
+            >
+              <SelectTrigger className="w-16 h-8 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {FONT_SIZES.map(size => (
+                  <SelectItem key={size} value={String(size)}>
+                    {size}px
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <div className="w-px h-6 bg-border" />
+          </>
+        )}
+
+        {/* Color Picker for drawing tools */}
+        {(tool === 'pen' || tool === 'highlighter') && (
           <ColorPicker
             color={tool === 'highlighter' ? highlighterColor : color}
             onChange={tool === 'highlighter' ? setHighlighterColor : setColor}
@@ -666,14 +765,16 @@ export const NotebookCanvas = ({
           />
         )}
 
-        {/* Stroke Width */}
-        <StrokeWidthSlider
-          width={tool === 'highlighter' ? highlighterWidth : tool === 'eraser' ? eraserWidth : strokeWidth}
-          onChange={tool === 'highlighter' ? setHighlighterWidth : tool === 'eraser' ? setEraserWidth : setStrokeWidth}
-          min={tool === 'highlighter' ? 10 : tool === 'eraser' ? 10 : 1}
-          max={tool === 'highlighter' ? 50 : tool === 'eraser' ? 80 : 30}
-          color={tool === 'highlighter' ? highlighterColor : tool === 'eraser' ? '#9CA3AF' : color}
-        />
+        {/* Stroke Width for drawing tools */}
+        {tool !== 'text' && (
+          <StrokeWidthSlider
+            width={tool === 'highlighter' ? highlighterWidth : tool === 'eraser' ? eraserWidth : strokeWidth}
+            onChange={tool === 'highlighter' ? setHighlighterWidth : tool === 'eraser' ? setEraserWidth : setStrokeWidth}
+            min={tool === 'highlighter' ? 10 : tool === 'eraser' ? 10 : 1}
+            max={tool === 'highlighter' ? 50 : tool === 'eraser' ? 80 : 30}
+            color={tool === 'highlighter' ? highlighterColor : tool === 'eraser' ? '#9CA3AF' : color}
+          />
+        )}
 
         <div className="w-px h-6 bg-border" />
 
@@ -701,7 +802,7 @@ export const NotebookCanvas = ({
 
         <div className="w-px h-6 bg-border" />
 
-        {/* Zoom Controls - simplified on mobile */}
+        {/* Zoom Controls */}
         <div className="flex items-center gap-1">
           <Button
             variant="ghost"
@@ -750,9 +851,13 @@ export const NotebookCanvas = ({
       </div>
 
       {/* Canvas Container */}
-      <div ref={containerRef} className="flex-1 overflow-auto bg-muted/50 p-2 sm:p-4 touch-pan-x touch-pan-y">
+      <div 
+        ref={containerRef} 
+        className="flex-1 overflow-auto bg-muted/50 p-2 sm:p-4 touch-pan-x touch-pan-y"
+        onClick={handleCanvasContainerClick}
+      >
         <div 
-          className="inline-block"
+          className="inline-block relative"
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'top left',
@@ -760,7 +865,11 @@ export const NotebookCanvas = ({
         >
           <canvas
             ref={canvasRef}
-            className={`border shadow-lg touch-none bg-white rounded-sm ${tool === 'eraser' ? 'cursor-none' : 'cursor-crosshair'}`}
+            className={`border shadow-lg touch-none bg-white rounded-sm ${
+              tool === 'eraser' ? 'cursor-none' : 
+              tool === 'text' ? 'cursor-text' : 
+              'cursor-crosshair'
+            }`}
             style={{
               width: CANVAS_WIDTH,
               height: CANVAS_HEIGHT,
@@ -771,6 +880,22 @@ export const NotebookCanvas = ({
             onPointerLeave={handlePointerLeave}
             onPointerCancel={stopDrawing}
           />
+          
+          {/* Text Boxes Layer */}
+          {textBoxes.map(textBox => (
+            <TextBoxOverlay
+              key={textBox.id}
+              textBox={textBox}
+              zoom={1}
+              isSelected={selectedTextBoxId === textBox.id}
+              isEditing={editingTextBoxId === textBox.id}
+              onSelect={() => setSelectedTextBoxId(textBox.id)}
+              onStartEdit={() => setEditingTextBoxId(textBox.id)}
+              onStopEdit={() => setEditingTextBoxId(null)}
+              onUpdate={(updates) => handleUpdateTextBox(textBox.id, updates)}
+              onDelete={() => handleDeleteTextBox(textBox.id)}
+            />
+          ))}
         </div>
       </div>
     </div>

@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import { Notebook, NotebookPage, Stroke, PEN_STYLES } from '@/types/notebook';
+import { Notebook, NotebookPage, Stroke, PEN_STYLES, TextBox } from '@/types/notebook';
 import { catmullRomSpline, smoothPoints } from './strokeSmoothing';
 
 const CANVAS_WIDTH = 1600;
@@ -32,23 +32,30 @@ export const renderPageToCanvas = (
     // Draw template
     drawTemplate(ctx, page.template);
 
+    const finishRendering = () => {
+      // Draw strokes
+      page.strokes.forEach(stroke => drawStroke(ctx, stroke));
+      
+      // Draw text boxes
+      (page.textBoxes || []).forEach(textBox => drawTextBox(ctx, textBox));
+      
+      resolve(canvas.toDataURL('image/png', 1.0));
+    };
+
     // Draw background image if present
     if (page.backgroundImage) {
       const img = new Image();
       img.onload = () => {
         ctx.drawImage(img, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
         drawTemplate(ctx, page.template);
-        page.strokes.forEach(stroke => drawStroke(ctx, stroke));
-        resolve(canvas.toDataURL('image/png', 1.0));
+        finishRendering();
       };
       img.onerror = () => {
-        page.strokes.forEach(stroke => drawStroke(ctx, stroke));
-        resolve(canvas.toDataURL('image/png', 1.0));
+        finishRendering();
       };
       img.src = page.backgroundImage;
     } else {
-      page.strokes.forEach(stroke => drawStroke(ctx, stroke));
-      resolve(canvas.toDataURL('image/png', 1.0));
+      finishRendering();
     }
   });
 };
@@ -153,6 +160,36 @@ const drawStroke = (ctx: CanvasRenderingContext2D, stroke: Stroke) => {
   }
 
   ctx.globalAlpha = 1;
+};
+
+const drawTextBox = (ctx: CanvasRenderingContext2D, textBox: TextBox) => {
+  if (!textBox.content) return;
+  
+  ctx.save();
+  ctx.font = `${textBox.fontSize}px ${textBox.fontFamily}`;
+  ctx.fillStyle = textBox.color;
+  ctx.textBaseline = 'top';
+  
+  // Simple text wrapping
+  const words = textBox.content.split(' ');
+  let line = '';
+  let y = textBox.y + 8;
+  const maxWidth = textBox.width - 16;
+  
+  for (const word of words) {
+    const testLine = line + word + ' ';
+    const metrics = ctx.measureText(testLine);
+    if (metrics.width > maxWidth && line !== '') {
+      ctx.fillText(line.trim(), textBox.x + 8, y);
+      line = word + ' ';
+      y += textBox.fontSize * 1.2;
+    } else {
+      line = testLine;
+    }
+  }
+  ctx.fillText(line.trim(), textBox.x + 8, y);
+  
+  ctx.restore();
 };
 
 /**

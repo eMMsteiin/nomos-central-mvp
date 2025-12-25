@@ -211,6 +211,24 @@ const Caderno = () => {
     setSelectedNotebook(updatedNotebook);
   };
 
+  const handleTextBoxesChange = (textBoxes: any[]) => {
+    if (!selectedNotebook) return;
+
+    const updatedPages = [...selectedNotebook.pages];
+    updatedPages[currentPageIndex] = {
+      ...updatedPages[currentPageIndex],
+      textBoxes,
+    };
+
+    const updatedNotebook = {
+      ...selectedNotebook,
+      pages: updatedPages,
+    };
+
+    updateNotebook(selectedNotebook.id, { pages: updatedPages });
+    setSelectedNotebook(updatedNotebook);
+  };
+
   const handleAddPage = () => {
     if (!selectedNotebook) return;
     
@@ -294,6 +312,8 @@ const Caderno = () => {
         <NotebookCanvas
           strokes={currentPage.strokes}
           onStrokesChange={handleStrokesChange}
+          textBoxes={currentPage.textBoxes || []}
+          onTextBoxesChange={handleTextBoxesChange}
           template={currentPage.template}
           backgroundImage={currentPage.backgroundImage}
           isFullscreen={true}
@@ -392,6 +412,8 @@ const Caderno = () => {
         <NotebookCanvas
           strokes={currentPage.strokes}
           onStrokesChange={handleStrokesChange}
+          textBoxes={currentPage.textBoxes || []}
+          onTextBoxesChange={handleTextBoxesChange}
           template={currentPage.template}
           backgroundImage={currentPage.backgroundImage}
           isFullscreen={false}
