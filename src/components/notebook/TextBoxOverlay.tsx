@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { TextBox } from '@/types/notebook';
 import { Button } from '@/components/ui/button';
-import { Trash2, GripVertical } from 'lucide-react';
+import { Trash2, GripVertical, Lock, LockOpen } from 'lucide-react';
 
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
@@ -91,6 +91,12 @@ export const TextBoxOverlay = ({
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditing) return;
+    if (textBox.locked) {
+      // If locked, still allow selection but not dragging
+      e.stopPropagation();
+      if (!isSelected) onSelect();
+      return;
+    }
     e.stopPropagation();
     e.preventDefault(); // Prevent text selection
 
@@ -234,6 +240,7 @@ export const TextBoxOverlay = ({
   }, [isDragging, resizeDirection, handleMouseMove, handleMouseUp]);
 
   const handleResizeStart = (e: React.MouseEvent, direction: ResizeDirection) => {
+    if (textBox.locked) return; // Block resize when locked
     e.stopPropagation();
     setResizeDirection(direction);
     setDragStart({ x: e.clientX, y: e.clientY });
@@ -244,6 +251,7 @@ export const TextBoxOverlay = ({
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
+    if (textBox.locked) return; // Block edit when locked
     onStartEdit();
   };
 
@@ -290,14 +298,14 @@ export const TextBoxOverlay = ({
   return (
     <div
       ref={containerRef}
-      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}`}
+      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${textBox.locked && !isSelected ? 'ring-2 ring-amber-400/50 ring-offset-1' : ''}`}
       style={{
         left: textBox.x * zoom,
         top: textBox.y * zoom,
         width: textBox.width * zoom,
         minHeight: displayHeight,
         backgroundColor: textBox.backgroundColor || 'transparent',
-        cursor: isDragging ? 'grabbing' : (isSelected && !isEditing ? 'grab' : 'default'),
+        cursor: textBox.locked ? 'not-allowed' : (isDragging ? 'grabbing' : (isSelected && !isEditing ? 'grab' : 'default')),
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
@@ -332,7 +340,7 @@ export const TextBoxOverlay = ({
             wordBreak: 'break-word',
             minHeight: displayHeight,
             userSelect: 'none',
-            cursor: isDragging ? 'grabbing' : 'grab',
+            cursor: textBox.locked ? 'not-allowed' : (isDragging ? 'grabbing' : 'grab'),
           }}
         >
           {textBox.content || (
@@ -344,128 +352,149 @@ export const TextBoxOverlay = ({
       {/* Controls when selected */}
       {isSelected && !isEditing && (
         <>
-          {/* Drag handle and delete button */}
+          {/* Drag handle, lock button, and delete button */}
           <div
-            className="absolute -top-6 left-0 flex items-center gap-1 bg-background border rounded-t px-1 py-0.5"
+            className="absolute -top-9 left-0 flex items-center gap-1.5 bg-background border rounded-t px-2 py-1 shadow-sm"
             style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
           >
-            <GripVertical className="h-3 w-3 text-muted-foreground cursor-grab" />
+            <GripVertical className={`h-4 w-4 text-muted-foreground ${textBox.locked ? 'opacity-50' : 'cursor-grab'}`} />
+            
+            {/* Lock/Unlock button */}
             <Button
               variant="ghost"
               size="sm"
-              className="h-5 w-5 p-0 hover:bg-destructive hover:text-destructive-foreground"
+              className={`h-7 w-7 p-0 ${textBox.locked ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'hover:bg-muted'}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUpdate({ locked: !textBox.locked });
+              }}
+              title={textBox.locked ? 'Desbloquear' : 'Bloquear'}
+            >
+              {textBox.locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+            </Button>
+            
+            {/* Delete button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 hover:bg-destructive hover:text-destructive-foreground"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
               }}
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
 
-          {/* Corner handles - fixed screen size */}
-          {/* Top-left */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              top: -handleSize / 2,
-              left: -handleSize / 2,
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('nw'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'nw')}
-          />
-          {/* Top-right */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              top: -handleSize / 2,
-              right: -handleSize / 2,
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('ne'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'ne')}
-          />
-          {/* Bottom-left */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              bottom: -handleSize / 2,
-              left: -handleSize / 2,
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('sw'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'sw')}
-          />
-          {/* Bottom-right */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              bottom: -handleSize / 2,
-              right: -handleSize / 2,
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('se'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'se')}
-          />
+          {/* Resize handles - only show if not locked */}
+          {!textBox.locked && (
+            <>
+              {/* Corner handles - fixed screen size */}
+              {/* Top-left */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  top: -handleSize / 2,
+                  left: -handleSize / 2,
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('nw'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'nw')}
+              />
+              {/* Top-right */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  top: -handleSize / 2,
+                  right: -handleSize / 2,
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('ne'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'ne')}
+              />
+              {/* Bottom-left */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  bottom: -handleSize / 2,
+                  left: -handleSize / 2,
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('sw'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'sw')}
+              />
+              {/* Bottom-right */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  bottom: -handleSize / 2,
+                  right: -handleSize / 2,
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('se'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'se')}
+              />
 
-          {/* Edge handles - fixed screen size */}
-          {/* Top */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              top: -handleSize / 2,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('n'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'n')}
-          />
-          {/* Bottom */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              bottom: -handleSize / 2,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('s'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 's')}
-          />
-          {/* Left */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              left: -handleSize / 2,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('w'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'w')}
-          />
-          {/* Right */}
-          <div
-            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
-            style={{
-              right: -handleSize / 2,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              width: handleSize,
-              height: handleSize,
-              cursor: getCursor('e'),
-            }}
-            onMouseDown={(e) => handleResizeStart(e, 'e')}
-          />
+              {/* Edge handles - fixed screen size */}
+              {/* Top */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  top: -handleSize / 2,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('n'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'n')}
+              />
+              {/* Bottom */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  bottom: -handleSize / 2,
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('s'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 's')}
+              />
+              {/* Left */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  left: -handleSize / 2,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('w'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'w')}
+              />
+              {/* Right */}
+              <div
+                className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
+                style={{
+                  right: -handleSize / 2,
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  width: handleSize,
+                  height: handleSize,
+                  cursor: getCursor('e'),
+                }}
+                onMouseDown={(e) => handleResizeStart(e, 'e')}
+              />
+            </>
+          )}
         </>
       )}
     </div>
