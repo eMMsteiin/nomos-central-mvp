@@ -224,8 +224,8 @@ export const TextBoxOverlay = ({
     return cursors[direction];
   };
 
-  // Handle size in screen pixels (not scaled by zoom)
-  const handleSize = 12;
+  // Handle size in screen pixels (not scaled by zoom) - larger for better touch/click
+  const handleSize = 20;
 
   // Calculate display height - use minHeight so content can expand
   const displayHeight = textBox.height * zoom;
@@ -306,7 +306,7 @@ export const TextBoxOverlay = ({
           {/* Corner handles - fixed screen size */}
           {/* Top-left */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               top: -handleSize / 2,
               left: -handleSize / 2,
@@ -318,7 +318,7 @@ export const TextBoxOverlay = ({
           />
           {/* Top-right */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               top: -handleSize / 2,
               right: -handleSize / 2,
@@ -330,7 +330,7 @@ export const TextBoxOverlay = ({
           />
           {/* Bottom-left */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               bottom: -handleSize / 2,
               left: -handleSize / 2,
@@ -342,7 +342,7 @@ export const TextBoxOverlay = ({
           />
           {/* Bottom-right */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               bottom: -handleSize / 2,
               right: -handleSize / 2,
@@ -356,7 +356,7 @@ export const TextBoxOverlay = ({
           {/* Edge handles - fixed screen size */}
           {/* Top */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               top: -handleSize / 2,
               left: '50%',
@@ -369,7 +369,7 @@ export const TextBoxOverlay = ({
           />
           {/* Bottom */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               bottom: -handleSize / 2,
               left: '50%',
@@ -382,7 +382,7 @@ export const TextBoxOverlay = ({
           />
           {/* Left */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               left: -handleSize / 2,
               top: '50%',
@@ -395,7 +395,7 @@ export const TextBoxOverlay = ({
           />
           {/* Right */}
           <div
-            className="absolute bg-primary border-2 border-background rounded-sm"
+            className="absolute bg-primary border-2 border-background rounded-full shadow-md hover:scale-110 hover:bg-primary/90 transition-transform"
             style={{
               right: -handleSize / 2,
               top: '50%',
