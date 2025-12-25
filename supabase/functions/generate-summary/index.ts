@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -62,6 +63,31 @@ ESTRUTURA:
 
 Responda APENAS com o resumo formatado em Markdown, sem explicações adicionais.`;
 
+// Helper function to verify user authentication
+async function verifyUser(req: Request): Promise<{ userId: string } | { error: string; status: number }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { error: 'Authorization header missing', status: 401 };
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  // Create client with user's auth token
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    console.error('[generate-summary] Auth error:', error);
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  return { userId: user.id };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -69,7 +95,40 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authResult = await verifyUser(req);
+    if ('error' in authResult) {
+      return new Response(JSON.stringify({ error: authResult.error }), {
+        status: authResult.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log('[generate-summary] Authenticated user:', authResult.userId);
+
     const { subject, type, sourceContent, sourceType } = await req.json();
+    
+    // Input validation
+    if (!subject || subject.length < 2) {
+      return new Response(JSON.stringify({ error: 'Subject is required' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (subject.length > 200) {
+      return new Response(JSON.stringify({ error: 'Subject too long. Limit: 200 characters.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    if (sourceContent && sourceContent.length > 50000) {
+      return new Response(JSON.stringify({ error: 'Source content too long. Limit: 50,000 characters.' }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     
     console.log('[generate-summary] Received request:', { subject, type, sourceType, contentLength: sourceContent?.length });
 
@@ -98,6 +157,7 @@ serve(async (req) => {
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
+        max_tokens: 2000,
       }),
     });
 

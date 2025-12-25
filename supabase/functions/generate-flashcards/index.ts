@@ -1,9 +1,35 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+// Helper function to verify user authentication
+async function verifyUser(req: Request): Promise<{ userId: string } | { error: string; status: number }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { error: 'Authorization header missing', status: 401 };
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  // Create client with user's auth token
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    console.error('[generate-flashcards] Auth error:', error);
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  return { userId: user.id };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,6 +37,17 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authResult = await verifyUser(req);
+    if ('error' in authResult) {
+      return new Response(JSON.stringify({ error: authResult.error }), {
+        status: authResult.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    console.log('[generate-flashcards] Authenticated user:', authResult.userId);
+
     const { text, topic, mode = 'text', maxCards = 10, difficulty = 'intermediate' } = await req.json();
 
     // Validate based on mode
@@ -21,6 +58,13 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      // Limit text length to prevent abuse
+      if (text.length > 50000) {
+        return new Response(
+          JSON.stringify({ error: 'Texto muito longo. Limite de 50.000 caracteres.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     } else if (mode === 'topic') {
       if (!topic || topic.length < 3) {
         return new Response(
@@ -28,7 +72,16 @@ serve(async (req) => {
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      if (topic.length > 200) {
+        return new Response(
+          JSON.stringify({ error: 'Tópico muito longo. Limite de 200 caracteres.' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
+
+    // Validate maxCards
+    const validMaxCards = Math.min(Math.max(1, maxCards), 20);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -46,7 +99,7 @@ serve(async (req) => {
 Sua tarefa é analisar o texto fornecido e extrair os conceitos mais importantes, criando flashcards no formato pergunta/resposta.
 
 REGRAS:
-- Crie entre 3 e ${maxCards} flashcards dependendo da quantidade de conteúdo
+- Crie entre 3 e ${validMaxCards} flashcards dependendo da quantidade de conteúdo
 - Cada pergunta (front) deve ser clara e específica
 - Cada resposta (back) deve ser concisa mas completa
 - Priorize: definições, fórmulas, datas importantes, conceitos-chave, relações causa-efeito
@@ -67,7 +120,7 @@ Sua tarefa é gerar flashcards sobre o tópico solicitado, no nível de dificuld
 NÍVEL: ${difficultyLabels[difficulty] || difficultyLabels.intermediate}
 
 REGRAS:
-- Gere exatamente ${maxCards} flashcards
+- Gere exatamente ${validMaxCards} flashcards
 - Cubra os conceitos fundamentais e mais importantes do tópico
 - Inclua definições, fatos históricos, fórmulas (quando aplicável), relações importantes
 - Para nível básico: foque no essencial, use linguagem acessível
@@ -85,9 +138,9 @@ Use a função generate_flashcards para retornar os flashcards estruturados.`;
 
     const userMessage = mode === 'text' 
       ? `Analise o seguinte texto e gere flashcards para estudo:\n\n${text}`
-      : `Gere ${maxCards} flashcards sobre o tópico: "${topic}"`;
+      : `Gere ${validMaxCards} flashcards sobre o tópico: "${topic}"`;
 
-    console.log(`Generating flashcards - mode: ${mode}, ${mode === 'text' ? `text length: ${text?.length}` : `topic: ${topic}`}, max: ${maxCards}, difficulty: ${difficulty}`);
+    console.log(`[generate-flashcards] Generating - mode: ${mode}, ${mode === 'text' ? `text length: ${text?.length}` : `topic: ${topic}`}, max: ${validMaxCards}, difficulty: ${difficulty}`);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -147,7 +200,7 @@ Use a função generate_flashcards para retornar os flashcards estruturados.`;
     if (!response.ok) {
       const status = response.status;
       const errorText = await response.text();
-      console.error('Lovable AI error:', status, errorText);
+      console.error('[generate-flashcards] Lovable AI error:', status, errorText);
 
       if (status === 429) {
         return new Response(
@@ -166,12 +219,12 @@ Use a função generate_flashcards para retornar os flashcards estruturados.`;
     }
 
     const data = await response.json();
-    console.log('AI response received');
+    console.log('[generate-flashcards] AI response received');
 
     // Extract flashcards from tool call response
     const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     if (!toolCall || toolCall.function.name !== 'generate_flashcards') {
-      console.error('Invalid tool call response:', JSON.stringify(data));
+      console.error('[generate-flashcards] Invalid tool call response:', JSON.stringify(data));
       return new Response(
         JSON.stringify({ error: 'Não foi possível gerar flashcards. Tente um texto mais detalhado.' }),
         { status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -188,7 +241,7 @@ Use a função generate_flashcards para retornar os flashcards estruturados.`;
       );
     }
 
-    console.log(`Generated ${flashcards.length} flashcards`);
+    console.log(`[generate-flashcards] Generated ${flashcards.length} flashcards`);
 
     return new Response(
       JSON.stringify({ flashcards }),
@@ -196,7 +249,7 @@ Use a função generate_flashcards para retornar os flashcards estruturados.`;
     );
 
   } catch (error) {
-    console.error('Error in generate-flashcards:', error);
+    console.error('[generate-flashcards] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Erro ao gerar flashcards';
     return new Response(
       JSON.stringify({ error: errorMessage }),
