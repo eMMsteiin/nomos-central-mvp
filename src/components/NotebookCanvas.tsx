@@ -36,7 +36,7 @@ interface NotebookCanvasProps {
 const CANVAS_WIDTH = 1600;
 const CANVAS_HEIGHT = 2400;
 
-const FONT_SIZES = [12, 14, 16, 18, 20, 24, 28, 32, 36, 48];
+const FONT_SIZES = [16, 20, 24, 28, 32, 36, 40, 48, 56, 64, 72];
 
 export const NotebookCanvas = ({ 
   strokes, 
@@ -87,7 +87,7 @@ export const NotebookCanvas = ({
   
   // Text tool state
   const [textColor, setTextColor] = useState('#000000');
-  const [textFontSize, setTextFontSize] = useState(18);
+  const [textFontSize, setTextFontSize] = useState(28);
   const [selectedTextBoxId, setSelectedTextBoxId] = useState<string | null>(null);
   const [editingTextBoxId, setEditingTextBoxId] = useState<string | null>(null);
   
@@ -387,10 +387,10 @@ export const NotebookCanvas = ({
     
     const newTextBox: TextBox = {
       id: crypto.randomUUID(),
-      x: point.x - 100,
-      y: point.y - 20,
-      width: 200,
-      height: 60,
+      x: point.x - 200,
+      y: point.y - 50,
+      width: 400,
+      height: 100,
       content: '',
       fontSize: textFontSize,
       fontFamily: 'sans-serif',

@@ -207,8 +207,8 @@ export const TextBoxOverlay = ({
     return cursors[direction];
   };
 
-  const handleSize = 8;
-  const scaledHandleSize = handleSize / zoom;
+  // Handle size in screen pixels (not scaled by zoom)
+  const handleSize = 12;
 
   // Calculate display height - use minHeight so content can expand
   const displayHeight = textBox.height * zoom;
@@ -285,105 +285,105 @@ export const TextBoxOverlay = ({
             </Button>
           </div>
 
-          {/* Corner handles */}
+          {/* Corner handles - fixed screen size */}
           {/* Top-left */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              top: -scaledHandleSize / 2 * zoom,
-              left: -scaledHandleSize / 2 * zoom,
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              top: -handleSize / 2,
+              left: -handleSize / 2,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('nw'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'nw')}
           />
           {/* Top-right */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              top: -scaledHandleSize / 2 * zoom,
-              right: -scaledHandleSize / 2 * zoom,
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              top: -handleSize / 2,
+              right: -handleSize / 2,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('ne'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'ne')}
           />
           {/* Bottom-left */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              bottom: -scaledHandleSize / 2 * zoom,
-              left: -scaledHandleSize / 2 * zoom,
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              bottom: -handleSize / 2,
+              left: -handleSize / 2,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('sw'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'sw')}
           />
           {/* Bottom-right */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              bottom: -scaledHandleSize / 2 * zoom,
-              right: -scaledHandleSize / 2 * zoom,
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              bottom: -handleSize / 2,
+              right: -handleSize / 2,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('se'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'se')}
           />
 
-          {/* Edge handles */}
+          {/* Edge handles - fixed screen size */}
           {/* Top */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              top: -scaledHandleSize / 2 * zoom,
+              top: -handleSize / 2,
               left: '50%',
               transform: 'translateX(-50%)',
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('n'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'n')}
           />
           {/* Bottom */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              bottom: -scaledHandleSize / 2 * zoom,
+              bottom: -handleSize / 2,
               left: '50%',
               transform: 'translateX(-50%)',
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('s'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 's')}
           />
           {/* Left */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              left: -scaledHandleSize / 2 * zoom,
+              left: -handleSize / 2,
               top: '50%',
               transform: 'translateY(-50%)',
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('w'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'w')}
           />
           {/* Right */}
           <div
-            className="absolute bg-primary border border-background"
+            className="absolute bg-primary border-2 border-background rounded-sm"
             style={{
-              right: -scaledHandleSize / 2 * zoom,
+              right: -handleSize / 2,
               top: '50%',
               transform: 'translateY(-50%)',
-              width: scaledHandleSize * zoom,
-              height: scaledHandleSize * zoom,
+              width: handleSize,
+              height: handleSize,
               cursor: getCursor('e'),
             }}
             onMouseDown={(e) => handleResizeStart(e, 'e')}
