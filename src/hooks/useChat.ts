@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useDeviceId } from './useDeviceId';
+import { useAuthContext } from '@/contexts/AuthContext';
 import { Message, Proposal, ChatAction } from '@/types/chat';
 import { Task } from '@/types/task';
 import { toast } from 'sonner';
@@ -19,7 +19,7 @@ interface UseChatOptions {
 
 export function useChat(options: UseChatOptions = {}) {
   const { externalConversationId, onConversationCreated } = options;
-  const deviceId = useDeviceId();
+  const { userId } = useAuthContext();
   const [messages, setMessages] = useState<Message[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(externalConversationId || null);
   const [isLoading, setIsLoading] = useState(false);
@@ -64,13 +64,13 @@ export function useChat(options: UseChatOptions = {}) {
 
   // Load recent actions
   useEffect(() => {
-    if (!deviceId) return;
+    if (!userId) return;
 
     const loadActions = async () => {
       const { data: actions } = await supabase
         .from('chat_actions_log')
         .select('*')
-        .eq('user_id', deviceId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false })
         .limit(20);
 
@@ -80,7 +80,7 @@ export function useChat(options: UseChatOptions = {}) {
     };
 
     loadActions();
-  }, [deviceId]);
+  }, [userId]);
 
   // Subscribe to realtime messages
   useEffect(() => {
@@ -125,7 +125,7 @@ export function useChat(options: UseChatOptions = {}) {
   }, [conversationId]);
 
   const sendMessage = useCallback(async (content: string) => {
-    if (!deviceId || !content.trim()) return;
+    if (!userId || !content.trim()) return;
 
     setIsLoading(true);
 
@@ -145,7 +145,6 @@ export function useChat(options: UseChatOptions = {}) {
       
       const { data, error } = await supabase.functions.invoke('chat-nomos', {
         body: {
-          userId: deviceId,
           conversationId,
           message: content.trim(),
           context // Pass full context to AI
@@ -166,7 +165,7 @@ export function useChat(options: UseChatOptions = {}) {
         const { data: actions } = await supabase
           .from('chat_actions_log')
           .select('*')
-          .eq('user_id', deviceId)
+          .eq('user_id', userId)
           .order('created_at', { ascending: false })
           .limit(20);
 
@@ -182,7 +181,7 @@ export function useChat(options: UseChatOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [deviceId, conversationId, onConversationCreated]);
+  }, [userId, conversationId, onConversationCreated]);
 
   const parseDuration = (durationStr: string): number => {
     if (!durationStr) return 60;

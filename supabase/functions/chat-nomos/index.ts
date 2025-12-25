@@ -466,7 +466,6 @@ function isCollectingBlockInfo(history: Array<{role: string, content: string}> |
 }
 
 // Detect if consolidation should be suggested based on context
-// STRICT: Only suggest when user explicitly closes session or requests consolidation
 function shouldSuggestConsolidation(
   context: ChatContext | undefined, 
   message: string,
@@ -488,121 +487,127 @@ function shouldSuggestConsolidation(
   }
   
   // RULE 1: Check if user is in ACTIVE STUDY MODE (asking questions)
-  // If recent user messages are questions, DO NOT suggest consolidation
   const userMessages = history?.filter(m => m.role === 'user') || [];
   const lastUserMessages = userMessages.slice(-3);
-  const isActivelyStudying = lastUserMessages.some(m => 
-    m.content?.trim().endsWith('?') || 
-    m.content?.toLowerCase().includes('o que é') ||
-    m.content?.toLowerCase().includes('como funciona') ||
-    m.content?.toLowerCase().includes('me explica')
+  const isAskingQuestions = lastUserMessages.some(m => 
+    m.content?.includes('?') || 
+    m.content?.toLowerCase().match(/^(o que|como|qual|quando|onde|por que|explica|me fala|me conta|dúvida)/i)
   );
   
-  // If the current message is also a question, definitely in study mode
-  const isCurrentlyAsking = lowerMessage.endsWith('?') || 
-    lowerMessage.includes('o que é') || 
-    lowerMessage.includes('como funciona') ||
-    lowerMessage.includes('me explica') ||
-    lowerMessage.includes('qual a diferença');
-  
-  if (isActivelyStudying || isCurrentlyAsking) {
+  if (isAskingQuestions && !lowerMessage.match(/termin|encerr|valeu|tchau|por hoje|só isso|é isso/)) {
     return { should: false, trigger: '', subject: '' };
   }
   
-  // RULE 2: Check for EXPLICIT consolidation request
-  const explicitConsolidationRequest = [
-    'faz um resumo', 'cria um resumo', 'gera resumo', 'fazer resumo',
-    'criar flashcard', 'gerar flashcard', 'fazer flashcard', 'cria flashcard',
-    'consolida', 'consolidar', 'resumir isso', 'transforma em resumo',
-    'transforma em flashcard', 'quero revisar'
+  // RULE 2: Check for explicit consolidation requests
+  const explicitRequests = [
+    'faz um resumo', 'fazer resumo', 'cria resumo', 'quero resumo',
+    'cria flashcard', 'criar flashcard', 'quero flashcard', 'gera flashcard',
+    'consolida isso', 'consolidar', 'transforma em resumo', 'transforma em flashcard'
   ];
   
-  if (explicitConsolidationRequest.some(phrase => lowerMessage.includes(phrase))) {
-    // Find subject from message or context
-    const blocks = context.completedStudyBlocks || [];
-    const subject = blocks[0]?.focusSubject || blocks[0]?.text || 'o conteúdo estudado';
-    const duration = blocks[0]?.durationMinutes;
-    
-    return {
-      should: true,
-      trigger: 'explicit_request',
+  if (explicitRequests.some(req => lowerMessage.includes(req))) {
+    const subject = extractSubjectFromContext(context, message);
+    return { 
+      should: true, 
+      trigger: 'pedido_explicito', 
       subject,
-      studyDuration: duration
+      studyDuration: calculateStudyDuration(context)
     };
   }
   
-  // RULE 3: Check for SESSION CLOSING phrases
-  const closingPhrases = [
-    'por hoje é isso', 'terminei por hoje', 'acabei por hoje',
-    'vou parar', 'vou encerrar', 'encerrar sessão',
-    'valeu', 'até mais', 'até amanhã', 'tchau', 'flw', 'falou',
-    'é isso por agora', 'só isso por hoje', 'por enquanto é isso',
-    'terminei', 'acabei', 'finalizei', 'era isso', 'é isso', 'só isso'
+  // RULE 3: Check for session ending signals
+  const sessionEndSignals = [
+    'terminei por hoje', 'por hoje é isso', 'valeu, era isso', 'vou parar',
+    'encerrar', 'até mais', 'tchau', 'é isso', 'só isso', 'terminei',
+    'por hoje chega', 'basta por hoje', 'fechou', 'era só isso'
   ];
   
-  const isClosingSession = closingPhrases.some(phrase => lowerMessage.includes(phrase));
-  
-  if (isClosingSession) {
-    // Check if there are completed study blocks to consolidate
-    const significantBlocks = context.completedStudyBlocks?.filter(
-      b => (b.durationMinutes || 0) >= 20
-    ) || [];
-    
-    if (significantBlocks.length > 0) {
-      const block = significantBlocks[0];
-      return {
-        should: true,
-        trigger: 'session_closing',
-        subject: block.focusSubject || block.text || 'o conteúdo estudado',
-        studyDuration: block.durationMinutes
-      };
-    }
-    
-    // Even without blocks, if there was significant study time, suggest
-    const totalMinutes = context.stats?.totalStudyMinutesToday || 0;
-    if (totalMinutes >= 25) {
-      return {
-        should: true,
-        trigger: 'session_closing',
-        subject: 'o conteúdo estudado hoje',
-        studyDuration: totalMinutes
+  if (sessionEndSignals.some(signal => lowerMessage.includes(signal))) {
+    const subject = extractSubjectFromContext(context, message);
+    if (subject || (context.completedStudyBlocks?.length || 0) > 0) {
+      return { 
+        should: true, 
+        trigger: 'encerramento_sessao', 
+        subject: subject || context.completedStudyBlocks?.[0]?.focusSubject || 'o estudo de hoje',
+        studyDuration: calculateStudyDuration(context)
       };
     }
   }
   
-  // RULE 4: Check for upcoming exams ONLY if user mentions it
-  if (context.upcomingExams?.length > 0) {
-    const examMentioned = lowerMessage.includes('prova') || 
-      lowerMessage.includes('teste') || 
-      lowerMessage.includes('avaliação');
-    
-    if (examMentioned) {
-      return {
-        should: true,
-        trigger: 'exam_approaching',
-        subject: context.upcomingExams[0].text
-      };
-    }
-  }
-  
-  // Default: DO NOT suggest consolidation
   return { should: false, trigger: '', subject: '' };
 }
 
+function extractSubjectFromContext(context: ChatContext, message: string): string {
+  // Try to get from completed study blocks
+  if (context.completedStudyBlocks?.length) {
+    return context.completedStudyBlocks[0].focusSubject || context.completedStudyBlocks[0].text || '';
+  }
+  
+  // Try to get from active study blocks
+  if (context.studyBlocks?.length) {
+    return context.studyBlocks[0].focusSubject || context.studyBlocks[0].text || '';
+  }
+  
+  // Try to extract from message
+  const subjectMatch = message.match(/sobre\s+(.+?)(?:\s+para|\s+em|\s*$)/i);
+  if (subjectMatch) return subjectMatch[1];
+  
+  return '';
+}
+
+function calculateStudyDuration(context: ChatContext): number {
+  return context.stats?.totalStudyMinutesToday || 0;
+}
+
 interface ChatRequest {
-  userId: string;
   conversationId?: string;
   message: string;
   context?: ChatContext;
 }
 
+// Helper function to verify user authentication
+async function verifyUser(req: Request): Promise<{ userId: string } | { error: string; status: number }> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) {
+    return { error: 'Authorization header missing', status: 401 };
+  }
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  
+  // Create client with user's auth token
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    console.error('[chat-nomos] Auth error:', error);
+    return { error: 'Unauthorized', status: 401 };
+  }
+
+  return { userId: user.id };
+}
+
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { userId, conversationId, message, context } = await req.json() as ChatRequest;
+    // Verify authentication
+    const authResult = await verifyUser(req);
+    if ('error' in authResult) {
+      return new Response(JSON.stringify({ error: authResult.error }), {
+        status: authResult.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    const userId = authResult.userId;
+    const { conversationId, message, context } = await req.json() as ChatRequest;
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -691,6 +696,7 @@ serve(async (req) => {
       { role: 'user', content: message }
     ];
 
+    console.log('[chat-nomos] Authenticated user:', userId);
     console.log('[chat-nomos] Sending to AI with context:', {
       hasContext: !!context,
       todayTasks: context?.todayTasks?.length || 0,
@@ -711,7 +717,7 @@ serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages,
         temperature: 0.7,
-        max_tokens: 600,
+        max_tokens: 3000,
       }),
     });
 
