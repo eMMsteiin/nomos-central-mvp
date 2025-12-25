@@ -36,6 +36,7 @@ export const TextBoxOverlay = ({
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPos, setInitialPos] = useState({ x: 0, y: 0 });
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
+  const [initialFontSize, setInitialFontSize] = useState(0);
 
   // Auto-resize textarea height based on content
   const autoResizeTextarea = useCallback(() => {
@@ -133,33 +134,80 @@ export const TextBoxOverlay = ({
       let newWidth = initialSize.width;
       let newHeight = initialSize.height;
 
-      // Handle horizontal resizing
-      if (resizeDirection.includes('e')) {
-        newWidth = Math.max(100, initialSize.width + deltaX);
-      }
-      if (resizeDirection.includes('w')) {
-        const proposedWidth = initialSize.width - deltaX;
-        if (proposedWidth >= 100) {
-          newWidth = proposedWidth;
-          newX = initialPos.x + deltaX;
-        }
-      }
+      // Check if resizing from a corner (diagonal)
+      const isCorner = ['nw', 'ne', 'sw', 'se'].includes(resizeDirection);
 
-      // Handle vertical resizing - only set a minimum height, let content expand beyond
-      if (resizeDirection.includes('s')) {
-        newHeight = Math.max(40, initialSize.height + deltaY);
-      }
-      if (resizeDirection.includes('n')) {
-        const proposedHeight = initialSize.height - deltaY;
-        if (proposedHeight >= 40) {
-          newHeight = proposedHeight;
-          newY = initialPos.y + deltaY;
-        }
-      }
+      if (isCorner) {
+        // Corner resize: scale proportionally including font
+        let scaleX = 1;
+        let scaleY = 1;
 
-      onUpdate({ x: newX, y: newY, width: newWidth, height: newHeight });
+        // Calculate scale based on direction
+        if (resizeDirection.includes('e')) {
+          scaleX = (initialSize.width + deltaX) / initialSize.width;
+        }
+        if (resizeDirection.includes('w')) {
+          scaleX = (initialSize.width - deltaX) / initialSize.width;
+        }
+        if (resizeDirection.includes('s')) {
+          scaleY = (initialSize.height + deltaY) / initialSize.height;
+        }
+        if (resizeDirection.includes('n')) {
+          scaleY = (initialSize.height - deltaY) / initialSize.height;
+        }
+
+        // Use the average scale for uniform scaling
+        const scale = Math.max(0.1, (scaleX + scaleY) / 2);
+        
+        // Apply scale to dimensions with minimums
+        newWidth = Math.max(100, initialSize.width * scale);
+        newHeight = Math.max(40, initialSize.height * scale);
+
+        // Scale font proportionally with limits (8px min, 200px max)
+        const newFontSize = Math.max(8, Math.min(200, initialFontSize * scale));
+
+        // Adjust position for corners that move the origin
+        if (resizeDirection.includes('w')) {
+          newX = initialPos.x + initialSize.width - newWidth;
+        }
+        if (resizeDirection.includes('n')) {
+          newY = initialPos.y + initialSize.height - newHeight;
+        }
+
+        onUpdate({ 
+          x: newX, 
+          y: newY, 
+          width: newWidth, 
+          height: newHeight,
+          fontSize: Math.round(newFontSize)
+        });
+      } else {
+        // Edge resize: only resize box, don't scale font
+        if (resizeDirection.includes('e')) {
+          newWidth = Math.max(100, initialSize.width + deltaX);
+        }
+        if (resizeDirection.includes('w')) {
+          const proposedWidth = initialSize.width - deltaX;
+          if (proposedWidth >= 100) {
+            newWidth = proposedWidth;
+            newX = initialPos.x + deltaX;
+          }
+        }
+        if (resizeDirection.includes('s')) {
+          newHeight = Math.max(40, initialSize.height + deltaY);
+        }
+        if (resizeDirection.includes('n')) {
+          const proposedHeight = initialSize.height - deltaY;
+          if (proposedHeight >= 40) {
+            newHeight = proposedHeight;
+            newY = initialPos.y + deltaY;
+          }
+        }
+
+        onUpdate({ x: newX, y: newY, width: newWidth, height: newHeight });
+      }
     }
-  }, [isDragging, resizeDirection, dragStart, initialPos, initialSize, zoom, onUpdate]);
+  }, [isDragging, resizeDirection, dragStart, initialPos, initialSize, initialFontSize, zoom, onUpdate]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -183,6 +231,7 @@ export const TextBoxOverlay = ({
     setDragStart({ x: e.clientX, y: e.clientY });
     setInitialPos({ x: textBox.x, y: textBox.y });
     setInitialSize({ width: textBox.width, height: textBox.height });
+    setInitialFontSize(textBox.fontSize);
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
