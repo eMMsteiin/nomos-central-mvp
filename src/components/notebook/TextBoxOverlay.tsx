@@ -92,6 +92,7 @@ export const TextBoxOverlay = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditing) return;
     e.stopPropagation();
+    e.preventDefault(); // Prevent text selection
 
     // If not selected, just select (don't start dragging)
     if (!isSelected) {
@@ -218,9 +219,16 @@ export const TextBoxOverlay = ({
     if (isDragging || resizeDirection) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
+      
+      // Disable text selection globally during drag/resize
+      document.body.style.userSelect = 'none';
+      document.body.style.cursor = isDragging ? 'grabbing' : getCursor(resizeDirection!);
+      
       return () => {
         window.removeEventListener('mousemove', handleMouseMove);
         window.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.userSelect = '';
+        document.body.style.cursor = '';
       };
     }
   }, [isDragging, resizeDirection, handleMouseMove, handleMouseUp]);
@@ -282,13 +290,14 @@ export const TextBoxOverlay = ({
   return (
     <div
       ref={containerRef}
-      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${isDragging || resizeDirection ? 'cursor-grabbing' : ''}`}
+      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}`}
       style={{
         left: textBox.x * zoom,
         top: textBox.y * zoom,
         width: textBox.width * zoom,
         minHeight: displayHeight,
         backgroundColor: textBox.backgroundColor || 'transparent',
+        cursor: isDragging ? 'grabbing' : (isSelected && !isEditing ? 'grab' : 'default'),
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
@@ -314,7 +323,7 @@ export const TextBoxOverlay = ({
       ) : (
         <div
           ref={measureRef}
-          className={`w-full p-2 cursor-grab ${isSelected ? 'bg-white/50' : ''}`}
+          className={`w-full p-2 ${isSelected ? 'bg-white/50' : ''}`}
           style={{
             fontSize: textBox.fontSize * zoom,
             fontFamily: textBox.fontFamily,
@@ -322,6 +331,8 @@ export const TextBoxOverlay = ({
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
             minHeight: displayHeight,
+            userSelect: 'none',
+            cursor: isDragging ? 'grabbing' : 'grab',
           }}
         >
           {textBox.content || (
