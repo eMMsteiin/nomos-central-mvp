@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { TextBox } from '@/types/notebook';
 import { Button } from '@/components/ui/button';
 import { Trash2, GripVertical } from 'lucide-react';
@@ -30,19 +30,63 @@ export const TextBoxOverlay = ({
 }: TextBoxOverlayProps) => {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const measureRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [resizeDirection, setResizeDirection] = useState<ResizeDirection | null>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPos, setInitialPos] = useState({ x: 0, y: 0 });
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
 
-  // Focus textarea when editing starts
+  // Auto-resize textarea height based on content
+  const autoResizeTextarea = useCallback(() => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      // Reset height to auto to get accurate scrollHeight
+      textarea.style.height = 'auto';
+      const newHeight = textarea.scrollHeight;
+      textarea.style.height = `${newHeight}px`;
+      
+      // Update the textBox height in canvas coordinates
+      const minHeight = 40;
+      const actualHeight = Math.max(minHeight, newHeight / zoom);
+      if (actualHeight !== textBox.height) {
+        onUpdate({ height: actualHeight });
+      }
+    }
+  }, [zoom, textBox.height, onUpdate]);
+
+  // Focus textarea when editing starts and auto-resize
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      textareaRef.current.select();
+      // Place cursor at the end
+      const length = textareaRef.current.value.length;
+      textareaRef.current.setSelectionRange(length, length);
+      // Initial auto-resize
+      setTimeout(autoResizeTextarea, 0);
     }
-  }, [isEditing]);
+  }, [isEditing, autoResizeTextarea]);
+
+  // Calculate height based on content for display mode
+  const calculateDisplayHeight = useCallback(() => {
+    if (measureRef.current && !isEditing) {
+      const measuredHeight = measureRef.current.scrollHeight;
+      const minHeight = 40;
+      const actualHeight = Math.max(minHeight, measuredHeight / zoom);
+      if (Math.abs(actualHeight - textBox.height) > 2) {
+        onUpdate({ height: actualHeight });
+      }
+    }
+  }, [isEditing, zoom, textBox.height, onUpdate]);
+
+  // Recalculate height when content or width changes
+  useEffect(() => {
+    if (!isEditing) {
+      // Use a timeout to ensure the DOM has updated
+      const timer = setTimeout(calculateDisplayHeight, 10);
+      return () => clearTimeout(timer);
+    }
+  }, [textBox.content, textBox.width, isEditing, calculateDisplayHeight]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditing) return;
@@ -55,7 +99,7 @@ export const TextBoxOverlay = ({
     setInitialPos({ x: textBox.x, y: textBox.y });
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (isDragging) {
       const deltaX = (e.clientX - dragStart.x) / zoom;
       const deltaY = (e.clientY - dragStart.y) / zoom;
@@ -84,7 +128,7 @@ export const TextBoxOverlay = ({
         }
       }
 
-      // Handle vertical resizing
+      // Handle vertical resizing - only set a minimum height, let content expand beyond
       if (resizeDirection.includes('s')) {
         newHeight = Math.max(40, initialSize.height + deltaY);
       }
@@ -98,12 +142,12 @@ export const TextBoxOverlay = ({
 
       onUpdate({ x: newX, y: newY, width: newWidth, height: newHeight });
     }
-  };
+  }, [isDragging, resizeDirection, dragStart, initialPos, initialSize, zoom, onUpdate]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     setIsDragging(false);
     setResizeDirection(null);
-  };
+  }, []);
 
   useEffect(() => {
     if (isDragging || resizeDirection) {
@@ -114,7 +158,7 @@ export const TextBoxOverlay = ({
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, resizeDirection, dragStart, initialPos, initialSize, zoom]);
+  }, [isDragging, resizeDirection, handleMouseMove, handleMouseUp]);
 
   const handleResizeStart = (e: React.MouseEvent, direction: ResizeDirection) => {
     e.stopPropagation();
@@ -143,6 +187,12 @@ export const TextBoxOverlay = ({
     }
   };
 
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    onUpdate({ content: e.target.value });
+    // Auto-resize after content change
+    setTimeout(autoResizeTextarea, 0);
+  };
+
   const getCursor = (direction: ResizeDirection) => {
     const cursors: Record<ResizeDirection, string> = {
       n: 'ns-resize',
@@ -160,6 +210,9 @@ export const TextBoxOverlay = ({
   const handleSize = 8;
   const scaledHandleSize = handleSize / zoom;
 
+  // Calculate display height - use minHeight so content can expand
+  const displayHeight = textBox.height * zoom;
+
   return (
     <div
       ref={containerRef}
@@ -168,7 +221,7 @@ export const TextBoxOverlay = ({
         left: textBox.x * zoom,
         top: textBox.y * zoom,
         width: textBox.width * zoom,
-        height: textBox.height * zoom,
+        minHeight: displayHeight,
         backgroundColor: textBox.backgroundColor || 'transparent',
       }}
       onMouseDown={handleMouseDown}
@@ -178,26 +231,30 @@ export const TextBoxOverlay = ({
         <textarea
           ref={textareaRef}
           value={textBox.content}
-          onChange={(e) => onUpdate({ content: e.target.value })}
+          onChange={handleTextChange}
           onBlur={handleBlur}
           onKeyDown={handleKeyDown}
-          className="w-full h-full p-2 resize-none border-none outline-none bg-white/90"
+          className="w-full p-2 resize-none border-none outline-none bg-white/90"
           style={{
             fontSize: textBox.fontSize * zoom,
             fontFamily: textBox.fontFamily,
             color: textBox.color,
+            minHeight: displayHeight,
+            overflow: 'hidden',
           }}
           placeholder="Digite seu texto..."
         />
       ) : (
         <div
-          className={`w-full h-full p-2 overflow-hidden cursor-grab ${isSelected ? 'bg-white/50' : ''}`}
+          ref={measureRef}
+          className={`w-full p-2 cursor-grab ${isSelected ? 'bg-white/50' : ''}`}
           style={{
             fontSize: textBox.fontSize * zoom,
             fontFamily: textBox.fontFamily,
             color: textBox.color,
             whiteSpace: 'pre-wrap',
             wordBreak: 'break-word',
+            minHeight: displayHeight,
           }}
         >
           {textBox.content || (
