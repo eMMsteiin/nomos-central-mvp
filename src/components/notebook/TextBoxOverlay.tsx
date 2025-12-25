@@ -91,18 +91,29 @@ export const TextBoxOverlay = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditing) return;
     e.stopPropagation();
-    
+
     // If not selected, just select (don't start dragging)
     if (!isSelected) {
       onSelect();
       return;
     }
-    
+
     // If already selected, allow dragging
     onSelect();
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setInitialPos({ x: textBox.x, y: textBox.y });
+  };
+
+  // Prevent the canvas container click handler from immediately deselecting
+  // and ensure a single click selects the box (for touch devices too).
+  const handleClick = (e: React.MouseEvent) => {
+    if (isEditing) return;
+    e.stopPropagation();
+
+    if (!isSelected) {
+      onSelect();
+    }
   };
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
@@ -231,6 +242,7 @@ export const TextBoxOverlay = ({
         backgroundColor: textBox.backgroundColor || 'transparent',
       }}
       onMouseDown={handleMouseDown}
+      onClick={handleClick}
       onDoubleClick={handleDoubleClick}
     >
       {isEditing ? (
