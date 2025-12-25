@@ -55,6 +55,7 @@ export interface TextBox {
   fontFamily: string;
   color: string;
   backgroundColor?: string;
+  locked?: boolean;
 }
 
 // Color palette presets (GoodNotes inspired)
