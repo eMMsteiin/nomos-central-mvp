@@ -3,6 +3,8 @@ import { TextBox } from '@/types/notebook';
 import { Button } from '@/components/ui/button';
 import { Trash2, GripVertical } from 'lucide-react';
 
+type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
+
 interface TextBoxOverlayProps {
   textBox: TextBox;
   zoom: number;
@@ -29,7 +31,7 @@ export const TextBoxOverlay = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isResizing, setIsResizing] = useState(false);
+  const [resizeDirection, setResizeDirection] = useState<ResizeDirection | null>(null);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const [initialPos, setInitialPos] = useState({ x: 0, y: 0 });
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
@@ -61,23 +63,50 @@ export const TextBoxOverlay = ({
         x: initialPos.x + deltaX,
         y: initialPos.y + deltaY,
       });
-    } else if (isResizing) {
+    } else if (resizeDirection) {
       const deltaX = (e.clientX - dragStart.x) / zoom;
       const deltaY = (e.clientY - dragStart.y) / zoom;
-      onUpdate({
-        width: Math.max(100, initialSize.width + deltaX),
-        height: Math.max(40, initialSize.height + deltaY),
-      });
+      
+      let newX = initialPos.x;
+      let newY = initialPos.y;
+      let newWidth = initialSize.width;
+      let newHeight = initialSize.height;
+
+      // Handle horizontal resizing
+      if (resizeDirection.includes('e')) {
+        newWidth = Math.max(100, initialSize.width + deltaX);
+      }
+      if (resizeDirection.includes('w')) {
+        const proposedWidth = initialSize.width - deltaX;
+        if (proposedWidth >= 100) {
+          newWidth = proposedWidth;
+          newX = initialPos.x + deltaX;
+        }
+      }
+
+      // Handle vertical resizing
+      if (resizeDirection.includes('s')) {
+        newHeight = Math.max(40, initialSize.height + deltaY);
+      }
+      if (resizeDirection.includes('n')) {
+        const proposedHeight = initialSize.height - deltaY;
+        if (proposedHeight >= 40) {
+          newHeight = proposedHeight;
+          newY = initialPos.y + deltaY;
+        }
+      }
+
+      onUpdate({ x: newX, y: newY, width: newWidth, height: newHeight });
     }
   };
 
   const handleMouseUp = () => {
     setIsDragging(false);
-    setIsResizing(false);
+    setResizeDirection(null);
   };
 
   useEffect(() => {
-    if (isDragging || isResizing) {
+    if (isDragging || resizeDirection) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
       return () => {
@@ -85,12 +114,13 @@ export const TextBoxOverlay = ({
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  }, [isDragging, isResizing, dragStart, initialPos, initialSize, zoom]);
+  }, [isDragging, resizeDirection, dragStart, initialPos, initialSize, zoom]);
 
-  const handleResizeStart = (e: React.MouseEvent) => {
+  const handleResizeStart = (e: React.MouseEvent, direction: ResizeDirection) => {
     e.stopPropagation();
-    setIsResizing(true);
+    setResizeDirection(direction);
     setDragStart({ x: e.clientX, y: e.clientY });
+    setInitialPos({ x: textBox.x, y: textBox.y });
     setInitialSize({ width: textBox.width, height: textBox.height });
   };
 
@@ -113,10 +143,27 @@ export const TextBoxOverlay = ({
     }
   };
 
+  const getCursor = (direction: ResizeDirection) => {
+    const cursors: Record<ResizeDirection, string> = {
+      n: 'ns-resize',
+      s: 'ns-resize',
+      e: 'ew-resize',
+      w: 'ew-resize',
+      ne: 'nesw-resize',
+      sw: 'nesw-resize',
+      nw: 'nwse-resize',
+      se: 'nwse-resize',
+    };
+    return cursors[direction];
+  };
+
+  const handleSize = 8;
+  const scaledHandleSize = handleSize / zoom;
+
   return (
     <div
       ref={containerRef}
-      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${isDragging || isResizing ? 'cursor-grabbing' : ''}`}
+      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${isDragging || resizeDirection ? 'cursor-grabbing' : ''}`}
       style={{
         left: textBox.x * zoom,
         top: textBox.y * zoom,
@@ -162,7 +209,7 @@ export const TextBoxOverlay = ({
       {/* Controls when selected */}
       {isSelected && !isEditing && (
         <>
-          {/* Drag handle */}
+          {/* Drag handle and delete button */}
           <div
             className="absolute -top-6 left-0 flex items-center gap-1 bg-background border rounded-t px-1 py-0.5"
             style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
@@ -181,14 +228,108 @@ export const TextBoxOverlay = ({
             </Button>
           </div>
 
-          {/* Resize handle */}
+          {/* Corner handles */}
+          {/* Top-left */}
           <div
-            className="absolute bottom-0 right-0 w-3 h-3 bg-primary cursor-se-resize"
+            className="absolute bg-primary border border-background"
             style={{
-              transform: `scale(${1 / zoom})`,
-              transformOrigin: 'bottom right',
+              top: -scaledHandleSize / 2 * zoom,
+              left: -scaledHandleSize / 2 * zoom,
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('nw'),
             }}
-            onMouseDown={handleResizeStart}
+            onMouseDown={(e) => handleResizeStart(e, 'nw')}
+          />
+          {/* Top-right */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              top: -scaledHandleSize / 2 * zoom,
+              right: -scaledHandleSize / 2 * zoom,
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('ne'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 'ne')}
+          />
+          {/* Bottom-left */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              bottom: -scaledHandleSize / 2 * zoom,
+              left: -scaledHandleSize / 2 * zoom,
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('sw'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 'sw')}
+          />
+          {/* Bottom-right */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              bottom: -scaledHandleSize / 2 * zoom,
+              right: -scaledHandleSize / 2 * zoom,
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('se'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 'se')}
+          />
+
+          {/* Edge handles */}
+          {/* Top */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              top: -scaledHandleSize / 2 * zoom,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('n'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 'n')}
+          />
+          {/* Bottom */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              bottom: -scaledHandleSize / 2 * zoom,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('s'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 's')}
+          />
+          {/* Left */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              left: -scaledHandleSize / 2 * zoom,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('w'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 'w')}
+          />
+          {/* Right */}
+          <div
+            className="absolute bg-primary border border-background"
+            style={{
+              right: -scaledHandleSize / 2 * zoom,
+              top: '50%',
+              transform: 'translateY(-50%)',
+              width: scaledHandleSize * zoom,
+              height: scaledHandleSize * zoom,
+              cursor: getCursor('e'),
+            }}
+            onMouseDown={(e) => handleResizeStart(e, 'e')}
           />
         </>
       )}
