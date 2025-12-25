@@ -91,9 +91,15 @@ export const TextBoxOverlay = ({
   const handleMouseDown = (e: React.MouseEvent) => {
     if (isEditing) return;
     e.stopPropagation();
-    onSelect();
     
-    // Start dragging
+    // If not selected, just select (don't start dragging)
+    if (!isSelected) {
+      onSelect();
+      return;
+    }
+    
+    // If already selected, allow dragging
+    onSelect();
     setIsDragging(true);
     setDragStart({ x: e.clientX, y: e.clientY });
     setInitialPos({ x: textBox.x, y: textBox.y });
