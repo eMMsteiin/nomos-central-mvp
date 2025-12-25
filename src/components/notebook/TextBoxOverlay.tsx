@@ -298,14 +298,14 @@ export const TextBoxOverlay = ({
   return (
     <div
       ref={containerRef}
-      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''} ${textBox.locked && !isSelected ? 'ring-2 ring-amber-400/50 ring-offset-1' : ''}`}
+      className={`absolute ${isSelected ? 'ring-2 ring-primary ring-offset-1' : ''}`}
       style={{
         left: textBox.x * zoom,
         top: textBox.y * zoom,
         width: textBox.width * zoom,
         minHeight: displayHeight,
         backgroundColor: textBox.backgroundColor || 'transparent',
-        cursor: textBox.locked ? 'not-allowed' : (isDragging ? 'grabbing' : (isSelected && !isEditing ? 'grab' : 'default')),
+        cursor: isDragging ? 'grabbing' : (isSelected && !isEditing ? 'grab' : 'default'),
       }}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
@@ -340,7 +340,7 @@ export const TextBoxOverlay = ({
             wordBreak: 'break-word',
             minHeight: displayHeight,
             userSelect: 'none',
-            cursor: textBox.locked ? 'not-allowed' : (isDragging ? 'grabbing' : 'grab'),
+            cursor: isDragging ? 'grabbing' : 'grab',
           }}
         >
           {textBox.content || (
@@ -354,36 +354,36 @@ export const TextBoxOverlay = ({
         <>
           {/* Drag handle, lock button, and delete button */}
           <div
-            className="absolute -top-9 left-0 flex items-center gap-1.5 bg-background border rounded-t px-2 py-1 shadow-sm"
+            className="absolute -top-11 left-0 flex items-center gap-2 bg-background border rounded-t px-3 py-1.5 shadow-sm"
             style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
           >
-            <GripVertical className={`h-4 w-4 text-muted-foreground ${textBox.locked ? 'opacity-50' : 'cursor-grab'}`} />
+            <GripVertical className={`h-5 w-5 text-muted-foreground ${textBox.locked ? 'opacity-50' : 'cursor-grab'}`} />
             
             {/* Lock/Unlock button */}
             <Button
               variant="ghost"
               size="sm"
-              className={`h-7 w-7 p-0 ${textBox.locked ? 'bg-amber-100 text-amber-600 hover:bg-amber-200' : 'hover:bg-muted'}`}
+              className={`h-9 w-9 p-0 ${textBox.locked ? 'bg-muted' : 'hover:bg-muted'}`}
               onClick={(e) => {
                 e.stopPropagation();
                 onUpdate({ locked: !textBox.locked });
               }}
               title={textBox.locked ? 'Desbloquear' : 'Bloquear'}
             >
-              {textBox.locked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
+              {textBox.locked ? <Lock className="h-5 w-5" /> : <LockOpen className="h-5 w-5" />}
             </Button>
             
             {/* Delete button */}
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 hover:bg-destructive hover:text-destructive-foreground"
+              className="h-9 w-9 p-0 hover:bg-destructive hover:text-destructive-foreground"
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
               }}
             >
-              <Trash2 className="h-4 w-4" />
+              <Trash2 className="h-5 w-5" />
             </Button>
           </div>
 
