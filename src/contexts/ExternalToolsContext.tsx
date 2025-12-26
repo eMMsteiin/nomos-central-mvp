@@ -55,6 +55,7 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
       ...tool,
       id: `tool-${Date.now()}`,
       order: userTools.length,
+      canEmbed: tool.canEmbed ?? true, // Default para true (ferramentas personalizadas tentam iframe)
     };
     setUserTools(prev => [...prev, newTool]);
   }, [userTools.length]);
