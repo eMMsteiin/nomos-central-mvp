@@ -61,6 +61,7 @@ export interface ImageContent {
   fileUrl: string;
   fileName?: string;
   fileType?: string;
+  width?: number; // Percentage width (10-100), default 60
 }
 
 export interface TextContent {

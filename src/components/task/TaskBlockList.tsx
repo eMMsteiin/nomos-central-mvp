@@ -31,11 +31,13 @@ function SortableBlock({
   onToggle,
   onTextChange,
   onDelete,
+  onUpdateImageWidth,
 }: {
   block: TaskBlock;
   onToggle: () => void;
   onTextChange: (text: string) => void;
   onDelete: () => void;
+  onUpdateImageWidth?: (width: number) => void;
 }) {
   const {
     attributes,
@@ -77,6 +79,7 @@ function SortableBlock({
         <ImageBlock
           content={block.content as ImageContent}
           onDelete={onDelete}
+          onUpdateWidth={onUpdateImageWidth}
           isDragging={isDragging}
           dragHandleProps={dragHandleProps}
         />
@@ -97,7 +100,15 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
     updateSubtaskText,
     deleteBlock,
     reorderBlocks,
+    updateBlockContent,
   } = useTaskBlocks(taskId);
+
+  const updateImageWidth = (blockId: string, width: number) => {
+    const block = blocks.find(b => b.id === blockId);
+    if (!block || block.type !== 'image') return;
+    const content = block.content as ImageContent;
+    updateBlockContent(blockId, { ...content, width });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -149,6 +160,7 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
                 onToggle={() => toggleSubtaskCompletion(block.id)}
                 onTextChange={(text) => updateSubtaskText(block.id, text)}
                 onDelete={() => deleteBlock(block.id)}
+                onUpdateImageWidth={(width) => updateImageWidth(block.id, width)}
               />
             ))}
           </div>
