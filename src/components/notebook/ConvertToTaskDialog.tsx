@@ -27,7 +27,7 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
   const [time, setTime] = useState<string | undefined>();
   const [date, setDate] = useState<Date | undefined>();
-  const [destination, setDestination] = useState<'hoje' | 'entrada'>('entrada');
+  const [destinations, setDestinations] = useState<Array<'hoje' | 'entrada'>>(['entrada']);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -66,44 +66,60 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
       setPriority('baixa');
       setTime(undefined);
       setDate(undefined);
-      setDestination('entrada');
+      setDestinations(['entrada']);
     }
     onOpenChange(newOpen);
   };
 
+  const toggleDestination = (dest: 'hoje' | 'entrada') => {
+    setDestinations(prev => {
+      if (prev.includes(dest)) {
+        // Se já está selecionado e é o único, não remove
+        if (prev.length === 1) return prev;
+        return prev.filter(d => d !== dest);
+      } else {
+        return [...prev, dest];
+      }
+    });
+  };
+
   const createTask = () => {
-    const newTask: Task = {
-      id: Date.now().toString(),
+    const STORAGE_KEY = 'nomos.tasks.today';
+    const existing = localStorage.getItem(STORAGE_KEY);
+    const tasks: Task[] = existing ? JSON.parse(existing) : [];
+
+    // Criar uma tarefa para cada destino selecionado
+    const newTasks: Task[] = destinations.map((dest, index) => ({
+      id: `${Date.now()}-${index}`,
       text: title,
       description: annotationText,
       createdAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
       dueTime: time,
       dueDate: date,
       priority,
-      sourceType: 'manual',
-      category: destination,
-    };
+      sourceType: 'manual' as const,
+      category: dest,
+    }));
 
-    // Salvar no localStorage
-    const STORAGE_KEY = 'nomos.tasks.today';
-    const existing = localStorage.getItem(STORAGE_KEY);
-    const tasks: Task[] = existing ? JSON.parse(existing) : [];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([newTask, ...tasks]));
-    
-    // Notificar outros componentes
+    localStorage.setItem(STORAGE_KEY, JSON.stringify([...newTasks, ...tasks]));
     window.dispatchEvent(new Event('tasksUpdated'));
 
-    const destinationPath = destination === 'hoje' ? '/hoje' : '/';
+    const destText = destinations.length === 2 
+      ? 'Hoje e Entrada' 
+      : destinations[0] === 'hoje' ? 'Hoje' : 'Entrada';
 
-    // Toast de sucesso
     toast({
       title: '✅ Anotação convertida em tarefa!',
-      description: `Adicionada em "${destination === 'hoje' ? 'Hoje' : 'Entrada'}"`,
-      action: (
-        <Button variant="outline" size="sm" onClick={() => navigate(destinationPath)}>
+      description: `Adicionada em "${destText}"`,
+      action: destinations.length === 1 ? (
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate(destinations[0] === 'hoje' ? '/hoje' : '/')}
+        >
           Ver tarefa
         </Button>
-      ),
+      ) : undefined,
     });
 
     onOpenChange(false);
@@ -173,27 +189,32 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
             <DatePickerPopover value={date} onChange={setDate} />
           </div>
 
-          {/* Seletor de destino */}
+          {/* Seletor de destino - múltipla escolha */}
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground">Adicionar em:</p>
             <div className="flex gap-2">
               <Button
-                variant={destination === 'hoje' ? 'default' : 'outline'}
-                onClick={() => setDestination('hoje')}
+                variant={destinations.includes('hoje') ? 'default' : 'outline'}
+                onClick={() => toggleDestination('hoje')}
                 className="flex-1"
                 size="sm"
               >
-                📅 Hoje
+                {destinations.includes('hoje') && '✓ '}📅 Hoje
               </Button>
               <Button
-                variant={destination === 'entrada' ? 'default' : 'outline'}
-                onClick={() => setDestination('entrada')}
+                variant={destinations.includes('entrada') ? 'default' : 'outline'}
+                onClick={() => toggleDestination('entrada')}
                 className="flex-1"
                 size="sm"
               >
-                📥 Entrada
+                {destinations.includes('entrada') && '✓ '}📥 Entrada
               </Button>
             </div>
+            {destinations.length === 2 && (
+              <p className="text-xs text-muted-foreground">
+                A tarefa será adicionada em ambas as abas
+              </p>
+            )}
           </div>
 
           {/* Preview da anotação original */}
