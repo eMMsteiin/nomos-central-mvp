@@ -78,7 +78,7 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const counts = useTaskCounts();
   const { isTabHidden, hideTab } = useHiddenTabs();
-  const { userTools, openTool, removeTool } = useExternalTools();
+  const { userTools, openAsTab, removeTool, openTabs } = useExternalTools();
 
   const isActive = (path: string) => currentPath === path;
 
@@ -251,20 +251,26 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {userTools.map((tool) => (
-                <SidebarMenuItem key={tool.id} className="group relative">
-                  <SidebarMenuButton 
-                    onClick={() => openTool(tool)}
-                    className="hover:bg-muted/50 cursor-pointer"
-                  >
-                    <ToolIcon icon={tool.icon} color={tool.iconColor} size={16} />
-                    {open && (
-                      <>
-                        <span className="flex-1 truncate">{tool.name}</span>
-                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </>
-                    )}
-                  </SidebarMenuButton>
+              {userTools.map((tool) => {
+                const isTabOpen = openTabs.some(t => t.id === tool.id);
+                return (
+                  <SidebarMenuItem key={tool.id} className="group relative">
+                    <SidebarMenuButton 
+                      onClick={() => openAsTab(tool)}
+                      className="hover:bg-muted/50 cursor-pointer"
+                    >
+                      <div className="relative">
+                        <ToolIcon icon={tool.icon} color={tool.iconColor} size={16} />
+                        {isTabOpen && (
+                          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
+                        )}
+                      </div>
+                      {open && (
+                        <>
+                          <span className="flex-1 truncate">{tool.name}</span>
+                        </>
+                      )}
+                    </SidebarMenuButton>
                   
                   {/* Remove tool menu */}
                   {open && (
@@ -296,8 +302,9 @@ export function AppSidebar() {
                       </DropdownMenuContent>
                     </DropdownMenu>
                   )}
-                </SidebarMenuItem>
-              ))}
+                  </SidebarMenuItem>
+                );
+              })}
               
               {userTools.length === 0 && open && (
                 <div className="px-2 py-3 text-xs text-muted-foreground text-center">
