@@ -8,6 +8,7 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { HiddenTabsProvider } from "@/contexts/HiddenTabsContext";
 import { CanvaSessionProvider } from "@/contexts/CanvaSessionContext";
+import { ExternalToolsProvider } from "@/contexts/ExternalToolsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FocusSidebar } from "@/components/canva/FocusSidebar";
 import Index from "./pages/Index";
@@ -36,38 +37,40 @@ const App = () => (
         <AuthProvider>
           <HiddenTabsProvider>
             <CanvaSessionProvider>
-              <SidebarProvider>
-                <div className="flex min-h-screen w-full">
-                  <AppSidebar />
-                
-                <div className="flex-1 flex flex-col w-full">
-                  <AppHeader />
+              <ExternalToolsProvider>
+                <SidebarProvider>
+                  <div className="flex min-h-screen w-full">
+                    <AppSidebar />
                   
-                  <main className="flex-1">
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/hoje" element={<Hoje />} />
-                      <Route path="/em-breve" element={<EmBreve />} />
-                      <Route path="/resumos" element={<Resumos />} />
-                      <Route path="/concluido" element={<Concluido />} />
-                      <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
-                      <Route path="/caderno" element={<Caderno />} />
-                      <Route path="/chat" element={<ChatNomos />} />
-                      <Route path="/flashcards" element={<Flashcards />} />
-                      <Route path="/tarefa/:id" element={<TaskDetail />} />
-                      <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
-                      <Route path="/configuracoes" element={<Configuracoes />}>
-                        <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
-                      </Route>
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </main>
+                  <div className="flex-1 flex flex-col w-full">
+                    <AppHeader />
+                    
+                    <main className="flex-1">
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/hoje" element={<Hoje />} />
+                        <Route path="/em-breve" element={<EmBreve />} />
+                        <Route path="/resumos" element={<Resumos />} />
+                        <Route path="/concluido" element={<Concluido />} />
+                        <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
+                        <Route path="/caderno" element={<Caderno />} />
+                        <Route path="/chat" element={<ChatNomos />} />
+                        <Route path="/flashcards" element={<Flashcards />} />
+                        <Route path="/tarefa/:id" element={<TaskDetail />} />
+                        <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
+                        <Route path="/configuracoes" element={<Configuracoes />}>
+                          <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
+                        </Route>
+                        <Route path="*" element={<NotFound />} />
+                      </Routes>
+                    </main>
+                  </div>
+                  
+                  {/* Focus Sidebar - appears when Canva session is active */}
+                  <FocusSidebar />
                 </div>
-                
-                {/* Focus Sidebar - appears when Canva session is active */}
-                <FocusSidebar />
-              </div>
-            </SidebarProvider>
+              </SidebarProvider>
+            </ExternalToolsProvider>
           </CanvaSessionProvider>
         </HiddenTabsProvider>
         </AuthProvider>

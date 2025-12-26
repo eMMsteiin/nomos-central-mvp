@@ -9,7 +9,6 @@ import {
   Plus, 
   Search,
   LifeBuoy,
-  Users,
   StickyNote,
   Book,
   EyeOff,
@@ -18,7 +17,9 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeft,
-  Layers
+  Layers,
+  ExternalLink,
+  Trash2
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -37,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useTaskCounts } from "@/hooks/useTaskCounts";
 import { useHiddenTabs } from "@/hooks/useHiddenTabs";
+import { useExternalTools } from "@/contexts/ExternalToolsContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -44,6 +46,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { AddTaskDialog } from "@/components/AddTaskDialog";
+import { AddExternalToolDialog } from "@/components/tools/AddExternalToolDialog";
+import { ToolIcon } from "@/components/tools/ToolIcon";
 
 
 const menuItems = [
@@ -68,11 +72,13 @@ const projects = [
 
 export function AppSidebar() {
   const [isAddTaskDialogOpen, setIsAddTaskDialogOpen] = useState(false);
+  const [isAddToolDialogOpen, setIsAddToolDialogOpen] = useState(false);
   const { open, toggleSidebar } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
   const counts = useTaskCounts();
   const { isTabHidden, hideTab } = useHiddenTabs();
+  const { userTools, openTool, removeTool } = useExternalTools();
 
   const isActive = (path: string) => currentPath === path;
 
@@ -229,6 +235,78 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+
+        {/* External Tools Section */}
+        <SidebarGroup className="px-2">
+          <SidebarGroupLabel className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase">
+            <span>Ferramentas</span>
+            <Button 
+              size="icon" 
+              variant="ghost" 
+              className="h-5 w-5 hover:bg-muted"
+              onClick={() => setIsAddToolDialogOpen(true)}
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {userTools.map((tool) => (
+                <SidebarMenuItem key={tool.id} className="group relative">
+                  <SidebarMenuButton 
+                    onClick={() => openTool(tool)}
+                    className="hover:bg-muted/50 cursor-pointer"
+                  >
+                    <ToolIcon icon={tool.icon} color={tool.iconColor} size={16} />
+                    {open && (
+                      <>
+                        <span className="flex-1 truncate">{tool.name}</span>
+                        <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                      </>
+                    )}
+                  </SidebarMenuButton>
+                  
+                  {/* Remove tool menu */}
+                  {open && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                          }}
+                        >
+                          <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-40">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.preventDefault();
+                            removeTool(tool.id);
+                          }}
+                          className="gap-2 text-sm cursor-pointer text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                          <span>Remover</span>
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </SidebarMenuItem>
+              ))}
+              
+              {userTools.length === 0 && open && (
+                <div className="px-2 py-3 text-xs text-muted-foreground text-center">
+                  Clique em + para adicionar ferramentas
+                </div>
+              )}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
       </SidebarContent>
 
       {/* Footer */}
@@ -276,6 +354,11 @@ export function AppSidebar() {
       <AddTaskDialog 
         open={isAddTaskDialogOpen} 
         onOpenChange={setIsAddTaskDialogOpen} 
+      />
+      
+      <AddExternalToolDialog
+        open={isAddToolDialogOpen}
+        onOpenChange={setIsAddToolDialogOpen}
       />
     </Sidebar>
   );
