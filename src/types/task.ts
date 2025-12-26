@@ -57,6 +57,17 @@ export interface SubtaskContent {
   completed: boolean;
 }
 
+// Subtask attachment interface
+export interface SubtaskAttachment {
+  id: string;
+  blockId: string;
+  fileUrl: string;
+  fileName?: string;
+  fileType?: string;
+  fileSize?: number;
+  createdAt: string;
+}
+
 export interface ImageContent {
   fileUrl: string;
   fileName?: string;

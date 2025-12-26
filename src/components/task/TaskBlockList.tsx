@@ -111,6 +111,7 @@ function SortableBlock({
       <div ref={setNodeRef} style={style}>
         <SubtaskBlock
           content={block.content as SubtaskContent}
+          blockId={block.id}
           onToggle={onToggle}
           onTextChange={onTextChange}
           onDelete={onDelete}
