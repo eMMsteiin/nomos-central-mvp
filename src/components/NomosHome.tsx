@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Plus, Calendar, Download, Clock, Pencil, Star, Palette, AlertCircle } from "lucide-react";
+import { Plus, Calendar, Download, Clock, Pencil, Star, Palette, AlertCircle, ChevronRight, ListTodo, Paperclip } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -18,6 +18,7 @@ import { StudyBlockItem } from "@/components/StudyBlockItem";
 import { AddTaskDialog } from "@/components/AddTaskDialog";
 import { TimePickerPopover } from "@/components/task/TimePickerPopover";
 import { DatePickerPopover } from "@/components/task/DatePickerPopover";
+import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_KEY = "nomos.tasks.today";
 
@@ -63,7 +64,9 @@ interface NomosHomeProps {
 
 const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskMeta, setTaskMeta] = useState<Record<string, { subtaskCount: number; attachmentCount: number }>>({});
   const [inputValue, setInputValue] = useState("");
   const [completingTasks, setCompletingTasks] = useState<Set<string>>(new Set());
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -485,12 +488,15 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                       
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-wrap">
+                          <div 
+                            className="flex items-center gap-2 flex-wrap flex-1 cursor-pointer"
+                            onClick={() => navigate(`/tarefa/${task.id}`)}
+                          >
                             <motion.p
                               animate={{
                                 opacity: completingTasks.has(task.id) ? 0.4 : 1,
                               }}
-                              className={`text-sm text-foreground leading-relaxed break-words ${
+                              className={`text-sm text-foreground leading-relaxed break-words hover:text-primary transition-colors ${
                                 completingTasks.has(task.id) ? "line-through" : ""
                               }`}
                             >
@@ -515,6 +521,9 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                                 Canva
                               </span>
                             )}
+                            
+                            {/* Arrow indicator for detail page */}
+                            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
                           </div>
                           
                           <div className="flex items-center gap-1">
