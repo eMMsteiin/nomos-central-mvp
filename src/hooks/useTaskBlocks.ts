@@ -4,12 +4,21 @@ import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent 
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 
+// Validate UUID format
+const isValidUUID = (str: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+};
+
 export function useTaskBlocks(taskId: string | undefined) {
   const [blocks, setBlocks] = useState<TaskBlock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const loadBlocks = useCallback(async () => {
-    if (!taskId) return;
+    if (!taskId || !isValidUUID(taskId)) {
+      setIsLoading(false);
+      return;
+    }
     
     setIsLoading(true);
     try {
@@ -40,7 +49,7 @@ export function useTaskBlocks(taskId: string | undefined) {
   }, [blocks]);
 
   const addSubtaskBlock = useCallback(async (text: string = '') => {
-    if (!taskId) return null;
+    if (!taskId || !isValidUUID(taskId)) return null;
 
     const content: SubtaskContent = { text, completed: false };
     const position = getNextPosition();
@@ -70,7 +79,7 @@ export function useTaskBlocks(taskId: string | undefined) {
   }, [taskId, getNextPosition]);
 
   const addImageBlock = useCallback(async (file: File) => {
-    if (!taskId) return null;
+    if (!taskId || !isValidUUID(taskId)) return null;
 
     try {
       const fileExt = file.name.split('.').pop();
