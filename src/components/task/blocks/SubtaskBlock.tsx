@@ -65,6 +65,7 @@ export function SubtaskBlock({
   const [text, setText] = useState(content.text);
   const [isHovered, setIsHovered] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +76,29 @@ export function SubtaskBlock({
     uploadAttachment,
     deleteAttachment,
   } = useSubtaskAttachments(blockId);
+
+  const handleDownload = async (id: string, url: string, fileName: string) => {
+    setDownloadingId(id);
+    try {
+      const response = await fetch(url);
+      const blob = await response.blob();
+      const blobUrl = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = fileName || 'arquivo';
+      document.body.appendChild(link);
+      link.click();
+      
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (error) {
+      console.error('Erro ao baixar arquivo:', error);
+      window.open(url, '_blank');
+    } finally {
+      setDownloadingId(null);
+    }
+  };
 
   useEffect(() => {
     setText(content.text);
@@ -247,16 +271,18 @@ export function SubtaskBlock({
                       <p className="text-xs text-muted-foreground">{formatFileSize(attachment.fileSize)}</p>
                     )}
                   </div>
-                  <a
-                    href={attachment.fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    download={attachment.fileName}
-                    className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
+                  <button
+                    onClick={() => handleDownload(attachment.id, attachment.fileUrl, attachment.fileName || 'arquivo')}
+                    disabled={downloadingId === attachment.id}
+                    className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors disabled:opacity-50"
                     title="Baixar"
                   >
-                    <Download className="h-4 w-4" />
-                  </a>
+                    {downloadingId === attachment.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Download className="h-4 w-4" />
+                    )}
+                  </button>
                   <button
                     onClick={() => deleteAttachment(attachment.id)}
                     className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors opacity-0 group-hover/attachment:opacity-100"
