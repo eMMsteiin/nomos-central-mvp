@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Star, Plus, CheckSquare } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, Plus, CheckSquare, Sparkles, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   Dialog,
@@ -13,6 +13,7 @@ import { Task } from '@/types/task';
 import { useToast } from '@/hooks/use-toast';
 import { TimePickerPopover } from '@/components/task/TimePickerPopover';
 import { DatePickerPopover } from '@/components/task/DatePickerPopover';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ConvertToTaskDialogProps {
   open: boolean;
@@ -21,10 +22,8 @@ interface ConvertToTaskDialogProps {
 }
 
 export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: ConvertToTaskDialogProps) {
-  // Título sugerido: primeira linha ou primeiros 50 caracteres
-  const suggestedTitle = annotationText.split('\n')[0].slice(0, 50) || 'Nova tarefa';
-  
-  const [title, setTitle] = useState(suggestedTitle);
+  const [title, setTitle] = useState('');
+  const [isGeneratingTitle, setIsGeneratingTitle] = useState(false);
   const [priority, setPriority] = useState<'alta' | 'media' | 'baixa'>('baixa');
   const [time, setTime] = useState<string | undefined>();
   const [date, setDate] = useState<Date | undefined>();
@@ -32,10 +31,38 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Reset state when dialog opens with new annotation
+  // Gerar título inteligente quando o dialog abrir
+  useEffect(() => {
+    if (open && annotationText) {
+      generateSmartTitle();
+    }
+  }, [open, annotationText]);
+
+  const generateSmartTitle = async () => {
+    setIsGeneratingTitle(true);
+    
+    // Fallback imediato enquanto carrega
+    const fallbackTitle = annotationText.split('\n')[0].slice(0, 40) || 'Nova tarefa';
+    setTitle(fallbackTitle);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-task-title', {
+        body: { annotationText }
+      });
+
+      if (!error && data?.title) {
+        setTitle(data.title);
+      }
+    } catch (error) {
+      console.error('Error generating title:', error);
+    } finally {
+      setIsGeneratingTitle(false);
+    }
+  };
+
   const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen) {
-      setTitle(annotationText.split('\n')[0].slice(0, 50) || 'Nova tarefa');
+    if (!newOpen) {
+      // Reset state when closing
       setPriority('baixa');
       setTime(undefined);
       setDate(undefined);
@@ -108,13 +135,26 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* Input do título */}
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Título da tarefa"
-            className="font-medium"
-          />
+          {/* Input do título com indicador de IA */}
+          <div className="space-y-1.5">
+            <div className="relative">
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Título da tarefa"
+                className="font-medium pr-10"
+              />
+              {isGeneratingTitle ? (
+                <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+              ) : (
+                <Sparkles className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-amber-500" />
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground flex items-center gap-1">
+              <Sparkles className="h-3 w-3 text-amber-500" />
+              {isGeneratingTitle ? 'Gerando título inteligente...' : 'Título sugerido pela IA • edite se desejar'}
+            </p>
+          </div>
 
           {/* Linha com prioridade, horário e data */}
           <div className="flex items-center gap-2">
