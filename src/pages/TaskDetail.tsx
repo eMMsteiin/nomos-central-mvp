@@ -39,10 +39,13 @@ const TaskDetail = () => {
     updateTask,
   } = useTaskDetail(id || '');
 
+  // Use the Supabase ID for task blocks (UUID), not the URL id (which might be numeric from localStorage)
+  const effectiveTaskId = task?.id;
+  
   const {
     subtaskProgress,
     totalSubtasks,
-  } = useTaskBlocks(id);
+  } = useTaskBlocks(effectiveTaskId);
 
   if (isLoading) {
     return (
@@ -249,7 +252,7 @@ const TaskDetail = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
         >
-          {id && <TaskBlockList taskId={id} />}
+          {effectiveTaskId && <TaskBlockList taskId={effectiveTaskId} />}
         </motion.div>
 
         {/* Complete all suggestion */}
