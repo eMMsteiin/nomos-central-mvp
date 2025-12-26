@@ -25,6 +25,7 @@ const BLOCKED_SITES = [
   'onedrive.live.com',
   'microsoft.com',
   'outlook.com',
+  'deepl.com',
 ];
 
 function isKnownBlockedSite(url: string): boolean {
