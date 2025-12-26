@@ -36,7 +36,7 @@ export const PRESET_TOOLS: PresetTool[] = [
   { name: 'ChatGPT', url: 'https://chat.openai.com', icon: 'MessageSquare', iconColor: '#10A37F', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1024px-ChatGPT_logo.svg.png', category: 'ai', canEmbed: false },
   { name: 'Claude', url: 'https://claude.ai', icon: 'Bot', iconColor: '#CC785C', logoUrl: 'https://claude.ai/images/claude_app_icon.png', category: 'ai', canEmbed: false },
   { name: 'Perplexity', url: 'https://www.perplexity.ai', icon: 'Sparkles', iconColor: '#1FB8CD', logoUrl: 'https://www.perplexity.ai/favicon.svg', category: 'ai', canEmbed: false },
-  { name: 'DeepL', url: 'https://www.deepl.com/translator', icon: 'Languages', iconColor: '#0F2B46', logoUrl: 'https://static.deepl.com/img/logo/deepl-logo-blue.svg', category: 'ai', canEmbed: true },
+  { name: 'DeepL', url: 'https://www.deepl.com/translator', icon: 'Languages', iconColor: '#0F2B46', logoUrl: 'https://static.deepl.com/img/logo/deepl-logo-blue.svg', category: 'ai', canEmbed: false },
   
   // Design - nenhum permite iframe
   { name: 'Canva', url: 'https://www.canva.com', icon: 'Palette', iconColor: '#00C4CC', logoUrl: 'https://static.canva.com/static/images/canva-logo.png', category: 'design', canEmbed: false },
