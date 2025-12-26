@@ -47,11 +47,11 @@ export function ImageBlock({
           </div>
 
           {/* Image container */}
-          <div className="relative flex-1 max-w-md">
+          <div className="relative flex-1">
             <img
               src={content.fileUrl}
               alt={content.fileName || 'Imagem anexada'}
-              className="rounded-lg object-cover w-full max-h-64 cursor-pointer"
+              className="rounded-lg w-full h-auto cursor-pointer"
               onClick={() => setIsPreviewOpen(true)}
             />
             
