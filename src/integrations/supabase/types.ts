@@ -279,6 +279,163 @@ export type Database = {
           },
         ]
       }
+      subtasks: {
+        Row: {
+          completed: boolean | null
+          created_at: string | null
+          id: string
+          position: number | null
+          task_id: string
+          text: string
+        }
+        Insert: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          position?: number | null
+          task_id: string
+          text: string
+        }
+        Update: {
+          completed?: boolean | null
+          created_at?: string | null
+          id?: string
+          position?: number | null
+          task_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subtasks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_attachments: {
+        Row: {
+          created_at: string | null
+          file_name: string | null
+          file_type: string | null
+          file_url: string
+          id: string
+          position: number | null
+          task_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          position?: number | null
+          task_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          position?: number | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_attachments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          canva_design_title: string | null
+          canva_design_url: string | null
+          canva_last_opened: string | null
+          canva_time_spent: number | null
+          category: string | null
+          completed: boolean | null
+          created_at: string | null
+          description: string | null
+          device_id: string
+          due_date: string | null
+          due_time: string | null
+          duration_minutes: number | null
+          end_time: string | null
+          focus_subject: string | null
+          id: string
+          is_canva_task: boolean | null
+          priority: string | null
+          source_type: string | null
+          start_time: string | null
+          text: string
+          timer_paused_at: string | null
+          timer_remaining_seconds: number | null
+          timer_started_at: string | null
+          type: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          canva_design_title?: string | null
+          canva_design_url?: string | null
+          canva_last_opened?: string | null
+          canva_time_spent?: number | null
+          category?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          device_id: string
+          due_date?: string | null
+          due_time?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          focus_subject?: string | null
+          id?: string
+          is_canva_task?: boolean | null
+          priority?: string | null
+          source_type?: string | null
+          start_time?: string | null
+          text: string
+          timer_paused_at?: string | null
+          timer_remaining_seconds?: number | null
+          timer_started_at?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          canva_design_title?: string | null
+          canva_design_url?: string | null
+          canva_last_opened?: string | null
+          canva_time_spent?: number | null
+          category?: string | null
+          completed?: boolean | null
+          created_at?: string | null
+          description?: string | null
+          device_id?: string
+          due_date?: string | null
+          due_time?: string | null
+          duration_minutes?: number | null
+          end_time?: string | null
+          focus_subject?: string | null
+          id?: string
+          is_canva_task?: boolean | null
+          priority?: string | null
+          source_type?: string | null
+          start_time?: string | null
+          text?: string
+          timer_paused_at?: string | null
+          timer_remaining_seconds?: number | null
+          timer_started_at?: string | null
+          type?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

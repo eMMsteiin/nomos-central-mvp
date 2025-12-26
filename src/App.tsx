@@ -22,6 +22,7 @@ import Flashcards from "./pages/Flashcards";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
+import TaskDetail from "./pages/TaskDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -53,6 +54,7 @@ const App = () => (
                       <Route path="/caderno" element={<Caderno />} />
                       <Route path="/chat" element={<ChatNomos />} />
                       <Route path="/flashcards" element={<Flashcards />} />
+                      <Route path="/tarefa/:id" element={<TaskDetail />} />
                       <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
                       <Route path="/configuracoes" element={<Configuracoes />}>
                         <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
