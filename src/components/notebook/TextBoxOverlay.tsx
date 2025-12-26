@@ -1,8 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { TextBox } from '@/types/notebook';
 import { Button } from '@/components/ui/button';
-import { Trash2, GripVertical, Lock, LockOpen } from 'lucide-react';
-
+import { Trash2, GripVertical, Lock, LockOpen, MoreVertical, FileText } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { ConvertToTaskDialog } from './ConvertToTaskDialog';
 type ResizeDirection = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw';
 
 interface TextBoxOverlayProps {
@@ -37,6 +43,7 @@ export const TextBoxOverlay = ({
   const [initialPos, setInitialPos] = useState({ x: 0, y: 0 });
   const [initialSize, setInitialSize] = useState({ width: 0, height: 0 });
   const [initialFontSize, setInitialFontSize] = useState(0);
+  const [showConvertDialog, setShowConvertDialog] = useState(false);
 
   // Auto-resize textarea height based on content
   const autoResizeTextarea = useCallback(() => {
@@ -352,12 +359,27 @@ export const TextBoxOverlay = ({
       {/* Controls when selected */}
       {isSelected && !isEditing && (
         <>
-          {/* Drag handle, lock button, and delete button */}
+          {/* Drag handle, menu, lock button, and delete button */}
           <div
             className="absolute -top-11 left-0 flex items-center gap-2 bg-background border rounded-t px-3 py-1.5 shadow-sm"
             style={{ transform: `scale(${1 / zoom})`, transformOrigin: 'bottom left' }}
           >
             <GripVertical className={`h-5 w-5 text-muted-foreground ${textBox.locked ? 'opacity-50' : 'cursor-grab'}`} />
+            
+            {/* Menu de 3 pontos */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-9 w-9 p-0 hover:bg-muted">
+                  <MoreVertical className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start">
+                <DropdownMenuItem onClick={() => setShowConvertDialog(true)}>
+                  <FileText className="h-4 w-4 mr-2" />
+                  Transformar em tarefa
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             
             {/* Lock/Unlock button */}
             <Button
@@ -497,6 +519,13 @@ export const TextBoxOverlay = ({
           )}
         </>
       )}
+
+      {/* Dialog para converter em tarefa */}
+      <ConvertToTaskDialog
+        open={showConvertDialog}
+        onOpenChange={setShowConvertDialog}
+        annotationText={textBox.content}
+      />
     </div>
   );
 };
