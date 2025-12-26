@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PRESET_TOOLS, CATEGORY_LABELS, PresetTool } from '@/types/externalTool';
 import { useExternalTools } from '@/contexts/ExternalToolsContext';
 import { ToolIcon } from './ToolIcon';
-import { Check, Plus, Link } from 'lucide-react';
+import { Check, Plus, Link, ExternalLink, MonitorPlay } from 'lucide-react';
 import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
 
 interface AddExternalToolDialogProps {
   open: boolean;
@@ -42,6 +43,7 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       icon: preset.icon,
       iconColor: preset.iconColor,
       isCustom: false,
+      canEmbed: preset.canEmbed,
     });
     toast.success(`${preset.name} adicionado à sidebar`);
   };
@@ -80,6 +82,7 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       url,
       icon: customEmoji,
       isCustom: true,
+      canEmbed: true, // Ferramentas personalizadas tentam iframe
     });
 
     toast.success(`${customName} adicionado à sidebar`);
@@ -109,6 +112,12 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
           </TabsList>
 
           <TabsContent value="preset" className="mt-4 space-y-4 max-h-[400px] overflow-y-auto">
+            {/* Info sobre ferramentas pré-definidas */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+              <span>Estas ferramentas abrem em janela ao lado por restrições dos sites.</span>
+            </div>
+            
             {Object.entries(groupedPresets).map(([category, tools]) => (
               <div key={category}>
                 <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
@@ -122,18 +131,24 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
                         key={tool.name}
                         onClick={() => handleAddPreset(tool)}
                         disabled={isAdded}
-                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                        className={`flex items-center gap-2 p-3 rounded-lg border transition-colors text-left ${
                           isAdded
                             ? 'bg-muted/50 border-muted cursor-not-allowed opacity-60'
                             : 'hover:bg-muted/50 border-border hover:border-primary/30'
                         }`}
                       >
-                        <ToolIcon icon={tool.icon} color={tool.iconColor} size={20} />
-                        <span className="flex-1 text-sm font-medium">{tool.name}</span>
+                        <ToolIcon icon={tool.icon} color={tool.iconColor} size={18} />
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm font-medium block truncate">{tool.name}</span>
+                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                            <ExternalLink className="h-2.5 w-2.5" />
+                            Janela ao lado
+                          </span>
+                        </div>
                         {isAdded ? (
-                          <Check className="h-4 w-4 text-green-500" />
+                          <Check className="h-4 w-4 text-green-500 shrink-0" />
                         ) : (
-                          <Plus className="h-4 w-4 text-muted-foreground" />
+                          <Plus className="h-4 w-4 text-muted-foreground shrink-0" />
                         )}
                       </button>
                     );
@@ -144,6 +159,12 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
           </TabsContent>
 
           <TabsContent value="custom" className="mt-4 space-y-4">
+            {/* Info sobre ferramentas personalizadas */}
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 text-xs text-primary">
+              <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
+              <span>Links personalizados abrem dentro da NOMOS (quando permitido pelo site).</span>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="custom-name">Nome da Ferramenta</Label>
               <Input

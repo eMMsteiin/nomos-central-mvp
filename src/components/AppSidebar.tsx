@@ -78,7 +78,17 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const counts = useTaskCounts();
   const { isTabHidden, hideTab } = useHiddenTabs();
-  const { userTools, openAsTab, removeTool, openTabs } = useExternalTools();
+  const { userTools, openAsTab, openAsPopout, removeTool, openTabs } = useExternalTools();
+
+  const handleToolClick = (tool: typeof userTools[0]) => {
+    if (tool.canEmbed) {
+      // Ferramentas que podem ser embutidas → abre como aba interna
+      openAsTab(tool);
+    } else {
+      // Ferramentas que não podem → abre popup direto
+      openAsPopout(tool);
+    }
+  };
 
   const isActive = (path: string) => currentPath === path;
 
@@ -256,7 +266,7 @@ export function AppSidebar() {
                 return (
                   <SidebarMenuItem key={tool.id} className="group relative">
                     <SidebarMenuButton 
-                      onClick={() => openAsTab(tool)}
+                      onClick={() => handleToolClick(tool)}
                       className="hover:bg-muted/50 cursor-pointer"
                     >
                       <div className="relative">
@@ -268,6 +278,9 @@ export function AppSidebar() {
                       {open && (
                         <>
                           <span className="flex-1 truncate">{tool.name}</span>
+                          {!tool.canEmbed && (
+                            <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                          )}
                         </>
                       )}
                     </SidebarMenuButton>
