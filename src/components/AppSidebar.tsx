@@ -270,7 +270,12 @@ export function AppSidebar() {
                       className="hover:bg-muted/50 cursor-pointer"
                     >
                       <div className="relative">
-                        <ToolIcon icon={tool.icon} color={tool.iconColor} size={16} />
+                        <ToolIcon 
+                          icon={tool.icon} 
+                          color={tool.iconColor} 
+                          logoUrl={tool.logoUrl}
+                          size={16} 
+                        />
                         {isTabOpen && (
                           <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
                         )}
