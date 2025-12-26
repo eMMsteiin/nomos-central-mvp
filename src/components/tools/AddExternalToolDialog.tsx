@@ -42,6 +42,7 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       url: preset.url,
       icon: preset.icon,
       iconColor: preset.iconColor,
+      logoUrl: preset.logoUrl,
       isCustom: false,
       canEmbed: preset.canEmbed,
     });
@@ -112,15 +113,9 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
           </TabsList>
 
           <TabsContent value="preset" className="mt-4 space-y-4 max-h-[400px] overflow-y-auto">
-            {/* Info sobre ferramentas pré-definidas */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
-              <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-              <span>Estas ferramentas abrem em janela ao lado por restrições dos sites.</span>
-            </div>
-            
             {Object.entries(groupedPresets).map(([category, tools]) => (
               <div key={category}>
-                <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-2">
+                <h4 className="text-sm font-semibold text-muted-foreground mb-2">
                   {CATEGORY_LABELS[category as keyof typeof CATEGORY_LABELS]}
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
@@ -131,18 +126,34 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
                         key={tool.name}
                         onClick={() => handleAddPreset(tool)}
                         disabled={isAdded}
-                        className={`flex items-center gap-2 p-3 rounded-lg border transition-colors text-left ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
                           isAdded
                             ? 'bg-muted/50 border-muted cursor-not-allowed opacity-60'
                             : 'hover:bg-muted/50 border-border hover:border-primary/30'
                         }`}
                       >
-                        <ToolIcon icon={tool.icon} color={tool.iconColor} size={18} />
+                        <ToolIcon 
+                          icon={tool.icon} 
+                          color={tool.iconColor} 
+                          logoUrl={tool.logoUrl}
+                          size={24} 
+                        />
                         <div className="flex-1 min-w-0">
                           <span className="text-sm font-medium block truncate">{tool.name}</span>
-                          <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                            <ExternalLink className="h-2.5 w-2.5" />
-                            Janela ao lado
+                          <span className={`text-[10px] flex items-center gap-1 ${
+                            tool.canEmbed ? 'text-green-600' : 'text-muted-foreground'
+                          }`}>
+                            {tool.canEmbed ? (
+                              <>
+                                <MonitorPlay className="h-2.5 w-2.5" />
+                                Abre dentro
+                              </>
+                            ) : (
+                              <>
+                                <ExternalLink className="h-2.5 w-2.5" />
+                                Janela ao lado
+                              </>
+                            )}
                           </span>
                         </div>
                         {isAdded ? (
