@@ -1,8 +1,9 @@
+import { useState } from 'react';
 import { useTaskBlocks } from '@/hooks/useTaskBlocks';
 import { SubtaskBlock } from './blocks/SubtaskBlock';
 import { ImageBlock } from './blocks/ImageBlock';
 import { AddBlockMenu } from './AddBlockMenu';
-import { SubtaskContent, ImageContent } from '@/types/task';
+import { SubtaskContent, ImageContent, TaskBlock } from '@/types/task';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DndContext,
@@ -12,6 +13,9 @@ import {
   useSensor,
   useSensors,
   DragEndEvent,
+  DragStartEvent,
+  DragOverEvent,
+  DragOverlay,
 } from '@dnd-kit/core';
 import {
   SortableContext,
@@ -20,7 +24,51 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { TaskBlock } from '@/types/task';
+import { GripVertical, CheckSquare, Image } from 'lucide-react';
+
+interface DropIndicatorProps {
+  isVisible: boolean;
+}
+
+function DropIndicator({ isVisible }: DropIndicatorProps) {
+  if (!isVisible) return null;
+  
+  return (
+    <div className="flex items-center gap-2 py-1">
+      <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+      <div className="flex-1 h-0.5 bg-primary rounded-full animate-pulse" />
+    </div>
+  );
+}
+
+interface DragPreviewProps {
+  block: TaskBlock;
+}
+
+function DragPreview({ block }: DragPreviewProps) {
+  return (
+    <div className="bg-background border border-primary/50 rounded-lg p-3 shadow-lg opacity-90 max-w-md">
+      <div className="flex items-center gap-2">
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+        {block.type === 'subtask' ? (
+          <>
+            <CheckSquare className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm truncate">
+              {(block.content as SubtaskContent).text || 'Subtarefa'}
+            </span>
+          </>
+        ) : (
+          <>
+            <Image className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm truncate">
+              {(block.content as ImageContent).fileName || 'Imagem'}
+            </span>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 interface TaskBlockListProps {
   taskId: string;
@@ -91,6 +139,9 @@ function SortableBlock({
 }
 
 export function TaskBlockList({ taskId }: TaskBlockListProps) {
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [overId, setOverId] = useState<string | null>(null);
+
   const {
     blocks,
     isLoading,
@@ -121,6 +172,14 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
     })
   );
 
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveId(event.active.id as string);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    setOverId(event.over?.id as string || null);
+  };
+
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
 
@@ -129,7 +188,31 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
       const newIndex = blocks.findIndex(b => b.id === over.id);
       reorderBlocks(oldIndex, newIndex);
     }
+
+    setActiveId(null);
+    setOverId(null);
   };
+
+  const shouldShowIndicator = (blockId: string, position: 'before' | 'after'): boolean => {
+    if (!activeId || !overId) return false;
+    if (activeId === blockId) return false;
+    if (activeId === overId) return false;
+
+    const activeIndex = blocks.findIndex(b => b.id === activeId);
+    const overIndex = blocks.findIndex(b => b.id === overId);
+    const currentIndex = blocks.findIndex(b => b.id === blockId);
+
+    if (currentIndex !== overIndex) return false;
+
+    // Show indicator based on drag direction
+    if (activeIndex < overIndex) {
+      return position === 'after';
+    } else {
+      return position === 'before';
+    }
+  };
+
+  const activeBlock = activeId ? blocks.find(b => b.id === activeId) : null;
 
   if (isLoading) {
     return (
@@ -146,6 +229,8 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
       <DndContext
         sensors={sensors}
         collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <SortableContext
@@ -153,18 +238,27 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
           strategy={verticalListSortingStrategy}
         >
           <div className="space-y-1">
-            {blocks.map((block) => (
-              <SortableBlock
-                key={block.id}
-                block={block}
-                onToggle={() => toggleSubtaskCompletion(block.id)}
-                onTextChange={(text) => updateSubtaskText(block.id, text)}
-                onDelete={() => deleteBlock(block.id)}
-                onUpdateImageWidth={(width) => updateImageWidth(block.id, width)}
-              />
+            {blocks.map((block, index) => (
+              <div key={block.id}>
+                <DropIndicator isVisible={shouldShowIndicator(block.id, 'before')} />
+                <SortableBlock
+                  block={block}
+                  onToggle={() => toggleSubtaskCompletion(block.id)}
+                  onTextChange={(text) => updateSubtaskText(block.id, text)}
+                  onDelete={() => deleteBlock(block.id)}
+                  onUpdateImageWidth={(width) => updateImageWidth(block.id, width)}
+                />
+                {index === blocks.length - 1 && (
+                  <DropIndicator isVisible={shouldShowIndicator(block.id, 'after')} />
+                )}
+              </div>
             ))}
           </div>
         </SortableContext>
+
+        <DragOverlay>
+          {activeBlock ? <DragPreview block={activeBlock} /> : null}
+        </DragOverlay>
       </DndContext>
 
       <AddBlockMenu
