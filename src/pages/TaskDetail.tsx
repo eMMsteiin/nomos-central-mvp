@@ -13,10 +13,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
-import { Separator } from '@/components/ui/separator';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,35 +22,27 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useTaskDetail } from '@/hooks/useTaskDetail';
-import { SubtaskList } from '@/components/task/SubtaskList';
-import { AttachmentGrid } from '@/components/task/AttachmentGrid';
+import { useTaskBlocks } from '@/hooks/useTaskBlocks';
+import { TaskBlockList } from '@/components/task/TaskBlockList';
 import { toast } from '@/hooks/use-toast';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
-  const [isEditingDescription, setIsEditingDescription] = useState(false);
   const [titleValue, setTitleValue] = useState('');
-  const [descriptionValue, setDescriptionValue] = useState('');
-  const [isUploading, setIsUploading] = useState(false);
 
   const {
     task,
-    subtasks,
-    attachments,
     isLoading,
     isSynced,
-    subtaskProgress,
     updateTask,
-    addSubtask,
-    toggleSubtask,
-    updateSubtaskText,
-    deleteSubtask,
-    reorderSubtasks,
-    uploadAttachment,
-    deleteAttachment,
   } = useTaskDetail(id || '');
+
+  const {
+    subtaskProgress,
+    totalSubtasks,
+  } = useTaskBlocks(id);
 
   if (isLoading) {
     return (
@@ -86,16 +76,6 @@ const TaskDetail = () => {
     setIsEditingTitle(false);
   };
 
-  const handleStartEditDescription = () => {
-    setDescriptionValue(task.description || '');
-    setIsEditingDescription(true);
-  };
-
-  const handleSaveDescription = () => {
-    updateTask({ description: descriptionValue.trim() || undefined });
-    setIsEditingDescription(false);
-  };
-
   const handleComplete = () => {
     updateTask({ completed: !task.completed });
     if (!task.completed) {
@@ -122,25 +102,6 @@ const TaskDetail = () => {
       description: 'A tarefa foi removida.',
     });
     navigate(-1);
-  };
-
-  const handleUpload = async (file: File) => {
-    setIsUploading(true);
-    try {
-      await uploadAttachment(file);
-      toast({
-        title: 'Anexo adicionado',
-        description: `${file.name} foi anexado à tarefa.`,
-      });
-    } catch (err) {
-      toast({
-        title: 'Erro ao enviar',
-        description: 'Não foi possível anexar o arquivo.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUploading(false);
-    }
   };
 
   const formatDate = (date: Date | string | undefined) => {
@@ -212,12 +173,12 @@ const TaskDetail = () => {
       </header>
 
       {/* Content */}
-      <main className="max-w-3xl mx-auto px-4 py-6 space-y-8">
+      <main className="max-w-3xl mx-auto px-4 py-6">
         {/* Task Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="space-y-4"
+          className="space-y-4 mb-6"
         >
           {/* Title with checkbox */}
           <div className="flex items-start gap-3">
@@ -252,7 +213,7 @@ const TaskDetail = () => {
           </div>
 
           {/* Metadata */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground flex-wrap pl-8">
             <div className="flex items-center gap-1.5">
               <Calendar className="h-4 w-4" />
               <span>{formatDate(task.dueDate)}</span>
@@ -272,8 +233,8 @@ const TaskDetail = () => {
           </div>
 
           {/* Subtask progress (if any) */}
-          {subtasks.length > 0 && (
-            <div className="flex items-center gap-3">
+          {totalSubtasks > 0 && (
+            <div className="flex items-center gap-3 pl-8">
               <Progress value={subtaskProgress} className="flex-1 h-2" />
               <span className="text-sm text-muted-foreground font-medium">
                 {subtaskProgress}%
@@ -282,95 +243,21 @@ const TaskDetail = () => {
           )}
         </motion.div>
 
-        <Separator />
-
-        {/* Description */}
+        {/* Notion-style block list */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="space-y-3"
         >
-          <h3 className="font-medium text-foreground">Descrição</h3>
-          
-          {isEditingDescription ? (
-            <div className="space-y-2">
-              <Textarea
-                value={descriptionValue}
-                onChange={(e) => setDescriptionValue(e.target.value)}
-                placeholder="Adicione uma descrição..."
-                className="min-h-[100px]"
-                autoFocus
-              />
-              <div className="flex gap-2">
-                <Button size="sm" onClick={handleSaveDescription}>
-                  Salvar
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="ghost" 
-                  onClick={() => setIsEditingDescription(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </div>
-          ) : (
-            <div
-              onClick={handleStartEditDescription}
-              className="min-h-[60px] p-3 rounded-lg border border-border hover:border-primary/50 cursor-pointer transition-colors"
-            >
-              {task.description ? (
-                <p className="text-foreground whitespace-pre-wrap">{task.description}</p>
-              ) : (
-                <p className="text-muted-foreground text-sm">
-                  Clique para adicionar uma descrição...
-                </p>
-              )}
-            </div>
-          )}
-        </motion.div>
-
-        <Separator />
-
-        {/* Subtasks */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-        >
-          <SubtaskList
-            subtasks={subtasks}
-            onAdd={addSubtask}
-            onToggle={toggleSubtask}
-            onUpdateText={updateSubtaskText}
-            onDelete={deleteSubtask}
-            onReorder={reorderSubtasks}
-          />
-        </motion.div>
-
-        <Separator />
-
-        {/* Attachments */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-        >
-          <AttachmentGrid
-            attachments={attachments}
-            onUpload={handleUpload}
-            onDelete={deleteAttachment}
-            isUploading={isUploading}
-          />
+          {id && <TaskBlockList taskId={id} />}
         </motion.div>
 
         {/* Complete all suggestion */}
-        {subtasks.length > 0 && subtaskProgress === 100 && !task.completed && (
+        {totalSubtasks > 0 && subtaskProgress === 100 && !task.completed && (
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
-            className="flex items-center justify-center p-4 bg-primary/5 rounded-lg border border-primary/20"
+            className="flex items-center justify-center p-4 bg-primary/5 rounded-lg border border-primary/20 mt-8"
           >
             <div className="text-center space-y-3">
               <CheckCircle2 className="h-10 w-10 text-primary mx-auto" />

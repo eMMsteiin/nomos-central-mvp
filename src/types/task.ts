@@ -49,6 +49,53 @@ export interface TaskAttachment {
   createdAt: string;
 }
 
+// Block system types (Notion-style)
+export type TaskBlockType = 'subtask' | 'image' | 'text' | 'divider';
+
+export interface SubtaskContent {
+  text: string;
+  completed: boolean;
+}
+
+export interface ImageContent {
+  fileUrl: string;
+  fileName?: string;
+  fileType?: string;
+}
+
+export interface TextContent {
+  text: string;
+}
+
+export interface TaskBlock {
+  id: string;
+  taskId: string;
+  type: TaskBlockType;
+  content: SubtaskContent | ImageContent | TextContent | Record<string, never>;
+  position: number;
+  createdAt: string;
+}
+
+export interface TaskBlockRow {
+  id: string;
+  task_id: string;
+  type: string;
+  content: Record<string, unknown>;
+  position: number;
+  created_at: string;
+}
+
+export function blockRowToBlock(row: TaskBlockRow): TaskBlock {
+  return {
+    id: row.id,
+    taskId: row.task_id,
+    type: row.type as TaskBlockType,
+    content: row.content as TaskBlock['content'],
+    position: row.position,
+    createdAt: row.created_at,
+  };
+}
+
 // Supabase row types (snake_case)
 export interface TaskRow {
   id: string;

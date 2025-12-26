@@ -352,6 +352,41 @@ export type Database = {
           },
         ]
       }
+      task_blocks: {
+        Row: {
+          content: Json
+          created_at: string
+          id: string
+          position: number | null
+          task_id: string
+          type: string
+        }
+        Insert: {
+          content?: Json
+          created_at?: string
+          id?: string
+          position?: number | null
+          task_id: string
+          type: string
+        }
+        Update: {
+          content?: Json
+          created_at?: string
+          id?: string
+          position?: number | null
+          task_id?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_blocks_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tasks: {
         Row: {
           canva_design_title: string | null
