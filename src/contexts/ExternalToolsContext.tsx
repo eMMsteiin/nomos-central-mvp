@@ -6,7 +6,17 @@ interface ExternalToolsContextType {
   addTool: (tool: Omit<ExternalTool, 'id' | 'order'>) => void;
   removeTool: (id: string) => void;
   reorderTools: (ids: string[]) => void;
-  openTool: (tool: ExternalTool) => Window | null;
+  
+  // Tab management
+  openTabs: ExternalTool[];
+  activeTabId: string | null;
+  openAsTab: (tool: ExternalTool) => void;
+  closeTab: (toolId: string) => void;
+  closeAllTabs: () => void;
+  setActiveTab: (toolId: string | null) => void;
+  
+  // Popout management
+  openAsPopout: (tool: ExternalTool) => Window | null;
   activePopouts: Map<string, Window>;
 }
 
@@ -17,6 +27,10 @@ const STORAGE_KEY = 'nomos-external-tools';
 export function ExternalToolsProvider({ children }: { children: React.ReactNode }) {
   const [userTools, setUserTools] = useState<ExternalTool[]>([]);
   const [activePopouts, setActivePopouts] = useState<Map<string, Window>>(new Map());
+  
+  // Tab state
+  const [openTabs, setOpenTabs] = useState<ExternalTool[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
@@ -48,6 +62,12 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
   const removeTool = useCallback((id: string) => {
     setUserTools(prev => prev.filter(t => t.id !== id).map((t, i) => ({ ...t, order: i })));
     
+    // Close tab if open
+    setOpenTabs(prev => prev.filter(t => t.id !== id));
+    if (activeTabId === id) {
+      setActiveTabId(null);
+    }
+    
     // Close popout if open
     const popout = activePopouts.get(id);
     if (popout && !popout.closed) {
@@ -58,7 +78,7 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
       next.delete(id);
       return next;
     });
-  }, [activePopouts]);
+  }, [activePopouts, activeTabId]);
 
   const reorderTools = useCallback((ids: string[]) => {
     setUserTools(prev => {
@@ -71,7 +91,45 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
     });
   }, []);
 
-  const openTool = useCallback((tool: ExternalTool): Window | null => {
+  // Tab management
+  const openAsTab = useCallback((tool: ExternalTool) => {
+    setOpenTabs(prev => {
+      // If already open, just activate it
+      if (prev.some(t => t.id === tool.id)) {
+        return prev;
+      }
+      return [...prev, tool];
+    });
+    setActiveTabId(tool.id);
+  }, []);
+
+  const closeTab = useCallback((toolId: string) => {
+    setOpenTabs(prev => prev.filter(t => t.id !== toolId));
+    if (activeTabId === toolId) {
+      // Switch to another tab or close
+      setOpenTabs(prev => {
+        const remaining = prev.filter(t => t.id !== toolId);
+        if (remaining.length > 0) {
+          setActiveTabId(remaining[remaining.length - 1].id);
+        } else {
+          setActiveTabId(null);
+        }
+        return remaining;
+      });
+    }
+  }, [activeTabId]);
+
+  const closeAllTabs = useCallback(() => {
+    setOpenTabs([]);
+    setActiveTabId(null);
+  }, []);
+
+  const setActiveTab = useCallback((toolId: string | null) => {
+    setActiveTabId(toolId);
+  }, []);
+
+  // Popout management
+  const openAsPopout = useCallback((tool: ExternalTool): Window | null => {
     // Check if already open
     const existing = activePopouts.get(tool.id);
     if (existing && !existing.closed) {
@@ -120,7 +178,13 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
       addTool,
       removeTool,
       reorderTools,
-      openTool,
+      openTabs,
+      activeTabId,
+      openAsTab,
+      closeTab,
+      closeAllTabs,
+      setActiveTab,
+      openAsPopout,
       activePopouts,
     }}>
       {children}

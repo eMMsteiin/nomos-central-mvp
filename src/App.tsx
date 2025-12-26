@@ -8,9 +8,11 @@ import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
 import { HiddenTabsProvider } from "@/contexts/HiddenTabsContext";
 import { CanvaSessionProvider } from "@/contexts/CanvaSessionContext";
-import { ExternalToolsProvider } from "@/contexts/ExternalToolsContext";
+import { ExternalToolsProvider, useExternalTools } from "@/contexts/ExternalToolsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { FocusSidebar } from "@/components/canva/FocusSidebar";
+import { ExternalToolsTabs } from "@/components/tools/ExternalToolsTabs";
+import { ExternalToolView } from "@/components/tools/ExternalToolView";
 import Index from "./pages/Index";
 import Hoje from "./pages/Hoje";
 import EmBreve from "./pages/EmBreve";
@@ -28,6 +30,55 @@ import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
+function MainContent() {
+  const { openTabs, activeTabId, closeTab, closeAllTabs, setActiveTab, openAsPopout } = useExternalTools();
+  
+  const activeTool = openTabs.find(t => t.id === activeTabId);
+
+  return (
+    <div className="flex-1 flex flex-col w-full">
+      <AppHeader />
+      
+      {/* External Tools Tabs Bar */}
+      <ExternalToolsTabs
+        openTabs={openTabs}
+        activeTabId={activeTabId}
+        onSelectTab={setActiveTab}
+        onCloseTab={closeTab}
+        onCloseAllTabs={closeAllTabs}
+      />
+      
+      {/* Main Content Area */}
+      {activeTool ? (
+        <ExternalToolView 
+          tool={activeTool} 
+          onOpenPopout={openAsPopout}
+        />
+      ) : (
+        <main className="flex-1">
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/hoje" element={<Hoje />} />
+            <Route path="/em-breve" element={<EmBreve />} />
+            <Route path="/resumos" element={<Resumos />} />
+            <Route path="/concluido" element={<Concluido />} />
+            <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
+            <Route path="/caderno" element={<Caderno />} />
+            <Route path="/chat" element={<ChatNomos />} />
+            <Route path="/flashcards" element={<Flashcards />} />
+            <Route path="/tarefa/:id" element={<TaskDetail />} />
+            <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
+            <Route path="/configuracoes" element={<Configuracoes />}>
+              <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
+            </Route>
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
+      )}
+    </div>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -41,38 +92,14 @@ const App = () => (
                 <SidebarProvider>
                   <div className="flex min-h-screen w-full">
                     <AppSidebar />
-                  
-                  <div className="flex-1 flex flex-col w-full">
-                    <AppHeader />
-                    
-                    <main className="flex-1">
-                      <Routes>
-                        <Route path="/" element={<Index />} />
-                        <Route path="/hoje" element={<Hoje />} />
-                        <Route path="/em-breve" element={<EmBreve />} />
-                        <Route path="/resumos" element={<Resumos />} />
-                        <Route path="/concluido" element={<Concluido />} />
-                        <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
-                        <Route path="/caderno" element={<Caderno />} />
-                        <Route path="/chat" element={<ChatNomos />} />
-                        <Route path="/flashcards" element={<Flashcards />} />
-                        <Route path="/tarefa/:id" element={<TaskDetail />} />
-                        <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
-                        <Route path="/configuracoes" element={<Configuracoes />}>
-                          <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
-                        </Route>
-                        <Route path="*" element={<NotFound />} />
-                      </Routes>
-                    </main>
+                    <MainContent />
+                    {/* Focus Sidebar - appears when Canva session is active */}
+                    <FocusSidebar />
                   </div>
-                  
-                  {/* Focus Sidebar - appears when Canva session is active */}
-                  <FocusSidebar />
-                </div>
-              </SidebarProvider>
-            </ExternalToolsProvider>
-          </CanvaSessionProvider>
-        </HiddenTabsProvider>
+                </SidebarProvider>
+              </ExternalToolsProvider>
+            </CanvaSessionProvider>
+          </HiddenTabsProvider>
         </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
