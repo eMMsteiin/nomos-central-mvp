@@ -20,7 +20,8 @@ import {
   Layers,
   ExternalLink,
   Trash2,
-  MonitorPlay
+  MonitorPlay,
+  Ban
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -40,6 +41,7 @@ import { Input } from "@/components/ui/input";
 import { useTaskCounts } from "@/hooks/useTaskCounts";
 import { useHiddenTabs } from "@/hooks/useHiddenTabs";
 import { useExternalTools } from "@/contexts/ExternalToolsContext";
+import { isKnownBlockedSite } from "@/utils/externalToolsEmbed";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -81,14 +83,9 @@ export function AppSidebar() {
   const { isTabHidden, hideTab } = useHiddenTabs();
   const { userTools, openAsTab, removeTool, updateTool, openTabs } = useExternalTools();
 
-  const handleToolClick = (tool: typeof userTools[0]) => {
-    if (tool.canEmbed) {
-      // Ferramentas que podem ser embutidas → abre como aba interna
-      openAsTab(tool);
-    } else {
-      // Ferramentas externas → abre direto em nova aba do navegador
-      window.open(tool.url, '_blank', 'noopener,noreferrer');
-    }
+  // Check if tool can actually embed (considering blocked sites)
+  const canActuallyEmbed = (tool: typeof userTools[0]) => {
+    return tool.canEmbed && !isKnownBlockedSite(tool.url);
   };
 
   const isActive = (path: string) => currentPath === path;
@@ -264,10 +261,95 @@ export function AppSidebar() {
             <SidebarMenu>
               {userTools.map((tool) => {
                 const isTabOpen = openTabs.some(t => t.id === tool.id);
+                const isBlocked = isKnownBlockedSite(tool.url);
+                const canEmbed = canActuallyEmbed(tool);
+                
+                // For blocked tools, render as direct link
+                if (!canEmbed) {
+                  return (
+                    <SidebarMenuItem key={tool.id} className="group relative">
+                      <SidebarMenuButton asChild className="hover:bg-muted/50">
+                        <a 
+                          href={tool.url} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                        >
+                          <div className="relative">
+                            <ToolIcon 
+                              icon={tool.icon} 
+                              color={tool.iconColor} 
+                              logoUrl={tool.logoUrl}
+                              size={16} 
+                            />
+                          </div>
+                          {open && (
+                            <>
+                              <span className="flex-1 truncate">{tool.name}</span>
+                              <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
+                            </>
+                          )}
+                        </a>
+                      </SidebarMenuButton>
+                    
+                      {/* Remove tool menu for external tools */}
+                      {open && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                              }}
+                            >
+                              <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-48">
+                            {isBlocked ? (
+                              <DropdownMenuItem
+                                disabled
+                                className="gap-2 text-sm text-muted-foreground"
+                              >
+                                <Ban className="h-3.5 w-3.5" />
+                                <span>Bloqueado pelo site</span>
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  updateTool(tool.id, { canEmbed: true });
+                                }}
+                                className="gap-2 text-sm cursor-pointer"
+                              >
+                                <MonitorPlay className="h-3.5 w-3.5" />
+                                <span>Abrir dentro da NOMOS</span>
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem
+                              onClick={(e) => {
+                                e.preventDefault();
+                                removeTool(tool.id);
+                              }}
+                              className="gap-2 text-sm cursor-pointer text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>Remover</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
+                    </SidebarMenuItem>
+                  );
+                }
+
+                // For embeddable tools, render as button that opens as tab
                 return (
                   <SidebarMenuItem key={tool.id} className="group relative">
                     <SidebarMenuButton 
-                      onClick={() => handleToolClick(tool)}
+                      onClick={() => openAsTab(tool)}
                       className="hover:bg-muted/50 cursor-pointer"
                     >
                       <div className="relative">
@@ -282,33 +364,27 @@ export function AppSidebar() {
                         )}
                       </div>
                       {open && (
-                        <>
-                          <span className="flex-1 truncate">{tool.name}</span>
-                          {!tool.canEmbed && (
-                            <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
-                          )}
-                        </>
+                        <span className="flex-1 truncate">{tool.name}</span>
                       )}
                     </SidebarMenuButton>
                   
-                  {/* Remove tool menu */}
-                  {open && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                          }}
-                        >
-                          <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-48">
-                        {tool.canEmbed ? (
+                    {/* Tool menu for embeddable tools */}
+                    {open && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                          >
+                            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.preventDefault();
@@ -319,31 +395,19 @@ export function AppSidebar() {
                             <ExternalLink className="h-3.5 w-3.5" />
                             <span>Abrir em janela externa</span>
                           </DropdownMenuItem>
-                        ) : (
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.preventDefault();
-                              updateTool(tool.id, { canEmbed: true });
+                              removeTool(tool.id);
                             }}
-                            className="gap-2 text-sm cursor-pointer"
+                            className="gap-2 text-sm cursor-pointer text-destructive focus:text-destructive"
                           >
-                            <MonitorPlay className="h-3.5 w-3.5" />
-                            <span>Abrir dentro da NOMOS</span>
+                            <Trash2 className="h-3.5 w-3.5" />
+                            <span>Remover</span>
                           </DropdownMenuItem>
-                        )}
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.preventDefault();
-                            removeTool(tool.id);
-                          }}
-                          className="gap-2 text-sm cursor-pointer text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                          <span>Remover</span>
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </SidebarMenuItem>
                 );
               })}

@@ -15,6 +15,7 @@ import { ToolIcon } from './ToolIcon';
 import { Check, Plus, Link, ExternalLink, MonitorPlay } from 'lucide-react';
 import { toast } from 'sonner';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { isKnownBlockedSite } from '@/utils/externalToolsEmbed';
 
 interface AddExternalToolDialogProps {
   open: boolean;
@@ -38,6 +39,9 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       return;
     }
 
+    // Force canEmbed=false for known blocked sites
+    const canEmbed = isKnownBlockedSite(preset.url) ? false : preset.canEmbed;
+
     addTool({
       name: preset.name,
       url: preset.url,
@@ -45,7 +49,7 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       iconColor: preset.iconColor,
       logoUrl: preset.logoUrl,
       isCustom: false,
-      canEmbed: preset.canEmbed,
+      canEmbed,
     });
     toast.success(`${preset.name} adicionado à sidebar`);
   };
@@ -79,12 +83,20 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       return;
     }
 
+    // Check if site is blocked and force external mode
+    const isBlocked = isKnownBlockedSite(url);
+    if (isBlocked && customOpenMode === 'embed') {
+      toast.info('Este site não permite abrir embutido. Abrirá em nova aba.', {
+        duration: 4000,
+      });
+    }
+
     addTool({
       name: customName.trim(),
       url,
       icon: customEmoji,
       isCustom: true,
-      canEmbed: customOpenMode === 'embed',
+      canEmbed: isBlocked ? false : customOpenMode === 'embed',
     });
 
     toast.success(`${customName} adicionado à sidebar`);

@@ -4,43 +4,10 @@ import { ExternalTool } from "@/types/externalTool";
 import { ToolIcon } from "./ToolIcon";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { isKnownBlockedSite } from "@/utils/externalToolsEmbed";
 
 interface ExternalToolViewProps {
   tool: ExternalTool;
-}
-
-// Sites conhecidos que bloqueiam iframes
-const BLOCKED_SITES = [
-  'canva.com',
-  'figma.com',
-  'docs.google.com',
-  'sheets.google.com',
-  'slides.google.com',
-  'drive.google.com',
-  'notion.so',
-  'trello.com',
-  'miro.com',
-  'office.live.com',
-  'onedrive.live.com',
-  'microsoft.com',
-  'outlook.com',
-  'deepl.com',
-  'claude.ai',
-  'chat.openai.com',
-  'openai.com',
-  'perplexity.ai',
-  'wolframalpha.com',
-  'khanacademy.org',
-  'scholar.google.com',
-];
-
-function isKnownBlockedSite(url: string): boolean {
-  try {
-    const hostname = new URL(url).hostname;
-    return BLOCKED_SITES.some(blocked => hostname.includes(blocked));
-  } catch {
-    return false;
-  }
 }
 
 export function ExternalToolView({ tool }: ExternalToolViewProps) {
