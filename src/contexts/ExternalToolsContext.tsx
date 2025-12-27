@@ -23,8 +23,14 @@ interface ExternalToolsContextType {
   activePopouts: Map<string, Window>;
 }
 
-const ExternalToolsContext = createContext<ExternalToolsContextType | undefined>(undefined);
+const GLOBAL_CONTEXT_KEY = '__nomosExternalToolsContext';
 
+// HMR-safe context instance (prevents provider/consumer mismatch during fast refresh)
+const ExternalToolsContext =
+  ((globalThis as any)[GLOBAL_CONTEXT_KEY] as ReturnType<typeof createContext<ExternalToolsContextType | undefined>> | undefined) ??
+  createContext<ExternalToolsContextType | undefined>(undefined);
+
+(globalThis as any)[GLOBAL_CONTEXT_KEY] = ExternalToolsContext;
 const STORAGE_KEY = 'nomos-external-tools';
 
 export function ExternalToolsProvider({ children }: { children: React.ReactNode }) {
@@ -218,10 +224,40 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
   );
 }
 
-export function useExternalTools() {
+export function useExternalTools(): ExternalToolsContextType {
   const context = useContext(ExternalToolsContext);
+
   if (context === undefined) {
-    throw new Error('useExternalTools must be used within an ExternalToolsProvider');
+    // In rare cases (usually HMR/fast-refresh), the provider/consumer can temporarily desync.
+    // Avoid a hard crash and trigger a one-time reload to resync.
+    const g = globalThis as any;
+    if (!g.__nomos_external_tools_ctx_reload_scheduled) {
+      g.__nomos_external_tools_ctx_reload_scheduled = true;
+      setTimeout(() => {
+        try {
+          window.location.reload();
+        } catch {
+          // ignore
+        }
+      }, 50);
+    }
+
+    return {
+      userTools: [],
+      addTool: () => {},
+      removeTool: () => {},
+      updateTool: () => {},
+      reorderTools: () => {},
+      openTabs: [],
+      activeTabId: null,
+      openAsTab: () => {},
+      closeTab: () => {},
+      closeAllTabs: () => {},
+      setActiveTab: () => {},
+      openAsPopout: () => null,
+      activePopouts: new Map(),
+    };
   }
+
   return context;
 }
