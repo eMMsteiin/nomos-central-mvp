@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ExternalTool } from '@/types/externalTool';
+import { toast } from 'sonner';
 
 interface ExternalToolsContextType {
   userTools: ExternalTool[];
@@ -150,25 +151,35 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
       `width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
     );
 
-    if (popout) {
-      setActivePopouts(prev => {
-        const next = new Map(prev);
-        next.set(tool.id, popout);
-        return next;
+    if (!popout) {
+      // Popup was blocked by the browser
+      toast.error(`${tool.name} foi bloqueado pelo navegador`, {
+        description: 'Permita pop-ups ou clique com o botão direito para abrir em nova aba.',
+        action: {
+          label: 'Abrir em nova aba',
+          onClick: () => window.open(tool.url, '_blank', 'noopener,noreferrer'),
+        },
       });
-
-      // Clean up when window closes
-      const checkClosed = setInterval(() => {
-        if (popout.closed) {
-          clearInterval(checkClosed);
-          setActivePopouts(prev => {
-            const next = new Map(prev);
-            next.delete(tool.id);
-            return next;
-          });
-        }
-      }, 1000);
+      return null;
     }
+
+    setActivePopouts(prev => {
+      const next = new Map(prev);
+      next.set(tool.id, popout);
+      return next;
+    });
+
+    // Clean up when window closes
+    const checkClosed = setInterval(() => {
+      if (popout.closed) {
+        clearInterval(checkClosed);
+        setActivePopouts(prev => {
+          const next = new Map(prev);
+          next.delete(tool.id);
+          return next;
+        });
+      }
+    }, 1000);
 
     return popout;
   }, [activePopouts]);

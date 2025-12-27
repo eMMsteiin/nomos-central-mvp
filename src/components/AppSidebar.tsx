@@ -86,7 +86,11 @@ export function AppSidebar() {
       openAsTab(tool);
     } else {
       // Ferramentas que não podem → abre popup direto
-      openAsPopout(tool);
+      const popout = openAsPopout(tool);
+      // Fallback: se popup foi bloqueado, tenta abrir em nova aba
+      if (!popout) {
+        window.open(tool.url, '_blank', 'noopener,noreferrer');
+      }
     }
   };
 
