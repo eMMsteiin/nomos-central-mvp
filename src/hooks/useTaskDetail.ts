@@ -28,15 +28,16 @@ export function useTaskDetail(taskId: string) {
     setIsLoading(true);
 
     try {
-      // Try Supabase first
+      // Try Supabase first (using maybeSingle to handle not found gracefully)
       const { data: taskData, error } = await supabase
         .from('tasks')
         .select('*')
         .eq('id', taskId)
-        .single();
+        .maybeSingle();
 
       if (taskData && !error) {
-        setTask(taskRowToTask(taskData as TaskRow));
+        const loadedTask = taskRowToTask(taskData as TaskRow);
+        setTask(loadedTask);
         setIsSynced(true);
 
         // Load subtasks and attachments
@@ -60,21 +61,35 @@ export function useTaskDetail(taskId: string) {
           setAttachments((attachmentsRes.data as TaskAttachmentRow[]).map(attachmentRowToAttachment));
         }
       } else {
-        // Not in Supabase - check localStorage and migrate
+        // Not in Supabase - check localStorage
         const stored = localStorage.getItem(STORAGE_KEY);
         if (stored) {
           const tasks: Task[] = JSON.parse(stored);
           const localTask = tasks.find(t => t.id === taskId);
           
           if (localTask) {
-            // Migrate to Supabase
-            const migratedTask = await migrateTaskToSupabase(localTask, deviceId);
-            if (migratedTask) {
-              setTask(migratedTask);
+            // Check if this task is already synced (has same ID in Supabase)
+            // If not, try to sync it now
+            const { data: existingTask } = await supabase
+              .from('tasks')
+              .select('id')
+              .eq('id', localTask.id)
+              .maybeSingle();
+            
+            if (existingTask) {
+              // Task exists in Supabase, just load it
+              setTask(localTask);
               setIsSynced(true);
             } else {
-              setTask(localTask);
-              setIsSynced(false);
+              // Task doesn't exist in Supabase - try to migrate
+              const migratedTask = await migrateTaskToSupabase(localTask, deviceId);
+              if (migratedTask) {
+                setTask(migratedTask);
+                setIsSynced(true);
+              } else {
+                setTask(localTask);
+                setIsSynced(false);
+              }
             }
           }
         }
@@ -102,12 +117,17 @@ export function useTaskDetail(taskId: string) {
     }
   }, [taskId, deviceId, loadTask]);
 
-  // Migrate a localStorage task to Supabase
+  // Migrate a localStorage task to Supabase (use same ID if UUID, otherwise generate new)
   const migrateTaskToSupabase = async (localTask: Task, deviceId: string): Promise<Task | null> => {
     try {
+      // Check if localTask.id is already a valid UUID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(localTask.id);
+      const taskIdToUse = isUUID ? localTask.id : crypto.randomUUID();
+
       const { data, error } = await supabase
         .from('tasks')
         .insert({
+          id: taskIdToUse,
           device_id: deviceId,
           text: localTask.text,
           description: localTask.description || null,
@@ -136,13 +156,13 @@ export function useTaskDetail(taskId: string) {
 
       if (error) throw error;
 
-      // Update localStorage with Supabase ID
+      // Update localStorage: replace old ID with Supabase UUID
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const tasks: Task[] = JSON.parse(stored);
         const updated = tasks.map(t => 
           t.id === localTask.id 
-            ? { ...t, supabaseId: data.id } 
+            ? { ...t, id: data.id, supabaseId: data.id } 
             : t
         );
         localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
@@ -162,7 +182,8 @@ export function useTaskDetail(taskId: string) {
     const updatedTask = { ...task, ...updates };
     setTask(updatedTask);
 
-    if (isSynced && task.supabaseId) {
+    // Use task.id directly (now it's always UUID)
+    if (isSynced) {
       await supabase
         .from('tasks')
         .update({
@@ -173,7 +194,7 @@ export function useTaskDetail(taskId: string) {
           priority: updatedTask.priority || 'baixa',
           completed: updatedTask.completed || false,
         })
-        .eq('id', task.supabaseId);
+        .eq('id', task.id);
     }
 
     // Also update localStorage
@@ -197,7 +218,7 @@ export function useTaskDetail(taskId: string) {
     const { data, error } = await supabase
       .from('subtasks')
       .insert({
-        task_id: task.supabaseId || task.id,
+        task_id: task.id,
         text,
         completed: false,
         position: maxPosition,
@@ -259,8 +280,7 @@ export function useTaskDetail(taskId: string) {
   const uploadAttachment = async (file: File) => {
     if (!task || !isSynced) return;
 
-    const taskIdForUpload = task.supabaseId || task.id;
-    const fileName = `${taskIdForUpload}/${Date.now()}-${file.name}`;
+    const fileName = `${task.id}/${Date.now()}-${file.name}`;
 
     const { error: uploadError } = await supabase.storage
       .from('task-attachments')
@@ -282,7 +302,7 @@ export function useTaskDetail(taskId: string) {
     const { data, error } = await supabase
       .from('task_attachments')
       .insert({
-        task_id: taskIdForUpload,
+        task_id: task.id,
         file_url: urlData.publicUrl,
         file_name: file.name,
         file_type: file.type,
