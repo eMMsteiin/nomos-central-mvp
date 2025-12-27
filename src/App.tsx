@@ -79,6 +79,19 @@ function MainContent() {
   );
 }
 
+function AppContent() {
+  return (
+    <SidebarProvider defaultOpen={true}>
+      <div className="flex min-h-screen w-full">
+        <AppSidebar />
+        <MainContent />
+        {/* Focus Sidebar - appears when Canva session is active */}
+        <FocusSidebar />
+      </div>
+    </SidebarProvider>
+  );
+}
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -89,14 +102,7 @@ const App = () => (
           <HiddenTabsProvider>
             <CanvaSessionProvider>
               <ExternalToolsProvider>
-                <SidebarProvider defaultOpen={true}>
-                  <div className="flex min-h-screen w-full">
-                    <AppSidebar />
-                    <MainContent />
-                    {/* Focus Sidebar - appears when Canva session is active */}
-                    <FocusSidebar />
-                  </div>
-                </SidebarProvider>
+                <AppContent />
               </ExternalToolsProvider>
             </CanvaSessionProvider>
           </HiddenTabsProvider>
