@@ -14,7 +14,7 @@ import { useExternalTools } from '@/contexts/ExternalToolsContext';
 import { ToolIcon } from './ToolIcon';
 import { Check, Plus, Link, ExternalLink, MonitorPlay } from 'lucide-react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface AddExternalToolDialogProps {
   open: boolean;
@@ -28,6 +28,7 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
   const [customName, setCustomName] = useState('');
   const [customUrl, setCustomUrl] = useState('');
   const [customEmoji, setCustomEmoji] = useState('🔧');
+  const [customOpenMode, setCustomOpenMode] = useState<'external' | 'embed'>('external');
 
   const addedToolUrls = new Set(userTools.map(t => t.url));
 
@@ -83,13 +84,14 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
       url,
       icon: customEmoji,
       isCustom: true,
-      canEmbed: true, // Ferramentas personalizadas tentam iframe
+      canEmbed: customOpenMode === 'embed',
     });
 
     toast.success(`${customName} adicionado à sidebar`);
     setCustomName('');
     setCustomUrl('');
     setCustomEmoji('🔧');
+    setCustomOpenMode('external');
     onOpenChange(false);
   };
 
@@ -170,11 +172,6 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
           </TabsContent>
 
           <TabsContent value="custom" className="mt-4 space-y-4">
-            {/* Info sobre ferramentas personalizadas */}
-            <div className="flex items-center gap-2 p-2 rounded-lg bg-primary/10 text-xs text-primary">
-              <MonitorPlay className="h-3.5 w-3.5 shrink-0" />
-              <span>Links personalizados abrem dentro da NOMOS (quando permitido pelo site).</span>
-            </div>
             
             <div className="space-y-2">
               <Label htmlFor="custom-name">Nome da Ferramenta</Label>
@@ -217,6 +214,40 @@ export function AddExternalToolDialog({ open, onOpenChange }: AddExternalToolDia
                   </button>
                 ))}
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Como abrir</Label>
+              <RadioGroup 
+                value={customOpenMode} 
+                onValueChange={(v) => setCustomOpenMode(v as 'external' | 'embed')}
+                className="grid grid-cols-2 gap-2"
+              >
+                <label 
+                  className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    customOpenMode === 'external' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/30'
+                  }`}
+                >
+                  <RadioGroupItem value="external" className="sr-only" />
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <span className="text-sm font-medium block">Janela externa</span>
+                    <span className="text-[10px] text-muted-foreground">Recomendado</span>
+                  </div>
+                </label>
+                <label 
+                  className={`flex items-center gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${
+                    customOpenMode === 'embed' ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/30'
+                  }`}
+                >
+                  <RadioGroupItem value="embed" className="sr-only" />
+                  <MonitorPlay className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <span className="text-sm font-medium block">Dentro da NOMOS</span>
+                    <span className="text-[10px] text-muted-foreground">Pode não funcionar</span>
+                  </div>
+                </label>
+              </RadioGroup>
             </div>
 
             <Button onClick={handleAddCustom} className="w-full">
