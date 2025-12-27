@@ -6,6 +6,7 @@ import { NotebookBlock } from './blocks/NotebookBlock';
 import { AddBlockMenu } from './AddBlockMenu';
 import { SelectNotebookDialog } from './SelectNotebookDialog';
 import { SubtaskContent, ImageContent, NotebookContent, TaskBlock } from '@/types/task';
+import { Notebook } from '@/types/notebook';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DndContext,
@@ -169,9 +170,11 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
   const {
     blocks,
     isLoading,
+    isProcessingPages,
     addSubtaskBlock,
     addImageBlock,
     addNotebookBlock,
+    addNotebookPagesAsImages,
     toggleSubtaskCompletion,
     updateSubtaskText,
     deleteBlock,
@@ -237,6 +240,16 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
     }
   };
 
+  const handleSelectNotebook = (notebook: Notebook) => {
+    addNotebookBlock(notebook);
+    setIsSelectNotebookOpen(false);
+  };
+
+  const handleSelectPagesAsImages = async (notebook: Notebook, pageIndexes: number[]) => {
+    await addNotebookPagesAsImages(notebook, pageIndexes);
+    setIsSelectNotebookOpen(false);
+  };
+
   const activeBlock = activeId ? blocks.find(b => b.id === activeId) : null;
 
   if (isLoading) {
@@ -295,7 +308,9 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
       <SelectNotebookDialog
         open={isSelectNotebookOpen}
         onOpenChange={setIsSelectNotebookOpen}
-        onSelect={addNotebookBlock}
+        onSelectNotebook={handleSelectNotebook}
+        onSelectPagesAsImages={handleSelectPagesAsImages}
+        isProcessingPages={isProcessingPages}
       />
     </div>
   );
