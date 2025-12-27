@@ -6,6 +6,7 @@ interface ExternalToolsContextType {
   userTools: ExternalTool[];
   addTool: (tool: Omit<ExternalTool, 'id' | 'order'>) => void;
   removeTool: (id: string) => void;
+  updateTool: (id: string, updates: Partial<Omit<ExternalTool, 'id'>>) => void;
   reorderTools: (ids: string[]) => void;
   
   // Tab management
@@ -81,6 +82,12 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
       return next;
     });
   }, [activePopouts, activeTabId]);
+
+  const updateTool = useCallback((id: string, updates: Partial<Omit<ExternalTool, 'id'>>) => {
+    setUserTools(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+    // Also update in openTabs if present
+    setOpenTabs(prev => prev.map(t => t.id === id ? { ...t, ...updates } : t));
+  }, []);
 
   const reorderTools = useCallback((ids: string[]) => {
     setUserTools(prev => {
@@ -189,6 +196,7 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
       userTools,
       addTool,
       removeTool,
+      updateTool,
       reorderTools,
       openTabs,
       activeTabId,

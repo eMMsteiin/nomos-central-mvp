@@ -26,6 +26,13 @@ const BLOCKED_SITES = [
   'microsoft.com',
   'outlook.com',
   'deepl.com',
+  'claude.ai',
+  'chat.openai.com',
+  'openai.com',
+  'perplexity.ai',
+  'wolframalpha.com',
+  'khanacademy.org',
+  'scholar.google.com',
 ];
 
 function isKnownBlockedSite(url: string): boolean {

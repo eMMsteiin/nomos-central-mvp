@@ -19,7 +19,8 @@ import {
   PanelLeft,
   Layers,
   ExternalLink,
-  Trash2
+  Trash2,
+  MonitorPlay
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -78,7 +79,7 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const counts = useTaskCounts();
   const { isTabHidden, hideTab } = useHiddenTabs();
-  const { userTools, openAsTab, openAsPopout, removeTool, openTabs } = useExternalTools();
+  const { userTools, openAsTab, openAsPopout, removeTool, updateTool, openTabs } = useExternalTools();
 
   const handleToolClick = (tool: typeof userTools[0]) => {
     if (tool.canEmbed) {
@@ -310,7 +311,30 @@ export function AppSidebar() {
                           <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-40">
+                      <DropdownMenuContent align="end" className="w-48">
+                        {tool.canEmbed ? (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.preventDefault();
+                              updateTool(tool.id, { canEmbed: false });
+                            }}
+                            className="gap-2 text-sm cursor-pointer"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>Abrir em janela externa</span>
+                          </DropdownMenuItem>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.preventDefault();
+                              updateTool(tool.id, { canEmbed: true });
+                            }}
+                            className="gap-2 text-sm cursor-pointer"
+                          >
+                            <MonitorPlay className="h-3.5 w-3.5" />
+                            <span>Abrir dentro da NOMOS</span>
+                          </DropdownMenuItem>
+                        )}
                         <DropdownMenuItem
                           onClick={(e) => {
                             e.preventDefault();
