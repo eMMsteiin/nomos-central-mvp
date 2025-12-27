@@ -12,6 +12,16 @@ const isValidUUID = (str: string): boolean => {
   return uuidRegex.test(str);
 };
 
+// Sanitize filename for Supabase Storage (remove accents and special chars)
+const sanitizeFileName = (name: string): string => {
+  return name
+    .normalize('NFD')                    // Decompose accents
+    .replace(/[\u0300-\u036f]/g, '')     // Remove accent marks
+    .replace(/[^a-zA-Z0-9-_]/g, '_')     // Replace invalid chars with _
+    .replace(/_+/g, '_')                 // Remove duplicate underscores
+    .replace(/^_|_$/g, '');              // Remove _ at start/end
+};
+
 // Convert data URL to Blob
 const dataUrlToBlob = (dataUrl: string): Blob => {
   const arr = dataUrl.split(',');
@@ -203,7 +213,8 @@ export function useTaskBlocks(taskId: string | undefined) {
 
         // Convert to blob and upload
         const blob = dataUrlToBlob(dataUrl);
-        const fileName = `${taskId}/${notebook.title}_pagina_${pageIndex + 1}_${crypto.randomUUID()}.png`;
+        const sanitizedTitle = sanitizeFileName(notebook.title);
+        const fileName = `${taskId}/${sanitizedTitle}_pagina_${pageIndex + 1}_${crypto.randomUUID()}.png`;
 
         const { error: uploadError } = await supabase.storage
           .from('task-attachments')
