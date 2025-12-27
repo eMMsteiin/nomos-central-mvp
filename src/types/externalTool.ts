@@ -16,7 +16,7 @@ export interface PresetTool {
   icon: string;
   iconColor: string;
   logoUrl?: string;
-  category: 'design' | 'google' | 'microsoft' | 'productivity' | 'study' | 'reference' | 'ai';
+  category: 'design' | 'google' | 'microsoft' | 'productivity' | 'study' | 'reference';
   canEmbed: boolean;
 }
 
@@ -32,11 +32,7 @@ export const PRESET_TOOLS: PresetTool[] = [
   { name: 'Google Scholar', url: 'https://scholar.google.com', icon: 'Search', iconColor: '#4285F4', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/c7/Google_Scholar_logo.svg/1024px-Google_Scholar_logo.svg.png', category: 'reference', canEmbed: false },
   { name: 'Scribbr', url: 'https://www.scribbr.com/citation/generator/', icon: 'Quote', iconColor: '#1D9BF0', logoUrl: 'https://www.scribbr.com/wp-content/uploads/2019/09/Scribbr-logo-2.png', category: 'reference', canEmbed: true },
   
-  // AI - assistentes e tradutores
-  { name: 'ChatGPT', url: 'https://chat.openai.com', icon: 'MessageSquare', iconColor: '#10A37F', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/ChatGPT_logo.svg/1024px-ChatGPT_logo.svg.png', category: 'ai', canEmbed: false },
-  { name: 'Claude', url: 'https://claude.ai', icon: 'Bot', iconColor: '#CC785C', logoUrl: 'https://claude.ai/images/claude_app_icon.png', category: 'ai', canEmbed: false },
-  { name: 'Perplexity', url: 'https://www.perplexity.ai', icon: 'Sparkles', iconColor: '#1FB8CD', logoUrl: 'https://www.perplexity.ai/favicon.svg', category: 'ai', canEmbed: false },
-  { name: 'DeepL', url: 'https://www.deepl.com/translator', icon: 'Languages', iconColor: '#0F2B46', logoUrl: 'https://static.deepl.com/img/logo/deepl-logo-blue.svg', category: 'ai', canEmbed: false },
+  // AI tools removed - they don't work embedded and users prefer their own browser tabs
   
   // Design - nenhum permite iframe
   { name: 'Canva', url: 'https://www.canva.com', icon: 'Palette', iconColor: '#00C4CC', logoUrl: 'https://static.canva.com/static/images/canva-logo.png', category: 'design', canEmbed: false },
@@ -63,7 +59,6 @@ export const PRESET_TOOLS: PresetTool[] = [
 export const CATEGORY_LABELS: Record<PresetTool['category'], string> = {
   study: '📚 Estudos',
   reference: '📖 Referência',
-  ai: '🤖 Inteligência Artificial',
   design: '🎨 Design',
   google: '🔵 Google Workspace',
   microsoft: '🟦 Microsoft 365',
