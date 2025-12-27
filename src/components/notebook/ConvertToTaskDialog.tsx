@@ -83,14 +83,19 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
     });
   };
 
-  const createTask = () => {
+  const createTask = async () => {
     const STORAGE_KEY = 'nomos.tasks.today';
     const existing = localStorage.getItem(STORAGE_KEY);
     const tasks: Task[] = existing ? JSON.parse(existing) : [];
 
+    const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
+    if (!localStorage.getItem('nomos.device.id')) {
+      localStorage.setItem('nomos.device.id', deviceId);
+    }
+
     // Criar uma tarefa para cada destino selecionado
-    const newTasks: Task[] = destinations.map((dest, index) => ({
-      id: `${Date.now()}-${index}`,
+    const newTasks: Task[] = destinations.map((dest) => ({
+      id: crypto.randomUUID(),
       text: title,
       description: annotationText,
       createdAt: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
@@ -103,6 +108,26 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
 
     localStorage.setItem(STORAGE_KEY, JSON.stringify([...newTasks, ...tasks]));
     window.dispatchEvent(new Event('tasksUpdated'));
+
+    // Sincronizar com Supabase em background
+    try {
+      for (const newTask of newTasks) {
+        await supabase.from('tasks').insert({
+          id: newTask.id,
+          device_id: deviceId,
+          text: newTask.text,
+          description: newTask.description,
+          due_date: date ? new Date(date).toISOString() : null,
+          due_time: time || null,
+          priority: priority,
+          category: newTask.category,
+          source_type: 'manual',
+          completed: false,
+        });
+      }
+    } catch (err) {
+      console.error('Erro ao sincronizar tarefa com Supabase:', err);
+    }
 
     const destText = destinations.length === 2 
       ? 'Hoje e Entrada' 

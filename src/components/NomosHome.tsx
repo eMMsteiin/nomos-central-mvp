@@ -146,75 +146,86 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
 
+  // Mutex para evitar criação duplicada por duplo submit
+  const isCreatingTask = useRef(false);
+
   const addTask = async () => {
     if (!inputValue.trim()) return;
-
-    const { cleanText: textWithoutDate, detectedDate, category: detectedCategory } = extractDateFromText(inputValue.trim());
-    const { cleanText, time } = extractTimeFromText(textWithoutDate);
-
-    // Priorizar valores manuais sobre valores extraídos do texto
-    const finalTime = manualTime || time;
-    const finalDate = manualDate || detectedDate;
-
-    // Se nenhuma data foi detectada, usar a aba atual como categoria
-    let finalCategory = finalDate ? categorizeByDetectedDate(finalDate) : detectedCategory;
-    if (!finalDate && (filterMode === 'hoje' || filterMode === 'entrada')) {
-      finalCategory = filterMode;
-    }
-
-    // Gerar UUID para consistência com Supabase
-    const taskId = crypto.randomUUID();
-    const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
     
-    // Salvar deviceId se não existir
-    if (!localStorage.getItem('nomos.device.id')) {
-      localStorage.setItem('nomos.device.id', deviceId);
-    }
+    // Evitar duplo submit
+    if (isCreatingTask.current) return;
+    isCreatingTask.current = true;
 
-    const newTask: Task = {
-      id: taskId,
-      text: cleanText,
-      createdAt: new Date().toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      }),
-      dueTime: finalTime,
-      dueDate: finalDate,
-      priority: priority,
-      sourceType: 'manual',
-      category: finalCategory,
-      isCanvaTask: isCanvaRelatedTask(cleanText),
-    };
-
-    // Persistir localmente primeiro
-    const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const nextTasks = [newTask, ...storedTasks];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
-
-    setTasks(nextTasks);
-    setInputValue("");
-    setPriority('baixa');
-    setManualTime(undefined);
-    setManualDate(undefined);
-
-    window.dispatchEvent(new Event('tasksUpdated'));
-
-    // Sincronizar com Supabase imediatamente (em background)
     try {
-      await supabase.from('tasks').insert({
+      const { cleanText: textWithoutDate, detectedDate, category: detectedCategory } = extractDateFromText(inputValue.trim());
+      const { cleanText, time } = extractTimeFromText(textWithoutDate);
+
+      // Priorizar valores manuais sobre valores extraídos do texto
+      const finalTime = manualTime || time;
+      const finalDate = manualDate || detectedDate;
+
+      // Se nenhuma data foi detectada, usar a aba atual como categoria
+      let finalCategory = finalDate ? categorizeByDetectedDate(finalDate) : detectedCategory;
+      if (!finalDate && (filterMode === 'hoje' || filterMode === 'entrada')) {
+        finalCategory = filterMode;
+      }
+
+      // Gerar UUID para consistência com Supabase
+      const taskId = crypto.randomUUID();
+      const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
+      
+      // Salvar deviceId se não existir
+      if (!localStorage.getItem('nomos.device.id')) {
+        localStorage.setItem('nomos.device.id', deviceId);
+      }
+
+      const newTask: Task = {
         id: taskId,
-        device_id: deviceId,
         text: cleanText,
-        due_date: finalDate ? new Date(finalDate).toISOString() : null,
-        due_time: finalTime || null,
+        createdAt: new Date().toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+        dueTime: finalTime,
+        dueDate: finalDate,
         priority: priority,
+        sourceType: 'manual',
         category: finalCategory,
-        source_type: 'manual',
-        completed: false,
-        is_canva_task: isCanvaRelatedTask(cleanText),
-      });
-    } catch (err) {
-      console.error('Erro ao sincronizar tarefa com Supabase:', err);
+        isCanvaTask: isCanvaRelatedTask(cleanText),
+      };
+
+      // Persistir localmente primeiro
+      const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+      const nextTasks = [newTask, ...storedTasks];
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+
+      setTasks(nextTasks);
+      setInputValue("");
+      setPriority('baixa');
+      setManualTime(undefined);
+      setManualDate(undefined);
+
+      window.dispatchEvent(new Event('tasksUpdated'));
+
+      // Sincronizar com Supabase imediatamente (em background)
+      try {
+        await supabase.from('tasks').insert({
+          id: taskId,
+          device_id: deviceId,
+          text: cleanText,
+          due_date: finalDate ? new Date(finalDate).toISOString() : null,
+          due_time: finalTime || null,
+          priority: priority,
+          category: finalCategory,
+          source_type: 'manual',
+          completed: false,
+          is_canva_task: isCanvaRelatedTask(cleanText),
+        });
+      } catch (err) {
+        console.error('Erro ao sincronizar tarefa com Supabase:', err);
+      }
+    } finally {
+      isCreatingTask.current = false;
     }
   };
 
