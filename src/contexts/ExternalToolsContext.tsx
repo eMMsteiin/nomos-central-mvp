@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { ExternalTool } from '@/types/externalTool';
 import { toast } from 'sonner';
+import { isKnownBlockedSite } from '@/utils/externalToolsEmbed';
 
 interface ExternalToolsContextType {
   userTools: ExternalTool[];
@@ -17,7 +18,7 @@ interface ExternalToolsContextType {
   closeAllTabs: () => void;
   setActiveTab: (toolId: string | null) => void;
   
-  // Popout management
+  // Popout management (deprecated but kept for compatibility)
   openAsPopout: (tool: ExternalTool) => Window | null;
   activePopouts: Map<string, Window>;
 }
@@ -34,13 +35,18 @@ export function ExternalToolsProvider({ children }: { children: React.ReactNode 
   const [openTabs, setOpenTabs] = useState<ExternalTool[]>([]);
   const [activeTabId, setActiveTabId] = useState<string | null>(null);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount and auto-correct blocked sites
   useEffect(() => {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
       try {
-        const parsed = JSON.parse(stored);
-        setUserTools(parsed);
+        const parsed = JSON.parse(stored) as ExternalTool[];
+        // Auto-correct: force canEmbed=false for known blocked sites
+        const normalized = parsed.map(tool => ({
+          ...tool,
+          canEmbed: isKnownBlockedSite(tool.url) ? false : tool.canEmbed,
+        }));
+        setUserTools(normalized);
       } catch (e) {
         console.error('Error parsing external tools from localStorage:', e);
       }
