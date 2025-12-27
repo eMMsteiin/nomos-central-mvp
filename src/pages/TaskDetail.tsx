@@ -88,12 +88,8 @@ const TaskDetail = () => {
 
         const canonical = tasksWithBlockCount[0];
         
-        // Se a canônica não é a atual, redirecionar
+        // Se a canônica não é a atual, redirecionar silenciosamente
         if (canonical.id !== task.id && canonical.blockCount > 0) {
-          toast({
-            title: 'Tarefa atualizada',
-            description: 'Encontramos uma versão com mais conteúdo.',
-          });
           navigate(`/tarefa/${canonical.id}`, { replace: true });
         }
       } catch (error) {
