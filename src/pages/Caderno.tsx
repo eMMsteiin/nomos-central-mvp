@@ -1,4 +1,5 @@
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useNotebooks } from '@/hooks/useNotebooks';
 import { NotebookCanvas } from '@/components/NotebookCanvas';
 import { ImportPdfDialog } from '@/components/ImportPdfDialog';
@@ -106,6 +107,7 @@ const ExportButton = ({
 };
 
 const Caderno = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { notebooks, createNotebook, deleteNotebook, updateNotebook, addPage } = useNotebooks();
   const [selectedNotebook, setSelectedNotebook] = useState<Notebook | null>(null);
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
@@ -123,6 +125,20 @@ const Caderno = () => {
   const [exportProgress, setExportProgress] = useState({ current: 0, total: 0 });
   
   const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Auto-open notebook from query param
+  useEffect(() => {
+    const openId = searchParams.get('open');
+    if (openId && notebooks.length > 0 && !selectedNotebook) {
+      const notebookToOpen = notebooks.find(n => n.id === openId);
+      if (notebookToOpen) {
+        setSelectedNotebook(notebookToOpen);
+        setCurrentPageIndex(0);
+        // Clear the query param after opening
+        setSearchParams({}, { replace: true });
+      }
+    }
+  }, [searchParams, notebooks, selectedNotebook, setSearchParams]);
 
   // Get unique disciplines
   const disciplines = useMemo(() => {

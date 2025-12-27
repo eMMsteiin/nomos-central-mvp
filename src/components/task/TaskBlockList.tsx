@@ -2,8 +2,10 @@ import { useState } from 'react';
 import { useTaskBlocks } from '@/hooks/useTaskBlocks';
 import { SubtaskBlock } from './blocks/SubtaskBlock';
 import { ImageBlock } from './blocks/ImageBlock';
+import { NotebookBlock } from './blocks/NotebookBlock';
 import { AddBlockMenu } from './AddBlockMenu';
-import { SubtaskContent, ImageContent, TaskBlock } from '@/types/task';
+import { SelectNotebookDialog } from './SelectNotebookDialog';
+import { SubtaskContent, ImageContent, NotebookContent, TaskBlock } from '@/types/task';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   DndContext,
@@ -24,7 +26,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, CheckSquare, Image } from 'lucide-react';
+import { GripVertical, CheckSquare, Image, Book } from 'lucide-react';
 
 interface DropIndicatorProps {
   isVisible: boolean;
@@ -57,14 +59,21 @@ function DragPreview({ block }: DragPreviewProps) {
               {(block.content as SubtaskContent).text || 'Subtarefa'}
             </span>
           </>
-        ) : (
+        ) : block.type === 'image' ? (
           <>
             <Image className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm truncate">
               {(block.content as ImageContent).fileName || 'Imagem'}
             </span>
           </>
-        )}
+        ) : block.type === 'notebook' ? (
+          <>
+            <Book className="h-4 w-4 text-muted-foreground" />
+            <span className="text-sm truncate">
+              {(block.content as NotebookContent).notebookTitle || 'Caderno'}
+            </span>
+          </>
+        ) : null}
       </div>
     </div>
   );
@@ -136,18 +145,33 @@ function SortableBlock({
     );
   }
 
+  if (block.type === 'notebook') {
+    return (
+      <div ref={setNodeRef} style={style}>
+        <NotebookBlock
+          content={block.content as NotebookContent}
+          onDelete={onDelete}
+          isDragging={isDragging}
+          dragHandleProps={dragHandleProps}
+        />
+      </div>
+    );
+  }
+
   return null;
 }
 
 export function TaskBlockList({ taskId }: TaskBlockListProps) {
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overId, setOverId] = useState<string | null>(null);
+  const [isSelectNotebookOpen, setIsSelectNotebookOpen] = useState(false);
 
   const {
     blocks,
     isLoading,
     addSubtaskBlock,
     addImageBlock,
+    addNotebookBlock,
     toggleSubtaskCompletion,
     updateSubtaskText,
     deleteBlock,
@@ -265,6 +289,13 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
       <AddBlockMenu
         onAddSubtask={() => addSubtaskBlock('')}
         onAddImage={addImageBlock}
+        onAddNotebook={() => setIsSelectNotebookOpen(true)}
+      />
+
+      <SelectNotebookDialog
+        open={isSelectNotebookOpen}
+        onOpenChange={setIsSelectNotebookOpen}
+        onSelect={addNotebookBlock}
       />
     </div>
   );

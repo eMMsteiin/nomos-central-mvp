@@ -50,7 +50,7 @@ export interface TaskAttachment {
 }
 
 // Block system types (Notion-style)
-export type TaskBlockType = 'subtask' | 'image' | 'text' | 'divider';
+export type TaskBlockType = 'subtask' | 'image' | 'text' | 'divider' | 'notebook';
 
 export interface SubtaskContent {
   text: string;
@@ -79,11 +79,18 @@ export interface TextContent {
   text: string;
 }
 
+export interface NotebookContent {
+  notebookId: string;
+  notebookTitle: string;
+  notebookColor?: string;
+  notebookDiscipline?: string;
+}
+
 export interface TaskBlock {
   id: string;
   taskId: string;
   type: TaskBlockType;
-  content: SubtaskContent | ImageContent | TextContent | Record<string, never>;
+  content: SubtaskContent | ImageContent | TextContent | NotebookContent | Record<string, never>;
   position: number;
   createdAt: string;
 }
