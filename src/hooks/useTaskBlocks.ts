@@ -4,6 +4,7 @@ import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent,
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 import { Notebook } from '@/types/notebook';
+import { renderPageToCanvas } from '@/utils/notebookExport';
 
 // Validate UUID format
 const isValidUUID = (str: string): boolean => {
@@ -11,9 +12,23 @@ const isValidUUID = (str: string): boolean => {
   return uuidRegex.test(str);
 };
 
+// Convert data URL to Blob
+const dataUrlToBlob = (dataUrl: string): Blob => {
+  const arr = dataUrl.split(',');
+  const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
+  const bstr = atob(arr[1]);
+  let n = bstr.length;
+  const u8arr = new Uint8Array(n);
+  while (n--) {
+    u8arr[n] = bstr.charCodeAt(n);
+  }
+  return new Blob([u8arr], { type: mime });
+};
+
 export function useTaskBlocks(taskId: string | undefined) {
   const [blocks, setBlocks] = useState<TaskBlock[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isProcessingPages, setIsProcessingPages] = useState(false);
 
   const loadBlocks = useCallback(async () => {
     if (!taskId || !isValidUUID(taskId)) {
@@ -165,6 +180,86 @@ export function useTaskBlocks(taskId: string | undefined) {
     }
   }, [taskId, getNextPosition]);
 
+  const addNotebookPagesAsImages = useCallback(async (notebook: Notebook, pageIndexes: number[]) => {
+    if (!taskId || !isValidUUID(taskId)) return;
+    if (pageIndexes.length === 0) return;
+
+    setIsProcessingPages(true);
+
+    try {
+      const newBlocks: TaskBlock[] = [];
+      let currentPosition = getNextPosition();
+
+      for (let i = 0; i < pageIndexes.length; i++) {
+        const pageIndex = pageIndexes[i];
+        const page = notebook.pages[pageIndex];
+        
+        if (!page) continue;
+
+        // Render page to canvas with higher DPR for quality
+        const dataUrl = await renderPageToCanvas(page, 1.5);
+        
+        if (!dataUrl) continue;
+
+        // Convert to blob and upload
+        const blob = dataUrlToBlob(dataUrl);
+        const fileName = `${taskId}/${notebook.title}_pagina_${pageIndex + 1}_${crypto.randomUUID()}.png`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('task-attachments')
+          .upload(fileName, blob, {
+            contentType: 'image/png',
+          });
+
+        if (uploadError) {
+          console.error(`Error uploading page ${pageIndex + 1}:`, uploadError);
+          continue;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from('task-attachments')
+          .getPublicUrl(fileName);
+
+        const content: ImageContent = {
+          fileUrl: urlData.publicUrl,
+          fileName: `${notebook.title} - Página ${pageIndex + 1}.png`,
+          fileType: 'image/png',
+        };
+
+        const { data, error } = await supabase
+          .from('task_blocks')
+          .insert([{
+            task_id: taskId,
+            type: 'image',
+            content: JSON.parse(JSON.stringify(content)),
+            position: currentPosition,
+          }])
+          .select()
+          .single();
+
+        if (error) {
+          console.error(`Error creating block for page ${pageIndex + 1}:`, error);
+          continue;
+        }
+
+        const newBlock = blockRowToBlock(data as TaskBlockRow);
+        newBlocks.push(newBlock);
+        currentPosition++;
+      }
+
+      setBlocks(prev => [...prev, ...newBlocks]);
+      
+      if (newBlocks.length > 0) {
+        toast.success(`${newBlocks.length} página${newBlocks.length !== 1 ? 's' : ''} anexada${newBlocks.length !== 1 ? 's' : ''}`);
+      }
+    } catch (error) {
+      console.error('Error adding notebook pages as images:', error);
+      toast.error('Erro ao anexar páginas');
+    } finally {
+      setIsProcessingPages(false);
+    }
+  }, [taskId, getNextPosition]);
+
   const updateBlockContent = useCallback(async (blockId: string, content: TaskBlock['content']) => {
     try {
       const { error } = await supabase
@@ -271,9 +366,11 @@ export function useTaskBlocks(taskId: string | undefined) {
   return {
     blocks,
     isLoading,
+    isProcessingPages,
     addSubtaskBlock,
     addImageBlock,
     addNotebookBlock,
+    addNotebookPagesAsImages,
     updateBlockContent,
     toggleSubtaskCompletion,
     updateSubtaskText,
