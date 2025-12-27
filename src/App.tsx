@@ -79,13 +79,12 @@ function MainContent() {
   );
 }
 
-function AppContent() {
+function AppLayout() {
   return (
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <MainContent />
-        {/* Focus Sidebar - appears when Canva session is active */}
         <FocusSidebar />
       </div>
     </SidebarProvider>
@@ -102,7 +101,7 @@ const App = () => (
           <HiddenTabsProvider>
             <CanvaSessionProvider>
               <ExternalToolsProvider>
-                <AppContent />
+                <AppLayout />
               </ExternalToolsProvider>
             </CanvaSessionProvider>
           </HiddenTabsProvider>
