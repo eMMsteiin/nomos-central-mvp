@@ -79,19 +79,15 @@ export function AppSidebar() {
   const currentPath = location.pathname;
   const counts = useTaskCounts();
   const { isTabHidden, hideTab } = useHiddenTabs();
-  const { userTools, openAsTab, openAsPopout, removeTool, updateTool, openTabs } = useExternalTools();
+  const { userTools, openAsTab, removeTool, updateTool, openTabs } = useExternalTools();
 
   const handleToolClick = (tool: typeof userTools[0]) => {
     if (tool.canEmbed) {
       // Ferramentas que podem ser embutidas → abre como aba interna
       openAsTab(tool);
     } else {
-      // Ferramentas que não podem → abre popup direto
-      const popout = openAsPopout(tool);
-      // Fallback: se popup foi bloqueado, tenta abrir em nova aba
-      if (!popout) {
-        window.open(tool.url, '_blank', 'noopener,noreferrer');
-      }
+      // Ferramentas externas → abre direto em nova aba do navegador
+      window.open(tool.url, '_blank', 'noopener,noreferrer');
     }
   };
 
