@@ -146,7 +146,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
   }, [tasks]);
 
-  const addTask = () => {
+  const addTask = async () => {
     if (!inputValue.trim()) return;
 
     const { cleanText: textWithoutDate, detectedDate, category: detectedCategory } = extractDateFromText(inputValue.trim());
@@ -162,8 +162,17 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       finalCategory = filterMode;
     }
 
+    // Gerar UUID para consistência com Supabase
+    const taskId = crypto.randomUUID();
+    const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
+    
+    // Salvar deviceId se não existir
+    if (!localStorage.getItem('nomos.device.id')) {
+      localStorage.setItem('nomos.device.id', deviceId);
+    }
+
     const newTask: Task = {
-      id: Date.now().toString(),
+      id: taskId,
       text: cleanText,
       createdAt: new Date().toLocaleTimeString("pt-BR", {
         hour: "2-digit",
@@ -177,7 +186,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       isCanvaTask: isCanvaRelatedTask(cleanText),
     };
 
-    // Persistir antes de emitir tasksUpdated (evita sobrescrever com dados antigos)
+    // Persistir localmente primeiro
     const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
     const nextTasks = [newTask, ...storedTasks];
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
@@ -189,6 +198,24 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     setManualDate(undefined);
 
     window.dispatchEvent(new Event('tasksUpdated'));
+
+    // Sincronizar com Supabase imediatamente (em background)
+    try {
+      await supabase.from('tasks').insert({
+        id: taskId,
+        device_id: deviceId,
+        text: cleanText,
+        due_date: finalDate ? new Date(finalDate).toISOString() : null,
+        due_time: finalTime || null,
+        priority: priority,
+        category: finalCategory,
+        source_type: 'manual',
+        completed: false,
+        is_canva_task: isCanvaRelatedTask(cleanText),
+      });
+    } catch (err) {
+      console.error('Erro ao sincronizar tarefa com Supabase:', err);
+    }
   };
 
   const handleImport = (events: ICSEvent[]) => {
