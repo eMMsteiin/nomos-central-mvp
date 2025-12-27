@@ -7,7 +7,6 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface ExternalToolViewProps {
   tool: ExternalTool;
-  onOpenPopout: (tool: ExternalTool) => void;
 }
 
 // Sites conhecidos que bloqueiam iframes
@@ -44,7 +43,7 @@ function isKnownBlockedSite(url: string): boolean {
   }
 }
 
-export function ExternalToolView({ tool, onOpenPopout }: ExternalToolViewProps) {
+export function ExternalToolView({ tool }: ExternalToolViewProps) {
   const [loadState, setLoadState] = useState<'loading' | 'loaded' | 'blocked'>('loading');
   const isKnownBlocked = isKnownBlockedSite(tool.url);
 
@@ -88,15 +87,18 @@ export function ExternalToolView({ tool, onOpenPopout }: ExternalToolViewProps) 
 
               <p className="text-xs text-muted-foreground max-w-xs">
                 Por motivos de segurança, {tool.name} não pode ser exibido dentro da NOMOS. 
-                Você pode abrir em uma janela ao lado para continuar trabalhando.
+                Clique abaixo para abrir em uma nova aba.
               </p>
 
-              <Button 
-                onClick={() => onOpenPopout(tool)}
-                className="gap-2 mt-2"
-              >
-                <ExternalLink className="h-4 w-4" />
-                Abrir em janela ao lado
+              <Button asChild className="gap-2 mt-2">
+                <a 
+                  href={tool.url} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  Abrir em nova aba
+                </a>
               </Button>
             </div>
           </CardContent>

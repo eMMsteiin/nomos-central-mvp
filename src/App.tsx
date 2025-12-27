@@ -31,7 +31,7 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function MainContent() {
-  const { openTabs, activeTabId, closeTab, closeAllTabs, setActiveTab, openAsPopout } = useExternalTools();
+  const { openTabs, activeTabId, closeTab, closeAllTabs, setActiveTab } = useExternalTools();
   
   const activeTool = openTabs.find(t => t.id === activeTabId);
 
@@ -50,10 +50,8 @@ function MainContent() {
       
       {/* Main Content Area */}
       {activeTool ? (
-        <ExternalToolView 
-          tool={activeTool} 
-          onOpenPopout={openAsPopout}
-        />
+        <ExternalToolView tool={activeTool} />
+      
       ) : (
         <main className="flex-1">
           <Routes>
