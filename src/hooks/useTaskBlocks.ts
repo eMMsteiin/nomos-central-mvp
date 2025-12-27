@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent } from '@/types/task';
+import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent, NotebookContent } from '@/types/task';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
+import { Notebook } from '@/types/notebook';
 
 // Validate UUID format
 const isValidUUID = (str: string): boolean => {
@@ -127,6 +128,43 @@ export function useTaskBlocks(taskId: string | undefined) {
     }
   }, [taskId, getNextPosition]);
 
+  const addNotebookBlock = useCallback(async (notebook: Notebook) => {
+    if (!taskId || !isValidUUID(taskId)) return null;
+
+    const content: NotebookContent = {
+      notebookId: notebook.id,
+      notebookTitle: notebook.title,
+      notebookColor: notebook.color,
+      notebookDiscipline: notebook.discipline,
+    };
+
+    const position = getNextPosition();
+
+    try {
+      const { data, error } = await supabase
+        .from('task_blocks')
+        .insert([{
+          task_id: taskId,
+          type: 'notebook',
+          content: JSON.parse(JSON.stringify(content)),
+          position,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      const newBlock = blockRowToBlock(data as TaskBlockRow);
+      setBlocks(prev => [...prev, newBlock]);
+      toast.success('Caderno vinculado');
+      return newBlock;
+    } catch (error) {
+      console.error('Error adding notebook block:', error);
+      toast.error('Erro ao vincular caderno');
+      return null;
+    }
+  }, [taskId, getNextPosition]);
+
   const updateBlockContent = useCallback(async (blockId: string, content: TaskBlock['content']) => {
     try {
       const { error } = await supabase
@@ -235,6 +273,7 @@ export function useTaskBlocks(taskId: string | undefined) {
     isLoading,
     addSubtaskBlock,
     addImageBlock,
+    addNotebookBlock,
     updateBlockContent,
     toggleSubtaskCompletion,
     updateSubtaskText,

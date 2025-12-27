@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import { Plus, CheckSquare, Image } from 'lucide-react';
+import { Plus, CheckSquare, Image, Book } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,9 +11,10 @@ import {
 interface AddBlockMenuProps {
   onAddSubtask: () => void;
   onAddImage: (file: File) => void;
+  onAddNotebook: () => void;
 }
 
-export function AddBlockMenu({ onAddSubtask, onAddImage }: AddBlockMenuProps) {
+export function AddBlockMenu({ onAddSubtask, onAddImage, onAddNotebook }: AddBlockMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleImageClick = () => {
@@ -57,6 +58,10 @@ export function AddBlockMenu({ onAddSubtask, onAddImage }: AddBlockMenuProps) {
           <DropdownMenuItem onClick={handleImageClick} className="gap-2">
             <Image className="h-4 w-4" />
             <span>Imagem</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onAddNotebook} className="gap-2">
+            <Book className="h-4 w-4" />
+            <span>Caderno</span>
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
