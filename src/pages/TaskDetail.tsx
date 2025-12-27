@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
@@ -25,12 +25,14 @@ import { useTaskDetail } from '@/hooks/useTaskDetail';
 import { useTaskBlocks } from '@/hooks/useTaskBlocks';
 import { TaskBlockList } from '@/components/task/TaskBlockList';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState('');
+  const [isResolvingCanonical, setIsResolvingCanonical] = useState(false);
 
   const {
     task,
@@ -47,7 +49,64 @@ const TaskDetail = () => {
     totalSubtasks,
   } = useTaskBlocks(effectiveTaskId);
 
-  if (isLoading) {
+  // Resolver tarefa canônica: se há duplicatas com mesmo texto, redirecionar para a que tem mais blocos
+  useEffect(() => {
+    const resolveCanonicalTask = async () => {
+      if (!task || !task.text || isResolvingCanonical) return;
+      
+      setIsResolvingCanonical(true);
+      
+      try {
+        const deviceId = localStorage.getItem('nomos.device.id');
+        if (!deviceId) return;
+
+        // Buscar todas as tarefas com mesmo texto e device_id
+        const { data: duplicates } = await supabase
+          .from('tasks')
+          .select('id, text')
+          .eq('device_id', deviceId)
+          .eq('text', task.text);
+
+        if (!duplicates || duplicates.length <= 1) return;
+
+        // Para cada duplicata, contar quantos blocos tem
+        const tasksWithBlockCount = await Promise.all(
+          duplicates.map(async (t) => {
+            const { count } = await supabase
+              .from('task_blocks')
+              .select('*', { count: 'exact', head: true })
+              .eq('task_id', t.id);
+            return { ...t, blockCount: count || 0 };
+          })
+        );
+
+        // Ordenar: mais blocos primeiro, depois mais recente (UUID mais recente)
+        tasksWithBlockCount.sort((a, b) => {
+          if (b.blockCount !== a.blockCount) return b.blockCount - a.blockCount;
+          return a.id > b.id ? -1 : 1; // UUID mais recente primeiro
+        });
+
+        const canonical = tasksWithBlockCount[0];
+        
+        // Se a canônica não é a atual, redirecionar
+        if (canonical.id !== task.id && canonical.blockCount > 0) {
+          toast({
+            title: 'Tarefa atualizada',
+            description: 'Encontramos uma versão com mais conteúdo.',
+          });
+          navigate(`/tarefa/${canonical.id}`, { replace: true });
+        }
+      } catch (error) {
+        console.error('Erro ao resolver tarefa canônica:', error);
+      } finally {
+        setIsResolvingCanonical(false);
+      }
+    };
+
+    resolveCanonicalTask();
+  }, [task?.id, task?.text, navigate]);
+
+  if (isLoading || isResolvingCanonical) {
     return (
       <div className="flex-1 flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
