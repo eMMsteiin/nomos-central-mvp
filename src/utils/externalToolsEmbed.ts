@@ -45,6 +45,10 @@ export const BLOCKED_SITES = [
   'khanacademy.org',
   'wolframalpha.com',
   
+  // Video/Streaming
+  'youtube.com',
+  'www.youtube.com',
+  
   // Others
   'linkedin.com',
   'facebook.com',

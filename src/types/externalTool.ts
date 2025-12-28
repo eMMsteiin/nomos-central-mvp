@@ -22,7 +22,7 @@ export interface PresetTool {
 
 export const PRESET_TOOLS: PresetTool[] = [
   // Study - ferramentas de estudo (muitas permitem iframe!)
-  { name: 'YouTube', url: 'https://www.youtube.com', icon: 'Youtube', iconColor: '#FF0000', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1024px-YouTube_full-color_icon_%282017%29.svg.png', category: 'study', canEmbed: true },
+  { name: 'YouTube', url: 'https://www.youtube.com', icon: 'Youtube', iconColor: '#FF0000', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/09/YouTube_full-color_icon_%282017%29.svg/1024px-YouTube_full-color_icon_%282017%29.svg.png', category: 'study', canEmbed: false },
   { name: 'Desmos', url: 'https://www.desmos.com/calculator', icon: 'Calculator', iconColor: '#2ECC71', logoUrl: 'https://www.desmos.com/assets/img/apps/calculator.png', category: 'study', canEmbed: true },
   { name: 'GeoGebra', url: 'https://www.geogebra.org/calculator', icon: 'Compass', iconColor: '#9C59D1', logoUrl: 'https://www.geogebra.org/images/geogebra-logo-name.png', category: 'study', canEmbed: true },
   { name: 'Wikipedia', url: 'https://pt.wikipedia.org', icon: 'BookOpen', iconColor: '#000000', logoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/80/Wikipedia-logo-v2.svg/103px-Wikipedia-logo-v2.svg.png', category: 'study', canEmbed: true },
