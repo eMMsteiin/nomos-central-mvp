@@ -262,14 +262,49 @@ export function searchNotebooksByKeywords(context: ChatContext, keywords: string
   });
 }
 
+// Message interface for chat context
+export interface ChatMessage {
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+}
+
 // Extract source content for summary generation
-export function extractSourceContentForSummary(subject: string): string {
+// Now includes chat messages to create contextualized summaries
+export function extractSourceContentForSummary(
+  subject: string, 
+  chatMessages?: ChatMessage[]
+): string {
   const context = collectChatContext();
   const contentParts: string[] = [];
   
   const normalizedSubject = subject.toLowerCase().trim();
   
-  // Find relevant notebooks
+  // 1. INCLUDE CHAT CONVERSATION HISTORY (HIGHEST PRIORITY!)
+  if (chatMessages && chatMessages.length > 0) {
+    const relevantMessages = chatMessages
+      .filter(msg => {
+        // Remove proposals, system messages, and empty content
+        if (!msg.content || msg.content.trim() === '') return false;
+        if (msg.content.includes('[PROPOSAL]')) return false;
+        if (msg.role === 'system') return false;
+        return true;
+      })
+      .map(msg => {
+        const role = msg.role === 'user' ? '👤 Aluno perguntou' : '🤖 NOMOS respondeu';
+        return `${role}:\n${msg.content}`;
+      });
+    
+    if (relevantMessages.length > 0) {
+      contentParts.push(
+        `## Conversa de Estudo sobre "${subject}"\n\n` +
+        `A seguir está a conversa completa entre o aluno e o assistente. ` +
+        `O resumo DEVE abordar TODAS as perguntas feitas pelo aluno e as respostas dadas:\n\n` +
+        relevantMessages.join('\n\n---\n\n')
+      );
+    }
+  }
+  
+  // 2. Find relevant notebooks
   const relevantNotebooks = context.notebooks.filter(notebook => {
     const searchableText = [
       notebook.title,
@@ -288,7 +323,7 @@ export function extractSourceContentForSummary(subject: string): string {
     }
   });
   
-  // Find relevant post-its
+  // 3. Find relevant post-its
   const relevantPostIts = context.postIts.filter(postIt => {
     const text = postIt.text.toLowerCase();
     const blockTitle = postIt.blockTitle?.toLowerCase() || '';
@@ -302,7 +337,7 @@ export function extractSourceContentForSummary(subject: string): string {
     contentParts.push(`## Lembretes Relacionados\n${relevantPostIts.map(p => `• ${p.text}`).join('\n')}`);
   }
   
-  // Find completed study blocks for this subject
+  // 4. Find completed study blocks for this subject
   const relevantStudyBlocks = context.completedStudyBlocks.filter(block => {
     const focusSubject = block.focusSubject?.toLowerCase() || '';
     const text = block.text.toLowerCase();

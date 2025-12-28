@@ -8,45 +8,63 @@ const corsHeaders = {
 
 const ESSENTIAL_SYSTEM_PROMPT = `Você é um assistente especializado em criar resumos de estudo concisos e eficazes.
 
-OBJETIVO: Criar um RESUMO ESSENCIAL que capture os conceitos-chave de forma clara e memorável.
+OBJETIVO: Criar um RESUMO ESSENCIAL baseado ESPECIFICAMENTE nas perguntas e respostas da conversa de estudo.
+
+REGRA CRÍTICA:
+- Se houver uma conversa de estudo fornecida, você DEVE responder a CADA pergunta que o aluno fez
+- O resumo deve refletir EXATAMENTE o que foi discutido, não um resumo genérico do tema
+- Organize por tópico/pergunta quando apropriado
 
 FORMATO DO RESUMO:
 - Use bullets claros e diretos (•)
-- Máximo 5-7 pontos principais
+- 5-10 pontos principais (baseados nas perguntas feitas)
 - Cada ponto deve ser autocontido e compreensível
 - Use negrito para termos importantes
-- Inclua exemplos práticos quando útil
+- Inclua exemplos práticos quando mencionados na conversa
 - Mantenha linguagem simples e acessível
 
 ESTRUTURA:
 ## [Título do Tema]
 
-**Conceitos-chave:**
-• [Ponto 1 - conceito principal]
-• [Ponto 2 - conceito secundário]
+**[Tópico/Pergunta 1]:**
+• [Resposta organizada em bullets]
+
+**[Tópico/Pergunta 2]:**
+• [Resposta organizada em bullets]
+
 ...
 
 **Para lembrar:**
-💡 [Uma frase-síntese que conecta tudo]
+💡 [Uma frase-síntese que conecta os principais pontos discutidos]
 
 Responda APENAS com o resumo formatado em Markdown, sem explicações adicionais.`;
 
 const EXAM_SYSTEM_PROMPT = `Você é um assistente especializado em criar resumos focados em preparação para provas.
 
-OBJETIVO: Criar um RESUMO PARA PROVA que prepare o estudante para avaliações.
+OBJETIVO: Criar um RESUMO PARA PROVA baseado ESPECIFICAMENTE nas perguntas e respostas da conversa de estudo.
+
+REGRA CRÍTICA:
+- Se houver uma conversa de estudo fornecida, você DEVE cobrir CADA tópico/pergunta discutida
+- O resumo deve refletir EXATAMENTE o que foi estudado, focando no que pode cair na prova
+- Transforme as perguntas do aluno em possíveis questões de prova
 
 FORMATO DO RESUMO:
-- Foque em O QUE CAI NA PROVA
+- Foque em O QUE CAI NA PROVA baseado no que foi discutido
 - Inclua comparações e contrastes (muito cobrados em provas)
-- Antecipe perguntas prováveis
+- Transforme as dúvidas do aluno em perguntas prováveis
 - Use tabelas para comparações quando útil
 - Destaque fórmulas, definições e conceitos cobráveis
 
 ESTRUTURA:
 ## [Tema] - Foco para Prova
 
-**Definições importantes:**
+**Definições importantes (baseadas na conversa):**
 • **[Termo]**: [definição concisa]
+...
+
+**O que estudamos:**
+• [Tópico 1 da conversa - resumido para prova]
+• [Tópico 2 da conversa - resumido para prova]
 ...
 
 **Comparações frequentes:**
@@ -54,12 +72,12 @@ ESTRUTURA:
 |---------|-----------|-----------|
 ...
 
-**Perguntas prováveis:**
-❓ [Pergunta 1] → [Resposta curta]
-❓ [Pergunta 2] → [Resposta curta]
+**Perguntas prováveis na prova:**
+❓ [Pergunta baseada no que o aluno perguntou] → [Resposta curta]
+❓ [Outra pergunta baseada na conversa] → [Resposta curta]
 
 **Armadilhas comuns:**
-⚠️ [Erro comum que estudantes cometem]
+⚠️ [Erro comum relacionado ao que foi estudado]
 
 Responda APENAS com o resumo formatado em Markdown, sem explicações adicionais.`;
 
@@ -139,8 +157,19 @@ serve(async (req) => {
 
     const systemPrompt = type === 'exam' ? EXAM_SYSTEM_PROMPT : ESSENTIAL_SYSTEM_PROMPT;
     
+    // Build a more specific prompt when we have conversation content
+    const hasConversation = sourceContent && sourceContent.includes('Conversa de Estudo');
+    
     const userPrompt = sourceContent 
-      ? `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}" baseado no seguinte conteúdo de estudo:\n\n${sourceContent}`
+      ? hasConversation
+        ? `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}".
+
+IMPORTANTE: Abaixo está a conversa de estudo entre o aluno e o assistente. 
+Você DEVE criar um resumo que responda TODAS as perguntas específicas que o aluno fez durante a conversa.
+NÃO crie um resumo genérico sobre o tema - o resumo deve refletir exatamente o que foi discutido.
+
+${sourceContent}`
+        : `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}" baseado no seguinte conteúdo de estudo:\n\n${sourceContent}`
       : `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}". Use seu conhecimento para criar um resumo útil sobre este tema.`;
 
     console.log('[generate-summary] Calling Lovable AI...');
