@@ -1,24 +1,14 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Conversation } from '@/types/chat';
-
-const DEVICE_ID_KEY = 'nomos.device.id';
-
-function getDeviceId(): string {
-  let deviceId = localStorage.getItem(DEVICE_ID_KEY);
-  if (!deviceId) {
-    deviceId = 'device_' + Math.random().toString(36).substring(2, 15);
-    localStorage.setItem(DEVICE_ID_KEY, deviceId);
-  }
-  return deviceId;
-}
+import { useAuthContext } from '@/contexts/AuthContext';
 
 export function useChatConversations() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const userId = getDeviceId();
+  const { userId } = useAuthContext();
 
   // Load all conversations for user
   const loadConversations = useCallback(async () => {
