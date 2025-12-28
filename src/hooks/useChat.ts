@@ -457,8 +457,20 @@ export function useChat(options: UseChatOptions = {}) {
           description: `Tema: ${subject}`
         });
         
-        // Extract source content from context
-        const sourceContent = extractSourceContentForSummary(subject);
+        // Get current messages from state - transform to ChatMessage format
+        const currentMessages = messages.map(m => ({
+          role: m.role as 'user' | 'assistant' | 'system',
+          content: m.content
+        }));
+        
+        // Extract source content from context INCLUDING the chat conversation
+        const sourceContent = extractSourceContentForSummary(subject, currentMessages);
+        
+        console.log('[create_summary] Incluindo conversa no resumo:', {
+          subject,
+          messageCount: currentMessages.length,
+          sourceContentLength: sourceContent.length
+        });
         
         // Call edge function to generate summary
         supabase.functions.invoke('generate-summary', {
