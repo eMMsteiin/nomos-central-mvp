@@ -15,7 +15,7 @@ import { Summary } from '@/types/summary';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useDeviceId } from '@/hooks/useDeviceId';
+import { useAuthContext } from '@/contexts/AuthContext';
 
 interface GenerateFlashcardsFromSummaryDialogProps {
   open: boolean;
@@ -32,7 +32,7 @@ export function GenerateFlashcardsFromSummaryDialog({
   summary,
   onSuccess,
 }: GenerateFlashcardsFromSummaryDialogProps) {
-  const deviceId = useDeviceId();
+  const { userId } = useAuthContext();
   const [step, setStep] = useState<Step>('config');
   const [deckName, setDeckName] = useState('');
   const [maxCards, setMaxCards] = useState(8);
@@ -77,8 +77,8 @@ export function GenerateFlashcardsFromSummaryDialog({
 
       setGeneratedCards(flashcards);
 
-      // Use device ID from hook
-      if (!deviceId) throw new Error('Device ID not found');
+      // Use authenticated user ID
+      if (!userId) throw new Error('Usuário não autenticado');
 
       // Create a new deck
       const deckId = crypto.randomUUID();
@@ -86,7 +86,7 @@ export function GenerateFlashcardsFromSummaryDialog({
 
       const { error: deckError } = await supabase.from('flashcard_decks').insert({
         id: deckId,
-        user_id: deviceId,
+        user_id: userId,
         title: deckName,
         description: `Gerado a partir do resumo: ${summary.title}`,
         color: summary.color || 'hsl(260, 60%, 55%)',
@@ -99,7 +99,7 @@ export function GenerateFlashcardsFromSummaryDialog({
       const cardsToInsert = flashcards.map((card: { front: string; back: string }) => ({
         id: crypto.randomUUID(),
         deck_id: deckId,
-        user_id: deviceId,
+        user_id: userId,
         front: card.front,
         back: card.back,
         source_type: 'ai',

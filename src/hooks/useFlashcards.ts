@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useDeviceId } from './useDeviceId';
+import { useAuthContext } from '@/contexts/AuthContext';
 import {
   Flashcard,
   Deck,
@@ -16,7 +16,7 @@ const CARDS_STORAGE_KEY = 'nomos.flashcards.cards';
 const MIGRATION_KEY = 'nomos.flashcards.migrated';
 
 export function useFlashcards() {
-  const deviceId = useDeviceId();
+  const { userId } = useAuthContext();
   const [decks, setDecks] = useState<Deck[]>([]);
   const [cards, setCards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,9 +26,9 @@ export function useFlashcards() {
 
   // Load from database
   useEffect(() => {
-    if (!deviceId) return;
+    if (!userId) return;
     loadFromDatabase();
-  }, [deviceId]);
+  }, [userId]);
 
   const loadFromDatabase = async () => {
     try {
@@ -44,7 +44,7 @@ export function useFlashcards() {
       const { data: dbDecks, error: decksError } = await supabase
         .from('flashcard_decks')
         .select('*')
-        .eq('user_id', deviceId)
+        .eq('user_id', userId)
         .order('created_at', { ascending: false });
 
       if (decksError) throw decksError;
@@ -53,7 +53,7 @@ export function useFlashcards() {
       const { data: dbCards, error: cardsError } = await supabase
         .from('flashcards')
         .select('*')
-        .eq('user_id', deviceId);
+        .eq('user_id', userId);
 
       if (cardsError) throw cardsError;
 
@@ -132,7 +132,7 @@ export function useFlashcards() {
       for (const deck of localDecks) {
         const { error } = await supabase.from('flashcard_decks').insert({
           id: deck.id,
-          user_id: deviceId,
+          user_id: userId,
           title: deck.title,
           description: deck.description || null,
           discipline_id: deck.disciplineId || null,
@@ -152,7 +152,7 @@ export function useFlashcards() {
         const { error } = await supabase.from('flashcards').insert({
           id: card.id,
           deck_id: card.deckId,
-          user_id: deviceId,
+          user_id: userId,
           front: card.front,
           back: card.back,
           source_type: card.sourceType,
@@ -197,7 +197,7 @@ export function useFlashcards() {
     // Save to database
     const { error } = await supabase.from('flashcard_decks').insert({
       id: newDeck.id,
-      user_id: deviceId,
+      user_id: userId,
       title: newDeck.title,
       description: newDeck.description || null,
       discipline_id: newDeck.disciplineId || null,
@@ -217,7 +217,7 @@ export function useFlashcards() {
     });
 
     return newDeck;
-  }, [deviceId]);
+  }, [userId]);
 
   // Update deck
   const updateDeck = useCallback(async (id: string, updates: Partial<Deck>) => {
@@ -232,7 +232,7 @@ export function useFlashcards() {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('user_id', deviceId);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error updating deck:', error);
@@ -248,7 +248,7 @@ export function useFlashcards() {
       localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, [deviceId]);
+  }, [userId]);
 
   // Delete deck
   const deleteDeck = useCallback(async (id: string) => {
@@ -256,7 +256,7 @@ export function useFlashcards() {
       .from('flashcard_decks')
       .delete()
       .eq('id', id)
-      .eq('user_id', deviceId);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error deleting deck:', error);
@@ -274,7 +274,7 @@ export function useFlashcards() {
       localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, [deviceId]);
+  }, [userId]);
 
   // Create flashcard
   const createFlashcard = useCallback(async (
@@ -303,7 +303,7 @@ export function useFlashcards() {
     const { error } = await supabase.from('flashcards').insert({
       id: newCard.id,
       deck_id: deckId,
-      user_id: deviceId,
+      user_id: userId,
       front: newCard.front,
       back: newCard.back,
       source_type: sourceType,
@@ -335,7 +335,7 @@ export function useFlashcards() {
     });
 
     return newCard;
-  }, [deviceId]);
+  }, [userId]);
 
   // Update flashcard
   const updateFlashcard = useCallback(async (id: string, updates: Partial<Flashcard>) => {
@@ -351,7 +351,7 @@ export function useFlashcards() {
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
-      .eq('user_id', deviceId);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error updating flashcard:', error);
@@ -367,7 +367,7 @@ export function useFlashcards() {
       localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, [deviceId]);
+  }, [userId]);
 
   // Delete flashcard
   const deleteFlashcard = useCallback(async (id: string) => {
@@ -378,7 +378,7 @@ export function useFlashcards() {
       .from('flashcards')
       .delete()
       .eq('id', id)
-      .eq('user_id', deviceId);
+      .eq('user_id', userId);
 
     if (error) {
       console.error('Error deleting flashcard:', error);
@@ -401,7 +401,7 @@ export function useFlashcards() {
       localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(updated));
       return updated;
     });
-  }, [cards, deviceId]);
+  }, [cards, userId]);
 
   // SM-2 Algorithm: Calculate next review (unchanged logic)
   const calculateNextReview = useCallback((
@@ -451,7 +451,7 @@ export function useFlashcards() {
   ) => {
     const { error } = await supabase.from('flashcard_reviews').insert({
       flashcard_id: flashcardId,
-      user_id: deviceId,
+      user_id: userId,
       rating,
       response_time_ms: responseTimeMs,
     });
@@ -459,7 +459,7 @@ export function useFlashcards() {
     if (error) {
       console.error('Error saving review:', error);
     }
-  }, [deviceId]);
+  }, [userId]);
 
   // Start study session
   const startSession = useCallback(async (deckId?: string) => {
@@ -467,7 +467,7 @@ export function useFlashcards() {
       .from('flashcard_sessions')
       .insert({
         deck_id: deckId === 'all' ? null : deckId,
-        user_id: deviceId,
+        user_id: userId,
       })
       .select()
       .single();
@@ -481,7 +481,7 @@ export function useFlashcards() {
     setSessionStartTime(Date.now());
     setCardStartTime(Date.now());
     return data.id;
-  }, [deviceId]);
+  }, [userId]);
 
   // End study session
   const endSession = useCallback(async (
@@ -585,7 +585,7 @@ export function useFlashcards() {
       newCards.map(card => ({
         id: card.id,
         deck_id: deckId,
-        user_id: deviceId,
+        user_id: userId,
         front: card.front,
         back: card.back,
         source_type: 'ai',
@@ -619,7 +619,7 @@ export function useFlashcards() {
     });
 
     return newCards;
-  }, [deviceId]);
+  }, [userId]);
 
   // Get estimated study time
   const getEstimatedStudyTime = useCallback((): number => {
