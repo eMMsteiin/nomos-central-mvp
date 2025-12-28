@@ -269,14 +269,28 @@ create_postit (só após aluno escolher post-it):
 create_task (só após aluno escolher tarefa):
 {"text": "conteúdo da tarefa", "category": "hoje|entrada|em-breve"}
 
-create_summary:
+create_summary (OBRIGATÓRIO quando aluno pedir resumo):
 {
   "type": "essential|exam",
-  "subject": "matéria",
+  "subject": "matéria do resumo",
   "sourceNotebookId": "id do caderno fonte (opcional)",
-  "content": "bullets do resumo gerado",
+  "content": "GERE O RESUMO COMPLETO AQUI - bullets claros e organizados com todo o conteúdo que foi discutido",
   "createFlashcards": true/false
 }
+
+⚠️ REGRA CRÍTICA PARA RESUMOS:
+Quando o aluno pedir resumo (ex: "faz um resumo", "quero resumo", "pode resumir"):
+1. SEMPRE gere [PROPOSAL] com action_type: "create_summary"
+2. O campo "content" deve conter O RESUMO REAL E COMPLETO em bullets
+3. NÃO mostre o resumo no texto da mensagem - ele vai no payload
+4. O texto da mensagem deve ser apenas uma confirmação breve tipo "Feito! 📋"
+5. O resumo será salvo automaticamente quando o aluno aplicar a proposta
+
+Exemplo CORRETO:
+Aluno: "faz um resumo do que estudamos"
+NOMOS: "Preparei um resumo essencial do nosso estudo! 📋
+
+[PROPOSAL]{"action_type": "create_summary", "description": "Resumo essencial de [matéria]", "impact": "Conteúdo consolidado para revisão", "payload": {"type": "essential", "subject": "Cálculo I - Limites", "content": "• Limite é o valor que uma função se aproxima quando x tende a um valor\n• Propriedades: soma, produto, quociente de limites\n• Limites laterais: esquerda e direita devem ser iguais\n• Limites infinitos e no infinito\n• Teorema do confronto", "createFlashcards": false}}[/PROPOSAL]"
 
 create_flashcards_from_study:
 {
