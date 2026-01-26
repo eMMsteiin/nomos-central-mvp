@@ -113,6 +113,21 @@ export default function Flashcards() {
       cardCount: cardsToStudy.length,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      config: {
+        learningSteps: ['1', '10'],
+        relearnSteps: ['10'],
+        graduatingInterval: 1,
+        easyInterval: 4,
+        maxInterval: 36500,
+        startingEase: 2.5,
+        easyBonus: 1.3,
+        hardMultiplier: 1.2,
+        intervalModifier: 1.0,
+        newCardsPerDay: 20,
+        reviewsPerDay: 200,
+        lapseNewInterval: 0.0,
+        lapseMinInterval: 1,
+      },
     });
     setViewMode('study');
   };
