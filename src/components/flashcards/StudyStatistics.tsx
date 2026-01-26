@@ -16,11 +16,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
-import {
   BarChart,
   Bar,
   XAxis,
@@ -35,6 +30,7 @@ import {
   Legend,
   Area,
   AreaChart,
+  Tooltip,
 } from 'recharts';
 import { useStudyStatistics, StudyStatistics } from '@/hooks/useStudyStatistics';
 import { Flashcard, Deck } from '@/types/flashcard';
@@ -262,7 +258,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                           ))}
                         </Pie>
                         <Legend />
-                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Tooltip />
                       </RechartsPie>
                     </ResponsiveContainer>
                   </div>
@@ -298,7 +294,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                           ))}
                         </Pie>
                         <Legend />
-                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Tooltip />
                       </RechartsPie>
                     </ResponsiveContainer>
                   </div>
@@ -323,7 +319,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                         <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                         <XAxis dataKey="name" />
                         <YAxis />
-                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Tooltip />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
                           {ratingChartData.map((entry, index) => (
                             <Cell key={index} fill={entry.fill} />
@@ -356,7 +352,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="dateLabel" tick={{ fontSize: 12 }} />
                     <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Tooltip />
                     <Area 
                       type="monotone" 
                       dataKey="cardsReviewed" 
@@ -385,10 +381,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="dateLabel" tick={{ fontSize: 12 }} />
                     <YAxis domain={[0, 100]} />
-                    <ChartTooltip 
-                      content={<ChartTooltipContent />}
-                      formatter={(value) => [`${value}%`, 'Retenção']}
-                    />
+                    <Tooltip formatter={(value) => [`${value}%`, 'Retenção']} />
                     <Line 
                       type="monotone" 
                       dataKey="retention" 
@@ -415,7 +408,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="dateLabel" tick={{ fontSize: 12 }} />
                     <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Tooltip />
                     <Bar 
                       dataKey="studyTimeMinutes" 
                       fill="hsl(var(--primary))" 
@@ -442,7 +435,7 @@ export function StudyStatisticsPanel({ cards, decks, onBack }: StudyStatisticsPr
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="range" tick={{ fontSize: 11 }} />
                     <YAxis />
-                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Tooltip />
                     <Bar 
                       dataKey="count" 
                       fill="hsl(var(--primary))" 
