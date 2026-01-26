@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      card_templates: {
+        Row: {
+          back_template: string
+          created_at: string | null
+          css: string | null
+          front_template: string
+          id: string
+          name: string
+          note_type_id: string
+          ord: number
+        }
+        Insert: {
+          back_template?: string
+          created_at?: string | null
+          css?: string | null
+          front_template?: string
+          id?: string
+          name: string
+          note_type_id: string
+          ord?: number
+        }
+        Update: {
+          back_template?: string
+          created_at?: string | null
+          css?: string | null
+          front_template?: string
+          id?: string
+          name?: string
+          note_type_id?: string
+          ord?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "card_templates_note_type_id_fkey"
+            columns: ["note_type_id"]
+            isOneToOne: false
+            referencedRelation: "note_types"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_actions_log: {
         Row: {
           action_type: string
@@ -373,11 +414,13 @@ export type Database = {
           interval_days: number | null
           lapses: number | null
           next_review: string | null
+          note_id: string | null
           queue_position: number | null
           repetitions: number | null
           source_notebook_id: string | null
           source_type: string | null
           steps_left: number | null
+          template_ord: number | null
           updated_at: string | null
           user_id: string
         }
@@ -395,11 +438,13 @@ export type Database = {
           interval_days?: number | null
           lapses?: number | null
           next_review?: string | null
+          note_id?: string | null
           queue_position?: number | null
           repetitions?: number | null
           source_notebook_id?: string | null
           source_type?: string | null
           steps_left?: number | null
+          template_ord?: number | null
           updated_at?: string | null
           user_id: string
         }
@@ -417,11 +462,13 @@ export type Database = {
           interval_days?: number | null
           lapses?: number | null
           next_review?: string | null
+          note_id?: string | null
           queue_position?: number | null
           repetitions?: number | null
           source_notebook_id?: string | null
           source_type?: string | null
           steps_left?: number | null
+          template_ord?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -431,6 +478,13 @@ export type Database = {
             columns: ["deck_id"]
             isOneToOne: false
             referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcards_note_id_fkey"
+            columns: ["note_id"]
+            isOneToOne: false
+            referencedRelation: "notes"
             referencedColumns: ["id"]
           },
         ]
@@ -466,6 +520,90 @@ export type Database = {
             columns: ["conversation_id"]
             isOneToOne: false
             referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      note_types: {
+        Row: {
+          created_at: string | null
+          fields: Json
+          id: string
+          is_builtin: boolean
+          is_cloze: boolean
+          name: string
+          sort_field_idx: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          fields?: Json
+          id?: string
+          is_builtin?: boolean
+          is_cloze?: boolean
+          name: string
+          sort_field_idx?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          fields?: Json
+          id?: string
+          is_builtin?: boolean
+          is_cloze?: boolean
+          name?: string
+          sort_field_idx?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notes: {
+        Row: {
+          created_at: string | null
+          deck_id: string
+          fields: Json
+          id: string
+          note_type_id: string
+          tags: string[] | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          deck_id: string
+          fields?: Json
+          id?: string
+          note_type_id: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          deck_id?: string
+          fields?: Json
+          id?: string
+          note_type_id?: string
+          tags?: string[] | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notes_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notes_note_type_id_fkey"
+            columns: ["note_type_id"]
+            isOneToOne: false
+            referencedRelation: "note_types"
             referencedColumns: ["id"]
           },
         ]
