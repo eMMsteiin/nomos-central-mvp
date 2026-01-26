@@ -86,6 +86,20 @@ export const DEFAULT_DECK_CONFIG: DeckConfig = {
   lapseMinInterval: 1,
 };
 
+// Preset de configurações de deck
+export interface DeckOptionPreset {
+  id: string;
+  userId: string;
+  name: string;
+  description?: string;
+  config: DeckConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
+// Campos que podem ser sobrescritos por um subdeck
+export type ConfigOverrides = Partial<DeckConfig>;
+
 export interface Deck {
   id: string;
   title: string;
@@ -99,6 +113,31 @@ export interface Deck {
   
   // Anki config
   config: DeckConfig;
+  
+  // Hierarquia (Bloco 2)
+  parentDeckId?: string;
+  presetId?: string;
+  configOverrides: ConfigOverrides; // Sobrescritas locais
+  fullName: string; // Nome completo com hierarquia (ex: "Pai::Filho::Neto")
+  
+  // Contadores por estado (Bloco 2)
+  counts?: {
+    new: number;
+    learning: number;
+    review: number;
+    suspended: number;
+    buried: number;
+    total: number;
+  };
+  
+  // Contadores agregados (inclui filhos)
+  aggregatedCounts?: {
+    new: number;
+    learning: number;
+    review: number;
+    total: number;
+    subdecks: number;
+  };
 }
 
 export interface DeckDailyStats {
@@ -140,6 +179,51 @@ export const SM2_MIN_EASE_FACTOR = 1.3;
 export const SM2_EASE_BONUS = 0.15; // Anki uses 15% for easy
 export const SM2_EASE_PENALTY = 0.20; // Anki uses 20% for again
 export const SM2_HARD_PENALTY = 0.15; // Anki uses 15% for hard
+
+// Helper para calcular config efetiva com herança
+export function getEffectiveConfig(
+  deck: Deck,
+  parentDeck?: Deck,
+  preset?: DeckOptionPreset
+): DeckConfig {
+  // Base: preset ou config do pai ou default
+  let baseConfig: DeckConfig;
+  
+  if (preset) {
+    baseConfig = { ...preset.config };
+  } else if (parentDeck) {
+    baseConfig = { ...parentDeck.config };
+  } else {
+    baseConfig = { ...DEFAULT_DECK_CONFIG };
+  }
+  
+  // Aplicar sobrescritas locais
+  return {
+    ...baseConfig,
+    ...deck.configOverrides,
+  };
+}
+
+// Helper para parsear nome hierárquico
+export function parseHierarchicalName(fullName: string): string[] {
+  return fullName.split('::').map(s => s.trim());
+}
+
+// Helper para construir nome hierárquico
+export function buildHierarchicalName(parts: string[]): string {
+  return parts.join('::');
+}
+
+// Helper para obter nome de exibição (último segmento)
+export function getDisplayName(fullName: string): string {
+  const parts = parseHierarchicalName(fullName);
+  return parts[parts.length - 1] || fullName;
+}
+
+// Helper para obter profundidade do deck
+export function getDeckDepth(fullName: string): number {
+  return parseHierarchicalName(fullName).length - 1;
+}
 
 // Default disciplines with colors
 export const DEFAULT_DISCIPLINES: Discipline[] = [
