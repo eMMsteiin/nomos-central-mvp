@@ -550,17 +550,17 @@ export function useFlashcards() {
     if (updates.front !== undefined) dbUpdates.front = updates.front;
     if (updates.back !== undefined) dbUpdates.back = updates.back;
     if (updates.nextReview !== undefined) dbUpdates.next_review = updates.nextReview;
-    if (updates.interval !== undefined) dbUpdates.interval_days = updates.interval;
+    if (updates.interval !== undefined) dbUpdates.interval_days = Math.round(updates.interval);
     if (updates.easeFactor !== undefined) dbUpdates.ease_factor = updates.easeFactor;
     if (updates.repetitions !== undefined) dbUpdates.repetitions = updates.repetitions;
     // Anki fields
     if (updates.cardState !== undefined) dbUpdates.card_state = updates.cardState;
-    if (updates.currentStep !== undefined) dbUpdates.current_step = updates.currentStep;
-    if (updates.stepsLeft !== undefined) dbUpdates.steps_left = updates.stepsLeft;
+    if (updates.currentStep !== undefined) dbUpdates.current_step = Math.round(updates.currentStep);
+    if (updates.stepsLeft !== undefined) dbUpdates.steps_left = Math.round(updates.stepsLeft);
     if (updates.due !== undefined) dbUpdates.due = updates.due;
     if (updates.buriedUntil !== undefined) dbUpdates.buried_until = updates.buriedUntil;
-    if (updates.queuePosition !== undefined) dbUpdates.queue_position = updates.queuePosition;
-    if (updates.lapses !== undefined) dbUpdates.lapses = updates.lapses;
+    if (updates.queuePosition !== undefined) dbUpdates.queue_position = Math.round(updates.queuePosition);
+    if (updates.lapses !== undefined) dbUpdates.lapses = Math.round(updates.lapses);
 
     const { error } = await supabase
       .from('flashcards')
