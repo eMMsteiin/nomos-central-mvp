@@ -76,14 +76,65 @@ export type Database = {
         }
         Relationships: []
       }
+      deck_daily_stats: {
+        Row: {
+          created_at: string | null
+          deck_id: string
+          id: string
+          new_cards_studied: number | null
+          reviews_done: number | null
+          stat_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          deck_id: string
+          id?: string
+          new_cards_studied?: number | null
+          reviews_done?: number | null
+          stat_date?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          deck_id?: string
+          id?: string
+          new_cards_studied?: number | null
+          reviews_done?: number | null
+          stat_date?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_daily_stats_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flashcard_decks: {
         Row: {
           color: string | null
           created_at: string | null
           description: string | null
           discipline_id: string | null
+          easy_bonus: number | null
+          easy_interval: number | null
           emoji: string | null
+          graduating_interval: number | null
+          hard_multiplier: number | null
           id: string
+          interval_modifier: number | null
+          lapse_min_interval: number | null
+          lapse_new_interval: number | null
+          learning_steps: string[] | null
+          max_interval: number | null
+          new_cards_per_day: number | null
+          relearning_steps: string[] | null
+          reviews_per_day: number | null
+          starting_ease: number | null
           title: string
           updated_at: string | null
           user_id: string
@@ -93,8 +144,21 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           discipline_id?: string | null
+          easy_bonus?: number | null
+          easy_interval?: number | null
           emoji?: string | null
+          graduating_interval?: number | null
+          hard_multiplier?: number | null
           id?: string
+          interval_modifier?: number | null
+          lapse_min_interval?: number | null
+          lapse_new_interval?: number | null
+          learning_steps?: string[] | null
+          max_interval?: number | null
+          new_cards_per_day?: number | null
+          relearning_steps?: string[] | null
+          reviews_per_day?: number | null
+          starting_ease?: number | null
           title: string
           updated_at?: string | null
           user_id: string
@@ -104,8 +168,21 @@ export type Database = {
           created_at?: string | null
           description?: string | null
           discipline_id?: string | null
+          easy_bonus?: number | null
+          easy_interval?: number | null
           emoji?: string | null
+          graduating_interval?: number | null
+          hard_multiplier?: number | null
           id?: string
+          interval_modifier?: number | null
+          lapse_min_interval?: number | null
+          lapse_new_interval?: number | null
+          learning_steps?: string[] | null
+          max_interval?: number | null
+          new_cards_per_day?: number | null
+          relearning_steps?: string[] | null
+          reviews_per_day?: number | null
+          starting_ease?: number | null
           title?: string
           updated_at?: string | null
           user_id?: string
@@ -191,46 +268,67 @@ export type Database = {
       flashcards: {
         Row: {
           back: string
+          buried_until: string | null
+          card_state: Database["public"]["Enums"]["card_state"] | null
           created_at: string | null
+          current_step: number | null
           deck_id: string
+          due: string | null
           ease_factor: number | null
           front: string
           id: string
           interval_days: number | null
+          lapses: number | null
           next_review: string | null
+          queue_position: number | null
           repetitions: number | null
           source_notebook_id: string | null
           source_type: string | null
+          steps_left: number | null
           updated_at: string | null
           user_id: string
         }
         Insert: {
           back: string
+          buried_until?: string | null
+          card_state?: Database["public"]["Enums"]["card_state"] | null
           created_at?: string | null
+          current_step?: number | null
           deck_id: string
+          due?: string | null
           ease_factor?: number | null
           front: string
           id?: string
           interval_days?: number | null
+          lapses?: number | null
           next_review?: string | null
+          queue_position?: number | null
           repetitions?: number | null
           source_notebook_id?: string | null
           source_type?: string | null
+          steps_left?: number | null
           updated_at?: string | null
           user_id: string
         }
         Update: {
           back?: string
+          buried_until?: string | null
+          card_state?: Database["public"]["Enums"]["card_state"] | null
           created_at?: string | null
+          current_step?: number | null
           deck_id?: string
+          due?: string | null
           ease_factor?: number | null
           front?: string
           id?: string
           interval_days?: number | null
+          lapses?: number | null
           next_review?: string | null
+          queue_position?: number | null
           repetitions?: number | null
           source_notebook_id?: string | null
           source_type?: string | null
+          steps_left?: number | null
           updated_at?: string | null
           user_id?: string
         }
@@ -517,7 +615,13 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      card_state:
+        | "new"
+        | "learning"
+        | "review"
+        | "relearning"
+        | "suspended"
+        | "buried"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -644,6 +748,15 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      card_state: [
+        "new",
+        "learning",
+        "review",
+        "relearning",
+        "suspended",
+        "buried",
+      ],
+    },
   },
 } as const
