@@ -757,6 +757,242 @@ export function useFlashcards() {
     await updateFlashcard(id, updates);
   }, [cards, updateFlashcard]);
 
+  // ============================================================================
+  // BULK OPERATIONS (Bloco 4)
+  // ============================================================================
+
+  // Suspend multiple cards
+  const suspendMultipleCards = useCallback(async (cardIds: string[]) => {
+    const updates = cardIds.map(id => {
+      const card = cards.find(c => c.id === id);
+      if (!card) return null;
+      return { id, updates: suspendCard(card) };
+    }).filter(Boolean) as { id: string; updates: Partial<Flashcard> }[];
+
+    // Update in database
+    for (const { id, updates: cardUpdates } of updates) {
+      await supabase
+        .from('flashcards')
+        .update({
+          card_state: cardUpdates.cardState,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('user_id', userId);
+    }
+
+    // Update local state
+    setCards(prev => {
+      const updated = prev.map(card => {
+        const update = updates.find(u => u.id === card.id);
+        if (update) {
+          return { ...card, ...update.updates, updatedAt: new Date().toISOString() };
+        }
+        return card;
+      });
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, userId]);
+
+  // Unsuspend multiple cards
+  const unsuspendMultipleCards = useCallback(async (cardIds: string[]) => {
+    const updates = cardIds.map(id => {
+      const card = cards.find(c => c.id === id);
+      if (!card) return null;
+      return { id, updates: unsuspendCard(card) };
+    }).filter(Boolean) as { id: string; updates: Partial<Flashcard> }[];
+
+    // Update in database
+    for (const { id, updates: cardUpdates } of updates) {
+      await supabase
+        .from('flashcards')
+        .update({
+          card_state: cardUpdates.cardState,
+          due: cardUpdates.due,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('user_id', userId);
+    }
+
+    // Update local state
+    setCards(prev => {
+      const updated = prev.map(card => {
+        const update = updates.find(u => u.id === card.id);
+        if (update) {
+          return { ...card, ...update.updates, updatedAt: new Date().toISOString() };
+        }
+        return card;
+      });
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, userId]);
+
+  // Bury multiple cards
+  const buryMultipleCards = useCallback(async (cardIds: string[]) => {
+    const updates = cardIds.map(id => {
+      const card = cards.find(c => c.id === id);
+      if (!card) return null;
+      return { id, updates: buryCard(card) };
+    }).filter(Boolean) as { id: string; updates: Partial<Flashcard> }[];
+
+    // Update in database
+    for (const { id, updates: cardUpdates } of updates) {
+      await supabase
+        .from('flashcards')
+        .update({
+          card_state: cardUpdates.cardState,
+          buried_until: cardUpdates.buriedUntil,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('user_id', userId);
+    }
+
+    // Update local state
+    setCards(prev => {
+      const updated = prev.map(card => {
+        const update = updates.find(u => u.id === card.id);
+        if (update) {
+          return { ...card, ...update.updates, updatedAt: new Date().toISOString() };
+        }
+        return card;
+      });
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, userId]);
+
+  // Unbury multiple cards
+  const unburyMultipleCards = useCallback(async (cardIds: string[]) => {
+    const updates = cardIds.map(id => {
+      const card = cards.find(c => c.id === id);
+      if (!card) return null;
+      return { id, updates: unburyCard(card) };
+    }).filter(Boolean) as { id: string; updates: Partial<Flashcard> }[];
+
+    // Update in database
+    for (const { id, updates: cardUpdates } of updates) {
+      await supabase
+        .from('flashcards')
+        .update({
+          card_state: cardUpdates.cardState,
+          buried_until: null,
+          due: cardUpdates.due,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', id)
+        .eq('user_id', userId);
+    }
+
+    // Update local state
+    setCards(prev => {
+      const updated = prev.map(card => {
+        const update = updates.find(u => u.id === card.id);
+        if (update) {
+          return { ...card, ...update.updates, updatedAt: new Date().toISOString() };
+        }
+        return card;
+      });
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, userId]);
+
+  // Delete multiple cards
+  const deleteMultipleCards = useCallback(async (cardIds: string[]) => {
+    // Delete from database
+    const { error } = await supabase
+      .from('flashcards')
+      .delete()
+      .in('id', cardIds)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting cards:', error);
+      throw error;
+    }
+
+    // Update local state and deck counts
+    const deletedCards = cards.filter(c => cardIds.includes(c.id));
+    const deckCounts = new Map<string, number>();
+    deletedCards.forEach(c => {
+      deckCounts.set(c.deckId, (deckCounts.get(c.deckId) || 0) + 1);
+    });
+
+    setCards(prev => {
+      const updated = prev.filter(c => !cardIds.includes(c.id));
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    setDecks(prev => {
+      const updated = prev.map(deck => {
+        const count = deckCounts.get(deck.id) || 0;
+        if (count > 0) {
+          return { ...deck, cardCount: Math.max(0, deck.cardCount - count) };
+        }
+        return deck;
+      });
+      localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, userId]);
+
+  // Move multiple cards to a different deck
+  const moveMultipleCards = useCallback(async (cardIds: string[], targetDeckId: string) => {
+    // Update in database
+    const { error } = await supabase
+      .from('flashcards')
+      .update({
+        deck_id: targetDeckId,
+        updated_at: new Date().toISOString(),
+      })
+      .in('id', cardIds)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error moving cards:', error);
+      throw error;
+    }
+
+    // Calculate deck count changes
+    const movedCards = cards.filter(c => cardIds.includes(c.id));
+    const sourceCounts = new Map<string, number>();
+    movedCards.forEach(c => {
+      sourceCounts.set(c.deckId, (sourceCounts.get(c.deckId) || 0) + 1);
+    });
+
+    // Update local state
+    setCards(prev => {
+      const updated = prev.map(card => {
+        if (cardIds.includes(card.id)) {
+          return { ...card, deckId: targetDeckId, updatedAt: new Date().toISOString() };
+        }
+        return card;
+      });
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    setDecks(prev => {
+      const updated = prev.map(deck => {
+        if (deck.id === targetDeckId) {
+          return { ...deck, cardCount: deck.cardCount + cardIds.length };
+        }
+        const removed = sourceCounts.get(deck.id) || 0;
+        if (removed > 0) {
+          return { ...deck, cardCount: Math.max(0, deck.cardCount - removed) };
+        }
+        return deck;
+      });
+      localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, userId]);
+
   // Get cards due for review (respects daily limits and card states)
   const getDueCards = useCallback((deckId?: string): Flashcard[] => {
     const now = new Date();
@@ -1320,6 +1556,13 @@ export function useFlashcards() {
     unsuspendFlashcard,
     buryFlashcard,
     unburyFlashcard,
+    // Bulk operations (Bloco 4)
+    suspendMultipleCards,
+    unsuspendMultipleCards,
+    buryMultipleCards,
+    unburyMultipleCards,
+    deleteMultipleCards,
+    moveMultipleCards,
     // Utilities
     getEstimatedStudyTime,
   };

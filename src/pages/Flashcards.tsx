@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Play, Brain } from 'lucide-react';
+import { Layers, Play, Brain, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFlashcards } from '@/hooks/useFlashcards';
+import { useNotes } from '@/hooks/useNotes';
 import { DeckList } from '@/components/flashcards/DeckList';
 import { DeckDetail } from '@/components/flashcards/DeckDetail';
 import { StudySession } from '@/components/flashcards/StudySession';
@@ -12,10 +13,12 @@ import { GenerateFlashcardsDialog } from '@/components/flashcards/GenerateFlashc
 import { EditFlashcardDialog } from '@/components/flashcards/EditFlashcardDialog';
 import { EditDeckDialog } from '@/components/flashcards/EditDeckDialog';
 import { ImportFromChatDialog } from '@/components/flashcards/ImportFromChatDialog';
+import { CardBrowser } from '@/components/flashcards/CardBrowser';
+import { EditNoteDialog } from '@/components/flashcards/EditNoteDialog';
 import { Deck, Flashcard } from '@/types/flashcard';
 import { toast } from 'sonner';
 
-type ViewMode = 'list' | 'detail' | 'study';
+type ViewMode = 'list' | 'detail' | 'study' | 'browser';
 
 interface PendingFlashcards {
   subject: string;
@@ -25,6 +28,7 @@ interface PendingFlashcards {
 export default function Flashcards() {
   const {
     decks,
+    cards,
     isLoading,
     createDeck,
     updateDeck,
@@ -40,17 +44,35 @@ export default function Flashcards() {
     getTotalDueCount,
     startSession,
     endSession,
+    // Bulk operations (Bloco 4)
+    suspendMultipleCards,
+    unsuspendMultipleCards,
+    buryMultipleCards,
+    unburyMultipleCards,
+    deleteMultipleCards,
+    moveMultipleCards,
   } = useFlashcards();
+
+  const {
+    notes,
+    noteTypes,
+    isLoading: notesLoading,
+    updateNote,
+  } = useNotes();
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
-  const [sessionCards, setSessionCards] = useState<Flashcard[]>([]); // Cards congelados para a sessão
+  const [sessionCards, setSessionCards] = useState<Flashcard[]>([]);
   const [isCreateDeckOpen, setIsCreateDeckOpen] = useState(false);
   const [isCreateCardOpen, setIsCreateCardOpen] = useState(false);
   const [isGenerateDialogOpen, setIsGenerateDialogOpen] = useState(false);
   const [isEditCardOpen, setIsEditCardOpen] = useState(false);
   const [isEditDeckOpen, setIsEditDeckOpen] = useState(false);
   const [cardToEdit, setCardToEdit] = useState<Flashcard | null>(null);
+  
+  // Note editing state
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [isEditNoteOpen, setIsEditNoteOpen] = useState(false);
   
   // Estado para flashcards vindos do Chat NOMOS
   const [pendingFlashcards, setPendingFlashcards] = useState<PendingFlashcards | null>(null);
@@ -65,7 +87,6 @@ export default function Flashcards() {
           const parsed = JSON.parse(pendingData) as PendingFlashcards;
           setPendingFlashcards(parsed);
           setIsImportDialogOpen(true);
-          // Limpar do localStorage após ler
           localStorage.removeItem('nomos-pending-flashcards');
         } catch (e) {
           console.error('Error parsing pending flashcards:', e);
@@ -74,10 +95,7 @@ export default function Flashcards() {
       }
     };
     
-    // Checar imediatamente
     checkPendingFlashcards();
-    
-    // Também checar quando a aba ganha foco (caso venha de outra página)
     window.addEventListener('focus', checkPendingFlashcards);
     return () => window.removeEventListener('focus', checkPendingFlashcards);
   }, []);
@@ -90,9 +108,7 @@ export default function Flashcards() {
   };
 
   const handleStudyDeck = (deck: Deck) => {
-    // Congelar os cards no início da sessão
     let cardsToStudy = getDueCards(deck.id);
-    // Se não há cards pendentes, usar todos os cards para praticar
     if (cardsToStudy.length === 0) {
       cardsToStudy = getCardsByDeck(deck.id);
     }
@@ -102,7 +118,6 @@ export default function Flashcards() {
   };
 
   const handleStudyAll = () => {
-    // Congelar os cards no início da sessão
     const cardsToStudy = getDueCards();
     setSessionCards(cardsToStudy);
     setSelectedDeck({
@@ -134,9 +149,13 @@ export default function Flashcards() {
     setViewMode('study');
   };
 
+  const handleOpenBrowser = () => {
+    setViewMode('browser');
+  };
+
   const handleBackToList = () => {
     setSelectedDeck(null);
-    setSessionCards([]); // Limpar cards da sessão
+    setSessionCards([]);
     setViewMode('list');
   };
 
@@ -206,7 +225,6 @@ export default function Flashcards() {
   const handleSaveDeck = async (id: string, updates: Partial<Deck>) => {
     try {
       await updateDeck(id, updates);
-      // Update local selected deck
       if (selectedDeck && selectedDeck.id === id) {
         setSelectedDeck({ ...selectedDeck, ...updates });
       }
@@ -220,6 +238,66 @@ export default function Flashcards() {
     return startSession(selectedDeck?.id);
   };
 
+  // Browser bulk action handlers
+  const handleSuspendCards = async (cardIds: string[]) => {
+    try {
+      await suspendMultipleCards(cardIds);
+      toast.success(`${cardIds.length} card(s) suspenso(s)`);
+    } catch (error) {
+      toast.error('Erro ao suspender cards');
+    }
+  };
+
+  const handleUnsuspendCards = async (cardIds: string[]) => {
+    try {
+      await unsuspendMultipleCards(cardIds);
+      toast.success(`${cardIds.length} card(s) reativado(s)`);
+    } catch (error) {
+      toast.error('Erro ao reativar cards');
+    }
+  };
+
+  const handleBuryCards = async (cardIds: string[]) => {
+    try {
+      await buryMultipleCards(cardIds);
+      toast.success(`${cardIds.length} card(s) enterrado(s)`);
+    } catch (error) {
+      toast.error('Erro ao enterrar cards');
+    }
+  };
+
+  const handleUnburyCards = async (cardIds: string[]) => {
+    try {
+      await unburyMultipleCards(cardIds);
+      toast.success(`${cardIds.length} card(s) desenterrado(s)`);
+    } catch (error) {
+      toast.error('Erro ao desenterrar cards');
+    }
+  };
+
+  const handleDeleteCards = async (cardIds: string[]) => {
+    try {
+      await deleteMultipleCards(cardIds);
+      toast.success(`${cardIds.length} card(s) excluído(s)`);
+    } catch (error) {
+      toast.error('Erro ao excluir cards');
+    }
+  };
+
+  const handleMoveCards = async (cardIds: string[], targetDeckId: string) => {
+    try {
+      await moveMultipleCards(cardIds, targetDeckId);
+      toast.success(`${cardIds.length} card(s) movido(s)`);
+    } catch (error) {
+      toast.error('Erro ao mover cards');
+    }
+  };
+
+  const handleEditNote = (noteId: string) => {
+    setEditingNoteId(noteId);
+    setIsEditNoteOpen(true);
+  };
+
   // Importar flashcards do Chat NOMOS para um baralho existente
   const handleImportFromChat = async (deckId: string) => {
     if (!pendingFlashcards) return;
@@ -227,7 +305,6 @@ export default function Flashcards() {
       await createMultipleFlashcards(deckId, pendingFlashcards.flashcards);
       toast.success(`${pendingFlashcards.flashcards.length} flashcards importados com sucesso!`);
       
-      // Navegar para o baralho selecionado
       const deck = decks.find(d => d.id === deckId);
       if (deck) {
         setSelectedDeck(deck);
@@ -268,10 +345,47 @@ export default function Flashcards() {
     setPendingFlashcards(null);
     toast.info('Importação cancelada');
   };
-  if (isLoading) {
+
+  // Find note being edited
+  const noteToEdit = editingNoteId ? notes.find(n => n.id === editingNoteId) : undefined;
+  const noteTypeForEdit = noteToEdit ? noteTypes.find(nt => nt.id === noteToEdit.noteTypeId) : undefined;
+
+  if (isLoading || notesLoading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  // Browser mode
+  if (viewMode === 'browser') {
+    return (
+      <div className="h-[calc(100vh-4rem)]">
+        <CardBrowser
+          cards={cards}
+          decks={decks}
+          notes={notes}
+          noteTypes={noteTypes}
+          onBack={handleBackToList}
+          onSuspendCards={handleSuspendCards}
+          onUnsuspendCards={handleUnsuspendCards}
+          onBuryCards={handleBuryCards}
+          onUnburyCards={handleUnburyCards}
+          onDeleteCards={handleDeleteCards}
+          onMoveCards={handleMoveCards}
+          onEditNote={handleEditNote}
+        />
+        
+        {/* Edit Note Dialog */}
+        <EditNoteDialog
+          open={isEditNoteOpen}
+          onOpenChange={setIsEditNoteOpen}
+          note={noteToEdit || null}
+          onNoteUpdated={() => {
+            toast.success('Nota atualizada!');
+          }}
+        />
       </div>
     );
   }
@@ -305,9 +419,7 @@ export default function Flashcards() {
           dueCount={dueCount}
           onBack={handleBackToList}
           onStudy={() => {
-            // Congelar cards ao iniciar estudo da tela de detalhes
             let cardsToStudy = getDueCards(selectedDeck.id);
-            // Se não há cards pendentes, usar todos os cards para praticar
             if (cardsToStudy.length === 0) {
               cardsToStudy = getCardsByDeck(selectedDeck.id);
             }
@@ -370,12 +482,18 @@ export default function Flashcards() {
             </div>
           </div>
 
-          {totalDue > 0 && (
-            <Button onClick={handleStudyAll} size="lg" className="gap-2">
-              <Play className="w-4 h-4" />
-              Estudar tudo ({totalDue})
+          <div className="flex items-center gap-2">
+            <Button variant="outline" onClick={handleOpenBrowser} className="gap-2">
+              <Search className="w-4 h-4" />
+              Navegador
             </Button>
-          )}
+            {totalDue > 0 && (
+              <Button onClick={handleStudyAll} size="lg" className="gap-2">
+                <Play className="w-4 h-4" />
+                Estudar tudo ({totalDue})
+              </Button>
+            )}
+          </div>
         </div>
       </motion.div>
 
