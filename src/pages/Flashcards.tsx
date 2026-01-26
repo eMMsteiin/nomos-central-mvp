@@ -128,6 +128,8 @@ export default function Flashcards() {
         lapseNewInterval: 0.0,
         lapseMinInterval: 1,
       },
+      configOverrides: {},
+      fullName: 'Todos os cards',
     });
     setViewMode('study');
   };

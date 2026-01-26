@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Plus, Play, Trash2, MoreVertical, Sparkles, Pencil, Eye, EyeOff } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Trash2, MoreVertical, Sparkles, Pencil, Eye, EyeOff, Settings, FolderPlus, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -25,13 +25,23 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
-import { Deck, Flashcard } from '@/types/flashcard';
+import { Deck, Flashcard, DeckOptionPreset, getDisplayName, getDeckDepth } from '@/types/flashcard';
 import { cn } from '@/lib/utils';
 
 interface DeckDetailProps {
   deck: Deck;
   cards: Flashcard[];
   dueCount: number;
+  subdecks?: Deck[];
+  presets?: DeckOptionPreset[];
+  parentDeck?: Deck;
+  aggregatedCounts?: {
+    new: number;
+    learning: number;
+    review: number;
+    total: number;
+    subdecks: number;
+  };
   onBack: () => void;
   onStudy: () => void;
   onAddCard: () => void;
@@ -39,12 +49,19 @@ interface DeckDetailProps {
   onDeleteCard: (cardId: string) => void;
   onEditCard: (card: Flashcard) => void;
   onEditDeck: () => void;
+  onOpenOptions?: () => void;
+  onCreateSubdeck?: () => void;
+  onSelectSubdeck?: (deck: Deck) => void;
 }
 
 export function DeckDetail({
   deck,
   cards,
   dueCount,
+  subdecks = [],
+  presets = [],
+  parentDeck,
+  aggregatedCounts,
   onBack,
   onStudy,
   onAddCard,
@@ -52,6 +69,9 @@ export function DeckDetail({
   onDeleteCard,
   onEditCard,
   onEditDeck,
+  onOpenOptions,
+  onCreateSubdeck,
+  onSelectSubdeck,
 }: DeckDetailProps) {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const [revealedCards, setRevealedCards] = useState<Set<string>>(new Set());
@@ -99,7 +119,11 @@ export function DeckDetail({
           <div className="flex items-center gap-2">
             <span className="text-3xl">{deck.emoji}</span>
             <div>
-              <h1 className="text-2xl font-bold">{deck.title}</h1>
+              <h1 className="text-2xl font-bold">{getDisplayName(deck.fullName)}</h1>
+              {/* Show full path for subdecks */}
+              {getDeckDepth(deck.fullName) > 0 && (
+                <p className="text-xs text-muted-foreground font-mono">{deck.fullName}</p>
+              )}
               {deck.description && (
                 <p className="text-sm text-muted-foreground">{deck.description}</p>
               )}
@@ -108,18 +132,29 @@ export function DeckDetail({
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          {onOpenOptions && (
+            <Button variant="outline" size="icon" onClick={onOpenOptions} title="Opções do deck">
+              <Settings className="w-4 h-4" />
+            </Button>
+          )}
           <Button variant="outline" size="icon" onClick={onEditDeck}>
             <Pencil className="w-4 h-4" />
           </Button>
+          {onCreateSubdeck && (
+            <Button variant="outline" onClick={onCreateSubdeck}>
+              <FolderPlus className="w-4 h-4 mr-2" />
+              Subdeck
+            </Button>
+          )}
           <Button variant="outline" onClick={onAddCard}>
             <Plus className="w-4 h-4 mr-2" />
-            Adicionar card
+            Card
           </Button>
           <Button variant="outline" onClick={onGenerateWithAI}>
             <Sparkles className="w-4 h-4 mr-2" />
             Gerar com IA
           </Button>
-          {cards.length > 0 && (
+          {(cards.length > 0 || (aggregatedCounts && aggregatedCounts.total > 0)) && (
             <Button 
               onClick={onStudy} 
               variant={dueCount > 0 ? "default" : "outline"}
@@ -130,6 +165,38 @@ export function DeckDetail({
           )}
         </div>
       </div>
+
+      {/* Subdecks section */}
+      {subdecks.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold flex items-center gap-2">
+            <FolderPlus className="w-5 h-5" />
+            Subdecks ({subdecks.length})
+          </h2>
+          <div className="grid gap-2">
+            {subdecks.map(subdeck => (
+              <Card 
+                key={subdeck.id} 
+                className="cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => onSelectSubdeck?.(subdeck)}
+              >
+                <CardContent className="p-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <span className="text-xl">{subdeck.emoji}</span>
+                    <div>
+                      <p className="font-medium">{subdeck.title}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {subdeck.cardCount} cards
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

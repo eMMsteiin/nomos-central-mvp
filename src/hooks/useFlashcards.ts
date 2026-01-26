@@ -6,6 +6,7 @@ import {
   Deck,
   DeckConfig,
   DeckDailyStats,
+  DeckOptionPreset,
   FlashcardRating,
   CardState,
   SM2_INITIAL_EASE_FACTOR,
@@ -108,6 +109,11 @@ export function useFlashcards() {
           lapseNewInterval: Number(d.lapse_new_interval) ?? DEFAULT_DECK_CONFIG.lapseNewInterval,
           lapseMinInterval: d.lapse_min_interval ?? DEFAULT_DECK_CONFIG.lapseMinInterval,
         },
+        // Hierarchy fields (Bloco 2)
+        parentDeckId: d.parent_deck_id || undefined,
+        presetId: d.preset_id || undefined,
+        configOverrides: (d.config_overrides as Record<string, unknown>) || {},
+        fullName: d.full_name || d.title,
       }));
 
       const transformedCards: Flashcard[] = (dbCards || []).map(c => ({
@@ -346,6 +352,9 @@ export function useFlashcards() {
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       config: { ...DEFAULT_DECK_CONFIG },
+      // Hierarchy fields
+      configOverrides: {},
+      fullName: title,
     };
 
     // Save to database
@@ -937,18 +946,359 @@ export function useFlashcards() {
     };
   }, [cards]);
 
+  // ============================================================================
+  // HIERARCHY FUNCTIONS (Bloco 2)
+  // ============================================================================
+
+  // Get subdecks of a deck
+  const getSubdecks = useCallback((parentId: string): Deck[] => {
+    return decks.filter(d => d.parentDeckId === parentId);
+  }, [decks]);
+
+  // Get all descendant decks (recursive)
+  const getAllDescendants = useCallback((parentId: string): Deck[] => {
+    const direct = getSubdecks(parentId);
+    const descendants: Deck[] = [...direct];
+    
+    for (const subdeck of direct) {
+      descendants.push(...getAllDescendants(subdeck.id));
+    }
+    
+    return descendants;
+  }, [getSubdecks]);
+
+  // Get aggregated counts including subdecks
+  const getAggregatedCounts = useCallback((deckId: string) => {
+    const deck = decks.find(d => d.id === deckId);
+    if (!deck) return null;
+
+    const descendants = getAllDescendants(deckId);
+    const allDeckIds = [deckId, ...descendants.map(d => d.id)];
+    
+    const now = new Date();
+    const relevantCards = cards.filter(c => allDeckIds.includes(c.deckId));
+
+    return {
+      new: relevantCards.filter(c => c.cardState === 'new').length,
+      learning: relevantCards.filter(c =>
+        (c.cardState === 'learning' || c.cardState === 'relearning') &&
+        new Date(c.due) <= now
+      ).length,
+      review: relevantCards.filter(c =>
+        c.cardState === 'review' &&
+        new Date(c.due) <= now
+      ).length,
+      total: relevantCards.length,
+      subdecks: descendants.length,
+    };
+  }, [decks, cards, getAllDescendants]);
+
+  // Get root decks (no parent)
+  const getRootDecks = useCallback((): Deck[] => {
+    return decks.filter(d => !d.parentDeckId);
+  }, [decks]);
+
+  // Get deck hierarchy tree
+  const getDeckTree = useCallback(() => {
+    const rootDecks = getRootDecks();
+    
+    const buildTree = (deck: Deck): Deck & { children: Deck[] } => {
+      const children = getSubdecks(deck.id).map(buildTree);
+      return { ...deck, children };
+    };
+    
+    return rootDecks.map(buildTree);
+  }, [getRootDecks, getSubdecks]);
+
+  // Create subdeck
+  const createSubdeck = useCallback(async (
+    parentId: string,
+    title: string,
+    options?: { description?: string; color?: string; emoji?: string }
+  ): Promise<Deck> => {
+    const parentDeck = decks.find(d => d.id === parentId);
+    if (!parentDeck) {
+      throw new Error('Parent deck not found');
+    }
+
+    const fullName = `${parentDeck.fullName}::${title}`;
+
+    const newDeck: Deck = {
+      id: crypto.randomUUID(),
+      title,
+      description: options?.description,
+      color: options?.color || parentDeck.color,
+      emoji: options?.emoji || parentDeck.emoji,
+      cardCount: 0,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      // Inherit config from parent
+      config: { ...parentDeck.config },
+      parentDeckId: parentId,
+      configOverrides: {},
+      fullName,
+    };
+
+    const { error } = await supabase.from('flashcard_decks').insert({
+      id: newDeck.id,
+      user_id: userId,
+      title: newDeck.title,
+      description: newDeck.description || null,
+      color: newDeck.color,
+      emoji: newDeck.emoji,
+      parent_deck_id: parentId,
+      full_name: fullName,
+      config_overrides: {},
+    });
+
+    if (error) {
+      console.error('Error creating subdeck:', error);
+      throw error;
+    }
+
+    setDecks(prev => {
+      const updated = [...prev, newDeck];
+      localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    return newDeck;
+  }, [userId, decks]);
+
+  // Move card to another deck
+  const moveCardToDeck = useCallback(async (cardId: string, targetDeckId: string) => {
+    const card = cards.find(c => c.id === cardId);
+    if (!card) return;
+
+    const targetDeck = decks.find(d => d.id === targetDeckId);
+    if (!targetDeck) return;
+
+    const { error } = await supabase
+      .from('flashcards')
+      .update({ deck_id: targetDeckId })
+      .eq('id', cardId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error moving card:', error);
+      throw error;
+    }
+
+    // Update local state
+    setCards(prev => {
+      const updated = prev.map(c =>
+        c.id === cardId ? { ...c, deckId: targetDeckId } : c
+      );
+      localStorage.setItem(CARDS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+
+    // Update card counts
+    setDecks(prev => {
+      const updated = prev.map(d => {
+        if (d.id === card.deckId) {
+          return { ...d, cardCount: Math.max(0, d.cardCount - 1) };
+        }
+        if (d.id === targetDeckId) {
+          return { ...d, cardCount: d.cardCount + 1 };
+        }
+        return d;
+      });
+      localStorage.setItem(DECKS_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, [cards, decks, userId]);
+
+  // ============================================================================
+  // PRESET FUNCTIONS (Bloco 2)
+  // ============================================================================
+
+  const [presets, setPresets] = useState<DeckOptionPreset[]>([]);
+
+  // Load presets
+  useEffect(() => {
+    if (!userId) return;
+    loadPresets();
+  }, [userId]);
+
+  const loadPresets = async () => {
+    const { data, error } = await supabase
+      .from('deck_option_presets')
+      .select('*')
+      .eq('user_id', userId)
+      .order('name');
+
+    if (error) {
+      console.error('Error loading presets:', error);
+      return;
+    }
+
+    const transformed: DeckOptionPreset[] = (data || []).map(p => ({
+      id: p.id,
+      userId: p.user_id,
+      name: p.name,
+      description: p.description || undefined,
+      config: {
+        learningSteps: p.learning_steps || DEFAULT_DECK_CONFIG.learningSteps,
+        relearnSteps: p.relearning_steps || DEFAULT_DECK_CONFIG.relearnSteps,
+        graduatingInterval: p.graduating_interval ?? DEFAULT_DECK_CONFIG.graduatingInterval,
+        easyInterval: p.easy_interval ?? DEFAULT_DECK_CONFIG.easyInterval,
+        maxInterval: p.max_interval ?? DEFAULT_DECK_CONFIG.maxInterval,
+        startingEase: Number(p.starting_ease) || DEFAULT_DECK_CONFIG.startingEase,
+        easyBonus: Number(p.easy_bonus) || DEFAULT_DECK_CONFIG.easyBonus,
+        hardMultiplier: Number(p.hard_multiplier) || DEFAULT_DECK_CONFIG.hardMultiplier,
+        intervalModifier: Number(p.interval_modifier) || DEFAULT_DECK_CONFIG.intervalModifier,
+        newCardsPerDay: p.new_cards_per_day ?? DEFAULT_DECK_CONFIG.newCardsPerDay,
+        reviewsPerDay: p.reviews_per_day ?? DEFAULT_DECK_CONFIG.reviewsPerDay,
+        lapseNewInterval: Number(p.lapse_new_interval) ?? DEFAULT_DECK_CONFIG.lapseNewInterval,
+        lapseMinInterval: p.lapse_min_interval ?? DEFAULT_DECK_CONFIG.lapseMinInterval,
+      },
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
+    }));
+
+    setPresets(transformed);
+  };
+
+  // Create preset
+  const createPreset = useCallback(async (
+    name: string,
+    config: DeckConfig,
+    description?: string
+  ): Promise<DeckOptionPreset> => {
+    const { data, error } = await supabase
+      .from('deck_option_presets')
+      .insert({
+        user_id: userId,
+        name,
+        description: description || null,
+        learning_steps: config.learningSteps,
+        relearning_steps: config.relearnSteps,
+        graduating_interval: config.graduatingInterval,
+        easy_interval: config.easyInterval,
+        max_interval: config.maxInterval,
+        starting_ease: config.startingEase,
+        easy_bonus: config.easyBonus,
+        hard_multiplier: config.hardMultiplier,
+        interval_modifier: config.intervalModifier,
+        new_cards_per_day: config.newCardsPerDay,
+        reviews_per_day: config.reviewsPerDay,
+        lapse_new_interval: config.lapseNewInterval,
+        lapse_min_interval: config.lapseMinInterval,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating preset:', error);
+      throw error;
+    }
+
+    const newPreset: DeckOptionPreset = {
+      id: data.id,
+      userId: data.user_id,
+      name: data.name,
+      description: data.description || undefined,
+      config,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+    };
+
+    setPresets(prev => [...prev, newPreset]);
+    return newPreset;
+  }, [userId]);
+
+  // Delete preset
+  const deletePreset = useCallback(async (presetId: string) => {
+    const { error } = await supabase
+      .from('deck_option_presets')
+      .delete()
+      .eq('id', presetId)
+      .eq('user_id', userId);
+
+    if (error) {
+      console.error('Error deleting preset:', error);
+      throw error;
+    }
+
+    setPresets(prev => prev.filter(p => p.id !== presetId));
+  }, [userId]);
+
+  // Apply preset to deck
+  const applyPresetToDeck = useCallback(async (deckId: string, presetId: string) => {
+    const preset = presets.find(p => p.id === presetId);
+    if (!preset) return;
+
+    await updateDeck(deckId, {
+      config: { ...preset.config },
+      presetId,
+      configOverrides: {},
+    });
+  }, [presets, updateDeck]);
+
+  // Update deck config with overrides
+  const updateDeckConfig = useCallback(async (
+    deckId: string,
+    configUpdates: Partial<DeckConfig>,
+    presetId?: string
+  ) => {
+    const deck = decks.find(d => d.id === deckId);
+    if (!deck) return;
+
+    const newConfig = { ...deck.config, ...configUpdates };
+    
+    // Calculate which fields are overriding parent/preset
+    let parentConfig: DeckConfig;
+    if (presetId) {
+      const preset = presets.find(p => p.id === presetId);
+      parentConfig = preset?.config || DEFAULT_DECK_CONFIG;
+    } else if (deck.parentDeckId) {
+      const parent = decks.find(d => d.id === deck.parentDeckId);
+      parentConfig = parent?.config || DEFAULT_DECK_CONFIG;
+    } else {
+      parentConfig = DEFAULT_DECK_CONFIG;
+    }
+
+    const overrides: Partial<DeckConfig> = {};
+    (Object.keys(newConfig) as (keyof DeckConfig)[]).forEach(key => {
+      if (JSON.stringify(newConfig[key]) !== JSON.stringify(parentConfig[key])) {
+        (overrides as any)[key] = newConfig[key];
+      }
+    });
+
+    await updateDeck(deckId, {
+      config: newConfig,
+      presetId,
+      configOverrides: overrides,
+    });
+  }, [decks, presets, updateDeck]);
+
   return {
     decks,
     cards,
     isLoading,
     currentSessionId,
     dailyStats,
+    presets,
     // Deck operations
     createDeck,
     updateDeck,
     deleteDeck,
     getDeckById,
     getDecksByDiscipline,
+    // Hierarchy operations (Bloco 2)
+    createSubdeck,
+    getSubdecks,
+    getAllDescendants,
+    getRootDecks,
+    getDeckTree,
+    getAggregatedCounts,
+    moveCardToDeck,
+    // Preset operations (Bloco 2)
+    createPreset,
+    deletePreset,
+    applyPresetToDeck,
+    updateDeckConfig,
     // Card operations
     createFlashcard,
     createMultipleFlashcards,

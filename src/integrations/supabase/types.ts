@@ -114,15 +114,83 @@ export type Database = {
           },
         ]
       }
+      deck_option_presets: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          easy_bonus: number | null
+          easy_interval: number | null
+          graduating_interval: number | null
+          hard_multiplier: number | null
+          id: string
+          interval_modifier: number | null
+          lapse_min_interval: number | null
+          lapse_new_interval: number | null
+          learning_steps: string[] | null
+          max_interval: number | null
+          name: string
+          new_cards_per_day: number | null
+          relearning_steps: string[] | null
+          reviews_per_day: number | null
+          starting_ease: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          easy_bonus?: number | null
+          easy_interval?: number | null
+          graduating_interval?: number | null
+          hard_multiplier?: number | null
+          id?: string
+          interval_modifier?: number | null
+          lapse_min_interval?: number | null
+          lapse_new_interval?: number | null
+          learning_steps?: string[] | null
+          max_interval?: number | null
+          name: string
+          new_cards_per_day?: number | null
+          relearning_steps?: string[] | null
+          reviews_per_day?: number | null
+          starting_ease?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          easy_bonus?: number | null
+          easy_interval?: number | null
+          graduating_interval?: number | null
+          hard_multiplier?: number | null
+          id?: string
+          interval_modifier?: number | null
+          lapse_min_interval?: number | null
+          lapse_new_interval?: number | null
+          learning_steps?: string[] | null
+          max_interval?: number | null
+          name?: string
+          new_cards_per_day?: number | null
+          relearning_steps?: string[] | null
+          reviews_per_day?: number | null
+          starting_ease?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       flashcard_decks: {
         Row: {
           color: string | null
+          config_overrides: Json | null
           created_at: string | null
           description: string | null
           discipline_id: string | null
           easy_bonus: number | null
           easy_interval: number | null
           emoji: string | null
+          full_name: string | null
           graduating_interval: number | null
           hard_multiplier: number | null
           id: string
@@ -132,6 +200,8 @@ export type Database = {
           learning_steps: string[] | null
           max_interval: number | null
           new_cards_per_day: number | null
+          parent_deck_id: string | null
+          preset_id: string | null
           relearning_steps: string[] | null
           reviews_per_day: number | null
           starting_ease: number | null
@@ -141,12 +211,14 @@ export type Database = {
         }
         Insert: {
           color?: string | null
+          config_overrides?: Json | null
           created_at?: string | null
           description?: string | null
           discipline_id?: string | null
           easy_bonus?: number | null
           easy_interval?: number | null
           emoji?: string | null
+          full_name?: string | null
           graduating_interval?: number | null
           hard_multiplier?: number | null
           id?: string
@@ -156,6 +228,8 @@ export type Database = {
           learning_steps?: string[] | null
           max_interval?: number | null
           new_cards_per_day?: number | null
+          parent_deck_id?: string | null
+          preset_id?: string | null
           relearning_steps?: string[] | null
           reviews_per_day?: number | null
           starting_ease?: number | null
@@ -165,12 +239,14 @@ export type Database = {
         }
         Update: {
           color?: string | null
+          config_overrides?: Json | null
           created_at?: string | null
           description?: string | null
           discipline_id?: string | null
           easy_bonus?: number | null
           easy_interval?: number | null
           emoji?: string | null
+          full_name?: string | null
           graduating_interval?: number | null
           hard_multiplier?: number | null
           id?: string
@@ -180,6 +256,8 @@ export type Database = {
           learning_steps?: string[] | null
           max_interval?: number | null
           new_cards_per_day?: number | null
+          parent_deck_id?: string | null
+          preset_id?: string | null
           relearning_steps?: string[] | null
           reviews_per_day?: number | null
           starting_ease?: number | null
@@ -187,7 +265,22 @@ export type Database = {
           updated_at?: string | null
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "flashcard_decks_parent_deck_id_fkey"
+            columns: ["parent_deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flashcard_decks_preset_id_fkey"
+            columns: ["preset_id"]
+            isOneToOne: false
+            referencedRelation: "deck_option_presets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       flashcard_reviews: {
         Row: {
