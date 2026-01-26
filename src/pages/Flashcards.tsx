@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
-import { Layers, Play, Brain, Search } from 'lucide-react';
+import { Layers, Play, Brain, Search, BarChart3, Download, Upload, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFlashcards } from '@/hooks/useFlashcards';
 import { useNotes } from '@/hooks/useNotes';
+import { useImportExport } from '@/hooks/useImportExport';
 import { DeckList } from '@/components/flashcards/DeckList';
 import { DeckDetail } from '@/components/flashcards/DeckDetail';
 import { StudySession } from '@/components/flashcards/StudySession';
@@ -15,10 +16,20 @@ import { EditDeckDialog } from '@/components/flashcards/EditDeckDialog';
 import { ImportFromChatDialog } from '@/components/flashcards/ImportFromChatDialog';
 import { CardBrowser } from '@/components/flashcards/CardBrowser';
 import { EditNoteDialog } from '@/components/flashcards/EditNoteDialog';
+import { StudyStatisticsPanel } from '@/components/flashcards/StudyStatistics';
+import { ImportExportDialog } from '@/components/flashcards/ImportExportDialog';
+import { BackupRestoreDialog } from '@/components/flashcards/BackupRestoreDialog';
 import { Deck, Flashcard } from '@/types/flashcard';
 import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
-type ViewMode = 'list' | 'detail' | 'study' | 'browser';
+type ViewMode = 'list' | 'detail' | 'study' | 'browser' | 'statistics';
 
 interface PendingFlashcards {
   subject: string;
@@ -58,7 +69,22 @@ export default function Flashcards() {
     noteTypes,
     isLoading: notesLoading,
     updateNote,
+    loadData: refreshNotes,
   } = useNotes();
+
+  // Refresh function for import/export
+  const refreshData = useCallback(async () => {
+    // Trigger re-fetch by reloading the page data
+    window.location.reload();
+  }, []);
+
+  const { importCards, exportData, createBackup, restoreBackup } = useImportExport(
+    decks,
+    cards,
+    notes,
+    noteTypes,
+    refreshData
+  );
 
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedDeck, setSelectedDeck] = useState<Deck | null>(null);
@@ -77,6 +103,10 @@ export default function Flashcards() {
   // Estado para flashcards vindos do Chat NOMOS
   const [pendingFlashcards, setPendingFlashcards] = useState<PendingFlashcards | null>(null);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
+  
+  // Import/Export dialogs
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
+  const [isBackupOpen, setIsBackupOpen] = useState(false);
 
   // Verificar se há flashcards pendentes do Chat NOMOS
   useEffect(() => {
@@ -151,6 +181,10 @@ export default function Flashcards() {
 
   const handleOpenBrowser = () => {
     setViewMode('browser');
+  };
+
+  const handleOpenStatistics = () => {
+    setViewMode('statistics');
   };
 
   const handleBackToList = () => {
@@ -358,6 +392,19 @@ export default function Flashcards() {
     );
   }
 
+  // Statistics mode
+  if (viewMode === 'statistics') {
+    return (
+      <div className="p-4 md:p-6 max-w-6xl mx-auto">
+        <StudyStatisticsPanel
+          cards={cards}
+          decks={decks}
+          onBack={handleBackToList}
+        />
+      </div>
+    );
+  }
+
   // Browser mode
   if (viewMode === 'browser') {
     return (
@@ -487,6 +534,28 @@ export default function Flashcards() {
               <Search className="w-4 h-4" />
               Navegador
             </Button>
+            <Button variant="outline" onClick={handleOpenStatistics} className="gap-2">
+              <BarChart3 className="w-4 h-4" />
+              Estatísticas
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon">
+                  <Download className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-background">
+                <DropdownMenuItem onClick={() => setIsImportExportOpen(true)}>
+                  <Upload className="w-4 h-4 mr-2" />
+                  Importar / Exportar
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setIsBackupOpen(true)}>
+                  <HardDrive className="w-4 h-4 mr-2" />
+                  Backup Manual
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             {totalDue > 0 && (
               <Button onClick={handleStudyAll} size="lg" className="gap-2">
                 <Play className="w-4 h-4" />
@@ -545,6 +614,31 @@ export default function Flashcards() {
         onImport={handleImportFromChat}
         onCreateDeckAndImport={handleCreateDeckAndImportFromChat}
         onCancel={handleCancelImport}
+      />
+
+      {/* Import/Export dialog */}
+      <ImportExportDialog
+        open={isImportExportOpen}
+        onOpenChange={setIsImportExportOpen}
+        decks={decks}
+        cards={cards}
+        notes={notes}
+        noteTypes={noteTypes}
+        onImport={importCards}
+        onExport={exportData}
+      />
+
+      {/* Backup dialog */}
+      <BackupRestoreDialog
+        open={isBackupOpen}
+        onOpenChange={setIsBackupOpen}
+        onCreateBackup={createBackup}
+        onRestoreBackup={restoreBackup}
+        stats={{
+          decks: decks.length,
+          cards: cards.length,
+          notes: notes.length,
+        }}
       />
     </div>
   );
