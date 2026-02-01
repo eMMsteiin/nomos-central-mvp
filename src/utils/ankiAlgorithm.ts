@@ -55,7 +55,14 @@ export function parseStepToMinutes(step: string): number {
  * Format milliseconds to human readable string
  */
 export function formatInterval(ms: number): string {
+  if (ms <= 0) {
+    return '< 1m';
+  }
+  
   const minutes = Math.round(ms / 60000);
+  if (minutes < 1) {
+    return '< 1m';
+  }
   if (minutes < 60) {
     return `${minutes}m`;
   }
@@ -73,6 +80,56 @@ export function formatInterval(ms: number): string {
   }
   const years = (days / 365).toFixed(1);
   return `${years}y`;
+}
+
+/**
+ * Format milliseconds with higher precision for button previews
+ * Shows more detail for short intervals to differentiate between buttons
+ */
+export function formatIntervalForPreview(ms: number): string {
+  if (ms <= 0) {
+    return '< 1m';
+  }
+  
+  const totalSeconds = Math.round(ms / 1000);
+  
+  // Less than 60 seconds
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  
+  // Less than 60 minutes - show with precision for short intervals
+  const totalMinutes = totalSeconds / 60;
+  if (totalMinutes < 60) {
+    // Show decimal precision for intervals < 10 minutes if not a whole number
+    if (totalMinutes < 10 && totalMinutes % 1 !== 0) {
+      const formatted = totalMinutes.toFixed(1);
+      // Remove trailing .0
+      return formatted.endsWith('.0') ? `${Math.round(totalMinutes)}m` : `${formatted}m`;
+    }
+    return `${Math.round(totalMinutes)}m`;
+  }
+  
+  // Less than 24 hours
+  const totalHours = totalMinutes / 60;
+  if (totalHours < 24) {
+    return `${Math.round(totalHours)}h`;
+  }
+  
+  // Days
+  const totalDays = totalHours / 24;
+  if (totalDays < 30) {
+    return `${Math.round(totalDays)}d`;
+  }
+  
+  // Months
+  const totalMonths = totalDays / 30;
+  if (totalMonths < 12) {
+    return `${Math.round(totalMonths)}mo`;
+  }
+  
+  // Years
+  return `${(totalDays / 365).toFixed(1)}y`;
 }
 
 /**
@@ -792,7 +849,7 @@ export function getNextIntervalPreview(
     const dueDate = new Date(scheduled.due);
     const now = new Date();
     const diffMs = dueDate.getTime() - now.getTime();
-    result[rating] = formatInterval(diffMs);
+    result[rating] = formatIntervalForPreview(diffMs);
   }
 
   return result;
