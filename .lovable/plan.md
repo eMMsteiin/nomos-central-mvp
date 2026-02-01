@@ -1,124 +1,193 @@
 
-# Plano: Mostrar Tempo de Revisao nos Botoes de Dificuldade
+# Plano: Corrigir Exibição do Tempo nos Botões de Dificuldade
 
-## Resumo
+## Problema Identificado
 
-Adicionar preview do tempo ate a proxima revisao em cada botao de dificuldade durante as sessoes de estudo. Igual ao Anki Desktop, onde cada botao mostra quanto tempo falta ate o card aparecer novamente (ex: "1m", "10m", "1d", "4d").
+A função `formatInterval` não trata adequadamente intervalos curtos (menos de 1 minuto), resultando em todos os botões mostrando "1m" para cards novos ou em learning.
 
-## Exemplo Visual
+### Por que isso acontece:
 
-```text
-Antes:                          Depois:
-+----------+                    +----------+
-|  De novo |                    |  < 1m    |
-+----------+                    | De novo  |
-                                +----------+
+Para um card **novo** com config padrão (`learningSteps: ['1', '10']`):
+- **De novo**: 1 min → "1m"
+- **Difícil**: 1 min × 1.2 = 1.2 min → arredonda para "1m"
+- **Bom**: 1 min (primeiro step) → "1m"
+- **Fácil**: 4 dias (easyInterval) → "4d" ✓
 
-+----------+                    +----------+
-|  Dificil |                    |   10m    |
-+----------+                    | Dificil  |
-                                +----------+
+A função `formatInterval(ms)` converte para minutos e arredonda, então 1.2 min e 1 min resultam no mesmo "1m".
 
-+----------+                    +----------+
-|    Bom   |                    |    1d    |
-+----------+                    |   Bom    |
-                                +----------+
+## Solução
 
-+----------+                    +----------+
-|   Facil  |                    |    4d    |
-+----------+                    |  Facil   |
-                                +----------+
-```
+### 1. Melhorar a Função formatInterval
 
-## Implementacao
-
-### 1. Modificar StudySession.tsx
-
-**Adicionar import da funcao de preview:**
-```typescript
-import { getNextIntervalPreview } from '@/utils/ankiAlgorithm';
-```
-
-**Criar estado para armazenar os previews:**
-```typescript
-const [intervalPreviews, setIntervalPreviews] = useState<Record<FlashcardRating, string>>({
-  again: '',
-  hard: '',
-  good: '',
-  easy: '',
-});
-```
-
-**Calcular previews quando o card muda ou e virado:**
-Usar `useEffect` para calcular os intervalos projetados quando:
-- O card atual muda
-- O usuario vira o card para ver a resposta
+Adicionar tratamento para:
+- Intervalos menores que 1 minuto: exibir segundos ou "< 1m"
+- Diferenciar entre 1m, 1.2m, 10m corretamente
 
 ```typescript
-useEffect(() => {
-  if (currentCard && isFlipped && deck.config) {
-    const previews = getNextIntervalPreview(currentCard, deck.config);
-    setIntervalPreviews(previews);
+export function formatInterval(ms: number): string {
+  if (ms <= 0) {
+    return '< 1m';
   }
-}, [currentCard, isFlipped, deck.config]);
+  
+  const seconds = Math.round(ms / 1000);
+  if (seconds < 60) {
+    return `< 1m`;
+  }
+  
+  const minutes = Math.round(ms / 60000);
+  if (minutes < 60) {
+    return `${minutes}m`;
+  }
+  
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) {
+    return `${hours}h`;
+  }
+  
+  const days = Math.round(hours / 24);
+  if (days < 30) {
+    return `${days}d`;
+  }
+  
+  const months = Math.round(days / 30);
+  if (months < 12) {
+    return `${months}mo`;
+  }
+  
+  const years = (days / 365).toFixed(1);
+  return `${years}y`;
+}
 ```
 
-**Atualizar layout dos botoes de rating:**
-Mostrar o tempo previsto acima do label do botao:
+### 2. Criar Versão Específica para Preview (Opcional)
 
-```tsx
-<Button key={rating} ...>
-  <span className="text-xs font-medium">{intervalPreviews[rating]}</span>
-  {icon}
-  <span className="text-xs">{label}</span>
-</Button>
+Para maior precisão nos botões, criar uma função que mostra valores mais detalhados:
+
+```typescript
+export function formatIntervalForPreview(ms: number): string {
+  if (ms <= 0) {
+    return '< 1m';
+  }
+  
+  const totalSeconds = Math.round(ms / 1000);
+  
+  // Menos de 60 segundos
+  if (totalSeconds < 60) {
+    return `${totalSeconds}s`;
+  }
+  
+  // Menos de 60 minutos
+  const totalMinutes = totalSeconds / 60;
+  if (totalMinutes < 60) {
+    // Mostrar com precisão se não for número inteiro
+    if (totalMinutes < 10 && totalMinutes % 1 !== 0) {
+      return `${totalMinutes.toFixed(1)}m`.replace('.0m', 'm');
+    }
+    return `${Math.round(totalMinutes)}m`;
+  }
+  
+  // Menos de 24 horas
+  const totalHours = totalMinutes / 60;
+  if (totalHours < 24) {
+    return `${Math.round(totalHours)}h`;
+  }
+  
+  // Dias
+  const totalDays = totalHours / 24;
+  if (totalDays < 30) {
+    return `${Math.round(totalDays)}d`;
+  }
+  
+  // Meses
+  const totalMonths = totalDays / 30;
+  if (totalMonths < 12) {
+    return `${Math.round(totalMonths)}mo`;
+  }
+  
+  // Anos
+  return `${(totalDays / 365).toFixed(1)}y`;
+}
 ```
 
-### 2. Ajustar o estilo dos botoes
+### 3. Atualizar getNextIntervalPreview
 
-- Aumentar altura dos botoes para acomodar o novo texto
-- Reorganizar o layout para: tempo > icone > label
-- Garantir legibilidade com fonte menor para o tempo
+Usar a nova função no preview:
 
-## Arquivos a Modificar
+```typescript
+export function getNextIntervalPreview(
+  card: Flashcard,
+  config: DeckConfig
+): Record<FlashcardRating, string> {
+  const ratings: FlashcardRating[] = ['again', 'hard', 'good', 'easy'];
+  const result: Record<FlashcardRating, string> = {} as any;
 
-| Arquivo | Alteracao |
-|---------|-----------|
-| `src/components/flashcards/StudySession.tsx` | Adicionar calculo e exibicao do interval preview nos botoes |
+  for (const rating of ratings) {
+    const scheduled = scheduleCard(card, rating, config);
+    const dueDate = new Date(scheduled.due);
+    const now = new Date();
+    const diffMs = dueDate.getTime() - now.getTime();
+    result[rating] = formatIntervalForPreview(diffMs);
+  }
 
-## Secao Tecnica
-
-### Funcao getNextIntervalPreview (ja existente)
-
-A funcao `getNextIntervalPreview` em `ankiAlgorithm.ts` ja esta implementada e:
-1. Recebe o card atual e a configuracao do deck
-2. Simula a revisao para cada rating (again, hard, good, easy)
-3. Calcula a diferenca entre o `due` resultante e agora
-4. Formata usando `formatInterval()` que retorna strings como "1m", "10m", "1d", "4d", "1mo", "1.5y"
-
-### Fluxo de Dados
-
-```text
-currentCard + deck.config
-        |
-        v
-getNextIntervalPreview()
-        |
-        v
-{ again: "1m", hard: "10m", good: "1d", easy: "4d" }
-        |
-        v
-Renderizado nos botoes
+  return result;
+}
 ```
-
-### Consideracoes de Performance
-
-- O calculo so e feito quando o usuario vira o card
-- A funcao `scheduleCard` e chamada 4 vezes (uma para cada rating), mas e muito rapida
-- Nao ha chamadas de banco de dados
 
 ## Resultado Esperado
 
-- Usuario ve claramente quanto tempo falta ate o card aparecer novamente para cada opcao
-- Comportamento identico ao Anki Desktop
-- Ajuda o usuario a tomar decisoes mais informadas sobre sua classificacao
+Para um card **novo**:
+- **De novo**: "1m"
+- **Difícil**: "1.2m" (ou "1m" se preferir arredondar)
+- **Bom**: "10m" (avança para o próximo step!)
+- **Fácil**: "4d"
+
+Para um card em **review** (ex: interval=7 dias, ease=2.5):
+- **De novo**: "10m" (entra em relearning)
+- **Difícil**: "8d" (interval × hardMultiplier)
+- **Bom**: "18d" (interval × ease)
+- **Fácil**: "23d" (interval × ease × easyBonus)
+
+## Arquivos a Modificar
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/utils/ankiAlgorithm.ts` | Adicionar `formatIntervalForPreview()` e atualizar `getNextIntervalPreview()` |
+
+## Seção Técnica
+
+### Correção Crítica Identificada
+
+Olhando mais atentamente para `scheduleNewCard`, percebi que o problema pode também estar na lógica:
+
+- **again**: usa step 0 (1 min)
+- **hard**: usa step 0 × 1.2 (1.2 min)
+- **good**: deveria avançar para step 1, MAS para card NEW, o código inicia no step 0
+
+Na verdade, para um card **NEW** respondido com **good**, ele deveria ir para o estado **learning** step 0, não para step 1. Isso é correto conforme o Anki - o card precisa passar pelos learning steps.
+
+A função `scheduleLearningCard` é que avança os steps. Então para NEW → good:
+1. Entra em learning no step 0
+2. Due = agora + step[0] = 1 min
+
+Isso explica porque "De novo", "Difícil" e "Bom" mostram valores similares para cards novos.
+
+### Diferenciação Real dos Botões para Cards New
+
+No Anki Desktop, para um card NEW:
+- **Again**: 1m (primeiro step)
+- **Good**: 1m → 10m (primeiro step, depois segundo)
+- **Easy**: 4d (gradua imediatamente)
+
+O Anki mostra apenas o próximo intervalo imediato, então "1m" para Again/Good é correto. A diferença é que:
+- Again: fica no step 0
+- Good: avança para step 1
+
+Para cards em estados mais avançados (learning step 1, review), as diferenças são maiores.
+
+### Conclusão
+
+O comportamento atual está **quase correto** conforme o Anki. A melhoria necessária é:
+
+1. Mostrar "< 1m" para intervalos muito curtos
+2. Garantir que learning cards no step 0 avancem corretamente com "Good"
+3. Manter precisão nas exibições de minutos
