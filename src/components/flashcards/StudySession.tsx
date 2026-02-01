@@ -6,6 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { FlashcardViewer } from './FlashcardViewer';
 import { Flashcard, FlashcardRating, Deck } from '@/types/flashcard';
 import { cn } from '@/lib/utils';
+import { getNextIntervalPreview } from '@/utils/ankiAlgorithm';
 
 interface StudySessionProps {
   deck: Deck;
@@ -41,6 +42,12 @@ export function StudySession({
   const [isComplete, setIsComplete] = useState(false);
   const [stats, setStats] = useState<Record<FlashcardRating, number>>({ again: 0, hard: 0, good: 0, easy: 0 });
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [intervalPreviews, setIntervalPreviews] = useState<Record<FlashcardRating, string>>({
+    again: '',
+    hard: '',
+    good: '',
+    easy: '',
+  });
 
   const currentCard = cards[currentIndex];
   const progress = cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0;
@@ -51,6 +58,14 @@ export function StudySession({
       onSessionStart().then(id => setSessionId(id));
     }
   }, []);
+
+  // Calculate interval previews when card is flipped
+  useEffect(() => {
+    if (currentCard && isFlipped && deck.config) {
+      const previews = getNextIntervalPreview(currentCard, deck.config);
+      setIntervalPreviews(previews);
+    }
+  }, [currentCard, isFlipped, deck.config]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped(true);
@@ -198,8 +213,9 @@ export function StudySession({
                 <Button
                   key={rating}
                   onClick={() => handleRating(rating)}
-                  className={cn('flex flex-col gap-1 h-auto py-3 text-white', color)}
+                  className={cn('flex flex-col gap-1 h-auto py-4 text-white', color)}
                 >
+                  <span className="text-xs font-semibold opacity-90">{intervalPreviews[rating]}</span>
                   {icon}
                   <span className="text-xs">{label}</span>
                 </Button>
