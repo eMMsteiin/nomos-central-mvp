@@ -10,7 +10,9 @@ import { HiddenTabsProvider } from "@/contexts/HiddenTabsContext";
 import { CanvaSessionProvider } from "@/contexts/CanvaSessionContext";
 import { ExternalToolsProvider, useExternalTools } from "@/contexts/ExternalToolsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { FocusModeProvider } from "@/contexts/FocusModeContext";
 import { FocusSidebar } from "@/components/canva/FocusSidebar";
+import { FocusStatusBar } from "@/components/focus/FocusStatusBar";
 import { ExternalToolsTabs } from "@/components/tools/ExternalToolsTabs";
 import { ExternalToolView } from "@/components/tools/ExternalToolView";
 import Index from "./pages/Index";
@@ -22,6 +24,7 @@ import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
 import ChatNomos from "./pages/ChatNomos";
 import Flashcards from "./pages/Flashcards";
+import ModoFoco from "./pages/ModoFoco";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
@@ -37,6 +40,7 @@ function MainContent() {
 
   return (
     <div className="flex-1 flex flex-col w-full">
+      <FocusStatusBar />
       <AppHeader />
       
       {/* External Tools Tabs Bar */}
@@ -64,6 +68,7 @@ function MainContent() {
             <Route path="/caderno" element={<Caderno />} />
             <Route path="/chat" element={<ChatNomos />} />
             <Route path="/flashcards" element={<Flashcards />} />
+            <Route path="/modo-foco" element={<ModoFoco />} />
             <Route path="/tarefa/:id" element={<TaskDetail />} />
             <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
             <Route path="/configuracoes" element={<Configuracoes />}>
@@ -98,9 +103,11 @@ const App = () => (
         <AuthProvider>
           <HiddenTabsProvider>
             <CanvaSessionProvider>
-              <ExternalToolsProvider>
-                <AppLayout />
-              </ExternalToolsProvider>
+              <FocusModeProvider>
+                <ExternalToolsProvider>
+                  <AppLayout />
+                </ExternalToolsProvider>
+              </FocusModeProvider>
             </CanvaSessionProvider>
           </HiddenTabsProvider>
         </AuthProvider>
