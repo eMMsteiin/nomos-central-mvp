@@ -21,7 +21,8 @@ import {
   ExternalLink,
   Trash2,
   MonitorPlay,
-  Ban
+  Ban,
+  Focus
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -41,6 +42,7 @@ import { Input } from "@/components/ui/input";
 import { useTaskCounts } from "@/hooks/useTaskCounts";
 import { useHiddenTabs } from "@/hooks/useHiddenTabs";
 import { useExternalTools } from "@/contexts/ExternalToolsContext";
+import { useFocusMode } from "@/hooks/useFocusMode";
 import { isKnownBlockedSite } from "@/utils/externalToolsEmbed";
 import {
   DropdownMenu,
@@ -61,6 +63,7 @@ const menuItems = [
   { title: "Chat NOMOS", url: "/chat", icon: MessageCircle, color: "purple", canHide: false },
   { title: "Caderno Digital", url: "/caderno", icon: Book, canHide: true },
   { title: "Flashcards", url: "/flashcards", icon: Layers, color: "blue", canHide: true },
+  { title: "Modo Foco", url: "/modo-foco", icon: Focus, color: "green", canHide: true },
   { title: "Resumos", url: "/resumos", icon: FileText, canHide: true },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
 ];
@@ -82,6 +85,7 @@ export function AppSidebar() {
   const counts = useTaskCounts();
   const { isTabHidden, hideTab } = useHiddenTabs();
   const { userTools, openAsTab, removeTool, updateTool, openTabs } = useExternalTools();
+  const { state: focusState } = useFocusMode();
 
   // Check if tool can actually embed (considering blocked sites)
   const canActuallyEmbed = (tool: typeof userTools[0]) => {
@@ -148,12 +152,17 @@ export function AppSidebar() {
                             style={
                               item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : 
                               item.color === "purple" ? { color: "hsl(270, 70%, 60%)" } : 
-                              item.color === "blue" ? { color: "hsl(200, 70%, 50%)" } : undefined
+                              item.color === "blue" ? { color: "hsl(200, 70%, 50%)" } :
+                              item.color === "green" ? { color: "hsl(142, 70%, 45%)" } : undefined
                             }
                           />
                           {open && (
                             <>
                               <span className="flex-1">{item.title}</span>
+                              {/* Show focus indicator for Modo Foco when active */}
+                              {item.url === '/modo-foco' && focusState.active && (
+                                <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+                              )}
                               {count > 0 && (
                                 <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[hsl(var(--todoist-count-bg))] text-[hsl(var(--todoist-count-text))]">
                                   {count}
