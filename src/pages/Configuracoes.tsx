@@ -1,14 +1,17 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Settings, Plug } from 'lucide-react';
+import { Settings, Plug, Focus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useFocusMode } from '@/hooks/useFocusMode';
 
 const navItems = [
   { to: '/configuracoes', icon: Settings, label: 'Geral', end: true },
+  { to: '/configuracoes/modo-foco', icon: Focus, label: 'Modo Foco' },
   { to: '/configuracoes/integracoes', icon: Plug, label: 'Integrações' },
 ];
 
 export default function Configuracoes() {
   const location = useLocation();
+  const { state: focusState } = useFocusMode();
   const isRoot = location.pathname === '/configuracoes';
 
   return (
@@ -29,12 +32,15 @@ export default function Configuracoes() {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )
             }
-          >
-            <item.icon className="h-4 w-4" />
-            {item.label}
-          </NavLink>
-        ))}
-      </nav>
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+              {item.to === '/configuracoes/modo-foco' && focusState.active && (
+                <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+              )}
+            </NavLink>
+          ))}
+        </nav>
 
       {/* Content Area */}
       <div className="flex-1">
