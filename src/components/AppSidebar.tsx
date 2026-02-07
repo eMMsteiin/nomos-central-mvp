@@ -137,7 +137,7 @@ export function AppSidebar() {
                           end
                           className={
                             active
-                              ? "bg-muted font-medium border-l-2 border-foreground rounded-l-none"
+                              ? "bg-muted font-medium"
                               : "hover:bg-muted/50"
                           }
                         >
