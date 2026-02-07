@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Inbox, 
   Calendar, 
@@ -11,7 +11,6 @@ import {
   LifeBuoy,
   StickyNote,
   Book,
-  EyeOff,
   MoreVertical,
   MessageCircle,
   Settings,
@@ -51,6 +50,7 @@ import {
 import { AddTaskDialog } from "@/components/AddTaskDialog";
 import { AddExternalToolDialog } from "@/components/tools/AddExternalToolDialog";
 import { ToolIcon } from "@/components/tools/ToolIcon";
+import { ScrollTrailIndicator } from "@/components/ui/ScrollTrailIndicator";
 
 
 const menuItems = [
@@ -79,8 +79,9 @@ export function AppSidebar() {
   const location = useLocation();
   const currentPath = location.pathname;
   const counts = useTaskCounts();
-  const { isTabHidden, hideTab } = useHiddenTabs();
+  const { isTabHidden } = useHiddenTabs();
   const { userTools, openAsTab, removeTool, updateTool, openTabs } = useExternalTools();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const canActuallyEmbed = (tool: typeof userTools[0]) => {
     return tool.canEmbed && !isKnownBlockedSite(tool.url);
@@ -97,7 +98,8 @@ export function AppSidebar() {
 
   return (
     <Sidebar className={open ? "w-56" : "w-12"} collapsible="icon">
-      <SidebarContent className="gap-0">
+      <div className="relative flex-1 min-h-0 flex flex-col">
+        <SidebarContent ref={scrollRef} className="gap-0 scrollbar-none [&::-webkit-scrollbar]:hidden">
         {/* Top Actions */}
         <div className="p-3 space-y-3">
           <Button 
@@ -376,6 +378,8 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+        <ScrollTrailIndicator targetRef={scrollRef} width={8} dotSize={5} />
+      </div>
 
       {/* Footer */}
       <SidebarFooter className="px-2 pb-2">
