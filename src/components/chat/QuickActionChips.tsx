@@ -10,17 +10,16 @@ interface QuickActionChipsProps {
 export function QuickActionChips({ onSelect, disabled }: QuickActionChipsProps) {
   return (
     <ScrollArea className="w-full whitespace-nowrap">
-      <div className="flex gap-2 pb-2">
+      <div className="flex gap-1.5 pb-2">
         {QUICK_ACTIONS.map((action) => (
           <Button
             key={action.id}
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={() => onSelect(action.message)}
             disabled={disabled}
-            className="flex-shrink-0 rounded-full text-xs h-8 px-3 hover:bg-primary/10 hover:border-primary/50 transition-all"
+            className="flex-shrink-0 text-xs h-7 px-2 text-muted-foreground hover:text-foreground hover:bg-muted"
           >
-            <span className="mr-1.5">{action.emoji}</span>
             {action.label}
           </Button>
         ))}

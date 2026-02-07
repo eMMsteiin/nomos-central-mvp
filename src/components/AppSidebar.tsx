@@ -54,13 +54,13 @@ import { ToolIcon } from "@/components/tools/ToolIcon";
 
 
 const menuItems = [
-  { title: "Entrada", url: "/", icon: Inbox, color: "red", canHide: false },
+  { title: "Entrada", url: "/", icon: Inbox, canHide: false },
   { title: "Hoje", url: "/hoje", icon: Calendar, canHide: true },
   { title: "Em breve", url: "/em-breve", icon: CalendarClock, canHide: true },
-  { title: "Lembretes Rápidos", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
-  { title: "Chat NOMOS", url: "/chat", icon: MessageCircle, color: "purple", canHide: false },
-  { title: "Caderno Digital", url: "/caderno", icon: Book, canHide: true },
-  { title: "Flashcards", url: "/flashcards", icon: Layers, color: "blue", canHide: true },
+  { title: "Lembretes", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
+  { title: "Chat", url: "/chat", icon: MessageCircle, canHide: false },
+  { title: "Caderno", url: "/caderno", icon: Book, canHide: true },
+  { title: "Flashcards", url: "/flashcards", icon: Layers, canHide: true },
   { title: "Resumos", url: "/resumos", icon: FileText, canHide: true },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
 ];
@@ -68,7 +68,6 @@ const menuItems = [
 const projects = [
   { 
     title: "Primeiros passos", 
-    emoji: "👋",
     url: "/projetos/primeiros-passos"
   }
 ];
@@ -83,7 +82,6 @@ export function AppSidebar() {
   const { isTabHidden, hideTab } = useHiddenTabs();
   const { userTools, openAsTab, removeTool, updateTool, openTabs } = useExternalTools();
 
-  // Check if tool can actually embed (considering blocked sites)
   const canActuallyEmbed = (tool: typeof userTools[0]) => {
     return tool.canEmbed && !isKnownBlockedSite(tool.url);
   };
@@ -98,25 +96,26 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className={open ? "w-64" : "w-14"} collapsible="icon">
+    <Sidebar className={open ? "w-56" : "w-12"} collapsible="icon">
       <SidebarContent className="gap-0">
         {/* Top Actions */}
-        <div className="p-2 space-y-2">
+        <div className="p-3 space-y-3">
           <Button 
             onClick={() => setIsAddTaskDialogOpen(true)}
-            className="w-full justify-start gap-2 bg-[hsl(var(--todoist-red-bg))] text-[hsl(var(--todoist-red))] hover:bg-[hsl(var(--todoist-red-hover))] font-medium border-0"
+            variant="outline"
+            className="w-full justify-start gap-2 text-sm font-normal"
             size={open ? "default" : "icon"}
           >
             <Plus className="h-4 w-4" />
-            {open && <span>Adicionar tarefa</span>}
+            {open && <span>Nova tarefa</span>}
           </Button>
 
           {open && (
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
                 placeholder="Buscar" 
-                className="pl-9 h-9 bg-muted border-0"
+                className="pl-9 h-8 text-sm bg-transparent"
               />
             </div>
           )}
@@ -139,24 +138,16 @@ export function AppSidebar() {
                           end
                           className={
                             active
-                              ? "bg-[hsl(var(--todoist-orange-bg))] text-foreground font-medium border-l-2 border-[hsl(var(--todoist-red))] rounded-l-none"
+                              ? "bg-muted font-medium border-l-2 border-foreground rounded-l-none"
                               : "hover:bg-muted/50"
                           }
                         >
-                          <item.icon 
-                            className="h-4 w-4" 
-                            style={
-                              item.color === "red" && active ? { color: "hsl(var(--todoist-red))" } : 
-                              item.color === "purple" ? { color: "hsl(270, 70%, 60%)" } : 
-                              item.color === "blue" ? { color: "hsl(200, 70%, 50%)" } :
-                              item.color === "green" ? { color: "hsl(142, 70%, 45%)" } : undefined
-                            }
-                          />
+                          <item.icon className="h-4 w-4" />
                           {open && (
                             <>
-                              <span className="flex-1">{item.title}</span>
+                              <span className="flex-1 text-sm">{item.title}</span>
                               {count > 0 && (
-                                <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[hsl(var(--todoist-count-bg))] text-[hsl(var(--todoist-count-text))]">
+                                <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                                   {count}
                                 </span>
                               )}
@@ -172,25 +163,25 @@ export function AppSidebar() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                               }}
                             >
-                              <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                              <MoreVertical className="h-3 w-3 text-muted-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
+                          <DropdownMenuContent align="end" className="w-36">
                             <DropdownMenuItem
                               onClick={(e) => {
                                 e.preventDefault();
                                 hideTab(item.url, item.title);
                               }}
-                              className="gap-2 text-sm cursor-pointer"
+                              className="gap-2 text-xs cursor-pointer"
                             >
-                              <EyeOff className="h-3.5 w-3.5" />
-                              <span>Ocultar aba</span>
+                              <EyeOff className="h-3 w-3" />
+                              <span>Ocultar</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -203,9 +194,9 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* Projects Section */}
-        <SidebarGroup className="px-2">
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase">
-            Meus projetos
+        <SidebarGroup className="px-2 mt-4">
+          <SidebarGroupLabel className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2">
+            Projetos
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -219,18 +210,16 @@ export function AppSidebar() {
                         to={project.url}
                         className={
                           active
-                            ? "bg-[hsl(var(--todoist-orange-bg))] text-foreground font-medium"
+                            ? "bg-muted font-medium"
                             : "hover:bg-muted/50"
                         }
                       >
                         <Hash className="h-4 w-4" />
                         {open && (
                           <>
-                            <span className="flex-1">
-                              {project.title} {project.emoji}
-                            </span>
+                            <span className="flex-1 text-sm">{project.title}</span>
                             {count > 0 && (
-                              <span className="ml-auto text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[hsl(var(--todoist-count-bg))] text-[hsl(var(--todoist-count-text))]">
+                              <span className="ml-auto text-xs text-muted-foreground tabular-nums">
                                 {count}
                               </span>
                             )}
@@ -246,13 +235,13 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* External Tools Section */}
-        <SidebarGroup className="px-2">
-          <SidebarGroupLabel className="flex items-center justify-between text-xs font-semibold text-muted-foreground uppercase">
+        <SidebarGroup className="px-2 mt-4">
+          <SidebarGroupLabel className="flex items-center justify-between text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2">
             <span>Ferramentas</span>
             <Button 
               size="icon" 
               variant="ghost" 
-              className="h-5 w-5 hover:bg-muted"
+              className="h-5 w-5"
               onClick={() => setIsAddToolDialogOpen(true)}
             >
               <Plus className="h-3 w-3" />
@@ -265,7 +254,6 @@ export function AppSidebar() {
                 const isBlocked = isKnownBlockedSite(tool.url);
                 const canEmbed = canActuallyEmbed(tool);
                 
-                // For blocked tools, render as direct link
                 if (!canEmbed) {
                   return (
                     <SidebarMenuItem key={tool.id} className="group relative">
@@ -280,42 +268,41 @@ export function AppSidebar() {
                               icon={tool.icon} 
                               color={tool.iconColor} 
                               logoUrl={tool.logoUrl}
-                              size={16} 
+                              size={14} 
                             />
                           </div>
                           {open && (
                             <>
-                              <span className="flex-1 truncate">{tool.name}</span>
+                              <span className="flex-1 truncate text-sm">{tool.name}</span>
                               <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0" />
                             </>
                           )}
                         </a>
                       </SidebarMenuButton>
                     
-                      {/* Remove tool menu for external tools */}
                       {open && (
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={(e) => {
                                 e.preventDefault();
                                 e.stopPropagation();
                               }}
                             >
-                              <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                              <MoreVertical className="h-3 w-3 text-muted-foreground" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuContent align="end" className="w-44">
                             {isBlocked ? (
                               <DropdownMenuItem
                                 disabled
-                                className="gap-2 text-sm text-muted-foreground"
+                                className="gap-2 text-xs text-muted-foreground"
                               >
-                                <Ban className="h-3.5 w-3.5" />
-                                <span>Bloqueado pelo site</span>
+                                <Ban className="h-3 w-3" />
+                                <span>Bloqueado</span>
                               </DropdownMenuItem>
                             ) : (
                               <DropdownMenuItem
@@ -323,10 +310,10 @@ export function AppSidebar() {
                                   e.preventDefault();
                                   updateTool(tool.id, { canEmbed: true });
                                 }}
-                                className="gap-2 text-sm cursor-pointer"
+                                className="gap-2 text-xs cursor-pointer"
                               >
-                                <MonitorPlay className="h-3.5 w-3.5" />
-                                <span>Abrir dentro da NOMOS</span>
+                                <MonitorPlay className="h-3 w-3" />
+                                <span>Abrir interno</span>
                               </DropdownMenuItem>
                             )}
                             <DropdownMenuItem
@@ -334,9 +321,9 @@ export function AppSidebar() {
                                 e.preventDefault();
                                 removeTool(tool.id);
                               }}
-                              className="gap-2 text-sm cursor-pointer text-destructive focus:text-destructive"
+                              className="gap-2 text-xs cursor-pointer"
                             >
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="h-3 w-3" />
                               <span>Remover</span>
                             </DropdownMenuItem>
                           </DropdownMenuContent>
@@ -346,7 +333,6 @@ export function AppSidebar() {
                   );
                 }
 
-                // For embeddable tools, render as button that opens as tab
                 return (
                   <SidebarMenuItem key={tool.id} className="group relative">
                     <SidebarMenuButton 
@@ -358,52 +344,51 @@ export function AppSidebar() {
                           icon={tool.icon} 
                           color={tool.iconColor} 
                           logoUrl={tool.logoUrl}
-                          size={16} 
+                          size={14} 
                         />
                         {isTabOpen && (
-                          <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-primary" />
+                          <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-foreground" />
                         )}
                       </div>
                       {open && (
-                        <span className="flex-1 truncate">{tool.name}</span>
+                        <span className="flex-1 truncate text-sm">{tool.name}</span>
                       )}
                     </SidebarMenuButton>
                   
-                    {/* Tool menu for embeddable tools */}
                     {open && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button
                             variant="ghost"
                             size="icon"
-                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-muted"
+                            className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
                             }}
                           >
-                            <MoreVertical className="h-3.5 w-3.5 text-muted-foreground" />
+                            <MoreVertical className="h-3 w-3 text-muted-foreground" />
                           </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.preventDefault();
                               updateTool(tool.id, { canEmbed: false });
                             }}
-                            className="gap-2 text-sm cursor-pointer"
+                            className="gap-2 text-xs cursor-pointer"
                           >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            <span>Abrir em janela externa</span>
+                            <ExternalLink className="h-3 w-3" />
+                            <span>Abrir externo</span>
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={(e) => {
                               e.preventDefault();
                               removeTool(tool.id);
                             }}
-                            className="gap-2 text-sm cursor-pointer text-destructive focus:text-destructive"
+                            className="gap-2 text-xs cursor-pointer"
                           >
-                            <Trash2 className="h-3.5 w-3.5" />
+                            <Trash2 className="h-3 w-3" />
                             <span>Remover</span>
                           </DropdownMenuItem>
                         </DropdownMenuContent>
@@ -415,7 +400,7 @@ export function AppSidebar() {
               
               {userTools.length === 0 && open && (
                 <div className="px-2 py-3 text-xs text-muted-foreground text-center">
-                  Clique em + para adicionar ferramentas
+                  + para adicionar
                 </div>
               )}
             </SidebarMenu>
@@ -429,22 +414,22 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton asChild>
               <NavLink
-                to="/configuracoes/integracoes"
+                to="/configuracoes"
                 className={
                   currentPath.startsWith('/configuracoes')
-                    ? "bg-[hsl(var(--todoist-orange-bg))] text-foreground font-medium"
+                    ? "bg-muted font-medium"
                     : "hover:bg-muted/50"
                 }
               >
                 <Settings className="h-4 w-4" />
-                {open && <span>Configurações</span>}
+                {open && <span className="text-sm">Configurações</span>}
               </NavLink>
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
             <SidebarMenuButton className="hover:bg-muted/50">
               <LifeBuoy className="h-4 w-4" />
-              {open && <span>Ajuda e recursos</span>}
+              {open && <span className="text-sm">Ajuda</span>}
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
@@ -455,7 +440,7 @@ export function AppSidebar() {
               {open ? (
                 <>
                   <PanelLeftClose className="h-4 w-4" />
-                  <span>Minimizar</span>
+                  <span className="text-sm">Minimizar</span>
                 </>
               ) : (
                 <PanelLeft className="h-4 w-4" />
