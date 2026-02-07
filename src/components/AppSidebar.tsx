@@ -131,7 +131,7 @@ export function AppSidebar() {
                   const active = isActive(item.url);
                   const count = getCount(item.url);
                   return (
-                    <SidebarMenuItem key={item.title} className="group relative">
+                    <SidebarMenuItem key={item.title}>
                       <SidebarMenuButton asChild>
                         <NavLink
                           to={item.url}
@@ -155,37 +155,6 @@ export function AppSidebar() {
                           )}
                         </NavLink>
                       </SidebarMenuButton>
-                      
-                      {/* Three dots menu (appears on hover) */}
-                      {open && item.canHide && (
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="absolute right-1 top-1/2 -translate-y-1/2 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                              }}
-                            >
-                              <MoreVertical className="h-3 w-3 text-muted-foreground" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-36">
-                            <DropdownMenuItem
-                              onClick={(e) => {
-                                e.preventDefault();
-                                hideTab(item.url, item.title);
-                              }}
-                              className="gap-2 text-xs cursor-pointer"
-                            >
-                              <EyeOff className="h-3 w-3" />
-                              <span>Ocultar</span>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      )}
                     </SidebarMenuItem>
                   );
                 })}
