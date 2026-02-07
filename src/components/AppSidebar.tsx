@@ -135,11 +135,11 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           end
-                          className={
+                          className={`transition-all duration-150 ${
                             active
-                              ? "bg-muted font-medium"
-                              : "hover:bg-muted/50"
-                          }
+                              ? "font-semibold text-foreground"
+                              : "font-normal text-muted-foreground hover:font-medium hover:text-foreground"
+                          }`}
                         >
                           <item.icon className="h-4 w-4" />
                           {open && (
@@ -176,11 +176,11 @@ export function AppSidebar() {
                     <SidebarMenuButton asChild>
                       <NavLink
                         to={project.url}
-                        className={
+                        className={`transition-all duration-150 ${
                           active
-                            ? "bg-muted font-medium"
-                            : "hover:bg-muted/50"
-                        }
+                            ? "font-semibold text-foreground"
+                            : "font-normal text-muted-foreground hover:font-medium hover:text-foreground"
+                        }`}
                       >
                         <Hash className="h-4 w-4" />
                         {open && (
@@ -383,11 +383,11 @@ export function AppSidebar() {
             <SidebarMenuButton asChild>
               <NavLink
                 to="/configuracoes"
-                className={
+                className={`transition-all duration-150 ${
                   currentPath.startsWith('/configuracoes')
-                    ? "bg-muted font-medium"
-                    : "hover:bg-muted/50"
-                }
+                    ? "font-semibold text-foreground"
+                    : "font-normal text-muted-foreground hover:font-medium hover:text-foreground"
+                }`}
               >
                 <Settings className="h-4 w-4" />
                 {open && <span className="text-sm">Configurações</span>}
@@ -395,7 +395,7 @@ export function AppSidebar() {
             </SidebarMenuButton>
           </SidebarMenuItem>
           <SidebarMenuItem>
-            <SidebarMenuButton className="hover:bg-muted/50">
+            <SidebarMenuButton className="transition-all duration-150 font-normal text-muted-foreground hover:font-medium hover:text-foreground">
               <LifeBuoy className="h-4 w-4" />
               {open && <span className="text-sm">Ajuda</span>}
             </SidebarMenuButton>
@@ -403,7 +403,7 @@ export function AppSidebar() {
           <SidebarMenuItem>
             <SidebarMenuButton 
               onClick={toggleSidebar}
-              className="hover:bg-muted/50"
+              className="transition-all duration-150 font-normal text-muted-foreground hover:font-medium hover:text-foreground"
             >
               {open ? (
                 <>
