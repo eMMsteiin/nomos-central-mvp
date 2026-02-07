@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ChevronDown, 
   ChevronUp, 
-  Zap, 
   Trash2,
   Globe,
   Instagram,
@@ -31,7 +30,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { 
   FOCUS_APPS_TOP8, 
@@ -46,7 +44,6 @@ interface AppIconPickerProps {
   disabled?: boolean;
 }
 
-// Map of icon keys to actual icon components
 const iconMap: Record<string, LucideIcon> = {
   Instagram,
   Music2,
@@ -73,7 +70,6 @@ const iconMap: Record<string, LucideIcon> = {
   Globe,
 };
 
-// Helper to get lucide icon by key
 const getIcon = (iconKey: string): LucideIcon => {
   return iconMap[iconKey] || Globe;
 };
@@ -95,19 +91,19 @@ function AppCard({ app, selected, disabled, onToggle }: AppCardProps) {
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        "flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border-2 transition-all",
-        "min-w-[72px] min-h-[72px]",
-        "focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2",
+        "flex flex-col items-center justify-center gap-1 p-2 rounded-sm border transition-colors",
+        "min-w-[60px] min-h-[56px]",
+        "focus:outline-none focus:ring-1 focus:ring-foreground",
         selected 
-          ? "border-primary bg-primary/10 text-primary" 
-          : "border-border bg-card hover:border-muted-foreground/50 hover:bg-muted/50",
-        disabled && "opacity-50 cursor-not-allowed hover:border-border hover:bg-card"
+          ? "border-foreground bg-foreground/5" 
+          : "border-border hover:border-muted-foreground",
+        disabled && "opacity-50 cursor-not-allowed hover:border-border"
       )}
     >
-      <Icon className={cn("h-6 w-6", selected ? "text-primary" : "text-muted-foreground")} />
+      <Icon className={cn("h-4 w-4", selected ? "text-foreground" : "text-muted-foreground")} />
       <span className={cn(
-        "text-xs font-medium truncate max-w-full",
-        selected ? "text-primary" : "text-muted-foreground"
+        "text-[10px] truncate max-w-full",
+        selected ? "text-foreground font-medium" : "text-muted-foreground"
       )}>
         {app.label}
       </span>
@@ -122,7 +118,6 @@ export function AppIconPicker({
 }: AppIconPickerProps) {
   const [expanded, setExpanded] = useState(false);
   
-  // Count selected from catalog only
   const selectedFromCatalog = FOCUS_APPS_ALL.filter(app => 
     selectedDomains.includes(app.domain)
   ).length;
@@ -140,7 +135,6 @@ export function AppIconPicker({
   const handleSelectPopular = () => {
     if (disabled) return;
     
-    // Add all top 8 domains, keeping any existing custom domains
     const customDomains = selectedDomains.filter(
       d => !FOCUS_APPS_ALL.some(app => app.domain === d)
     );
@@ -151,7 +145,6 @@ export function AppIconPicker({
   const handleClearSelection = () => {
     if (disabled) return;
     
-    // Keep only custom domains that are not in the catalog
     const customDomains = selectedDomains.filter(
       d => !FOCUS_APPS_ALL.some(app => app.domain === d)
     );
@@ -161,23 +154,22 @@ export function AppIconPicker({
   const isSelected = (domain: string) => selectedDomains.includes(domain);
   
   return (
-    <div className="space-y-4">
-      {/* Header with count and actions */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <Badge variant="secondary" className="text-sm">
-          Selecionados: {selectedFromCatalog}
-        </Badge>
+    <div className="space-y-3">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-muted-foreground">
+          {selectedFromCatalog} selecionados
+        </span>
         
         <div className="flex gap-2">
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="sm"
             onClick={handleSelectPopular}
             disabled={disabled}
-            className="gap-1.5 text-xs"
+            className="h-7 text-[10px] text-muted-foreground hover:text-foreground"
           >
-            <Zap className="h-3.5 w-3.5" />
             Selecionar populares
           </Button>
           <Button
@@ -186,62 +178,58 @@ export function AppIconPicker({
             size="sm"
             onClick={handleClearSelection}
             disabled={disabled || selectedFromCatalog === 0}
-            className="gap-1.5 text-xs text-muted-foreground"
+            className="h-7 px-2 text-muted-foreground hover:text-foreground"
           >
-            <Trash2 className="h-3.5 w-3.5" />
-            Limpar
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       </div>
       
-      {/* Top 8 Section */}
-      <div>
-        <p className="text-sm text-muted-foreground mb-2">Mais usados</p>
-        <div className="grid grid-cols-4 sm:grid-cols-8 gap-2">
-          {FOCUS_APPS_TOP8.map((app) => (
-            <AppCard
-              key={app.id}
-              app={app}
-              selected={isSelected(app.domain)}
-              disabled={disabled}
-              onToggle={() => handleToggle(app.domain)}
-            />
-          ))}
-        </div>
+      {/* Top 8 */}
+      <div className="grid grid-cols-4 gap-1.5">
+        {FOCUS_APPS_TOP8.map((app) => (
+          <AppCard
+            key={app.id}
+            app={app}
+            selected={isSelected(app.domain)}
+            disabled={disabled}
+            onToggle={() => handleToggle(app.domain)}
+          />
+        ))}
       </div>
       
-      {/* Expand/Collapse Button */}
+      {/* Expand Button */}
       <Button
         type="button"
         variant="ghost"
         size="sm"
         onClick={() => setExpanded(!expanded)}
-        className="w-full gap-2 text-muted-foreground"
+        className="w-full h-7 gap-1 text-xs text-muted-foreground"
       >
         {expanded ? (
           <>
-            <ChevronUp className="h-4 w-4" />
-            Mostrar menos
+            <ChevronUp className="h-3 w-3" />
+            Menos
           </>
         ) : (
           <>
-            <ChevronDown className="h-4 w-4" />
-            Ver mais apps
+            <ChevronDown className="h-3 w-3" />
+            Mais
           </>
         )}
       </Button>
       
-      {/* Extended Apps Section */}
+      {/* Extended Apps */}
       <AnimatePresence>
         {expanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
+            transition={{ duration: 0.15 }}
             className="overflow-hidden"
           >
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-2 pt-2">
+            <div className="grid grid-cols-4 gap-1.5">
               {FOCUS_APPS_ALL.filter(
                 app => !FOCUS_APPS_TOP8.some(top => top.id === app.id)
               ).map((app) => (

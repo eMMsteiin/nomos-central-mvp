@@ -17,8 +17,8 @@ export default function Configuracoes() {
   return (
     <div className="flex flex-col md:flex-row min-h-full">
       {/* Sidebar Navigation */}
-      <nav className="w-full md:w-56 border-b md:border-b-0 md:border-r border-border p-4 space-y-1">
-        <h2 className="text-lg font-semibold mb-4 px-2">Configurações</h2>
+      <nav className="w-full md:w-48 border-b md:border-b-0 md:border-r border-border p-4 space-y-1">
+        <h2 className="text-sm font-medium mb-4 px-2">Configurações</h2>
         {navItems.map((item) => (
           <NavLink
             key={item.to}
@@ -26,17 +26,17 @@ export default function Configuracoes() {
             end={item.end}
             className={({ isActive }) =>
               cn(
-                "flex items-center gap-2 px-3 py-2 rounded-md text-sm transition-colors",
+                "flex items-center gap-2 px-3 py-2 rounded-sm text-sm transition-colors",
                 isActive
-                  ? "bg-primary/10 text-primary font-medium"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-muted font-medium"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )
             }
             >
               <item.icon className="h-4 w-4" />
               {item.label}
               {item.to === '/configuracoes/modo-foco' && focusState.active && (
-                <span className="ml-auto h-2 w-2 rounded-full bg-primary animate-pulse" />
+                <span className="ml-auto h-1.5 w-1.5 rounded-full bg-foreground" />
               )}
             </NavLink>
           ))}
@@ -45,16 +45,15 @@ export default function Configuracoes() {
       {/* Content Area */}
       <div className="flex-1">
         {isRoot ? (
-          <div className="p-6 max-w-3xl mx-auto">
-            <h1 className="text-2xl font-bold text-foreground mb-2">Configurações Gerais</h1>
-            <p className="text-muted-foreground mb-6">
-              Personalize sua experiência na NOMOS
+          <div className="p-6 max-w-2xl">
+            <h1 className="text-base font-medium text-foreground mb-2">Geral</h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              Personalize sua experiência
             </p>
             
-            <div className="rounded-lg border border-dashed border-border p-8 text-center">
-              <Settings className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">
-                Configurações gerais em breve...
+            <div className="border border-dashed border-border p-8 text-center rounded-sm">
+              <p className="text-sm text-muted-foreground">
+                Em breve
               </p>
             </div>
           </div>

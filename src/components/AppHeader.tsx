@@ -1,7 +1,6 @@
-import { Bell, LayoutGrid, LayoutList, MessageSquare, MoreVertical, ChevronDown, Wrench, User, Settings, LogOut, Menu } from "lucide-react";
+import { Bell, Menu } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,17 +20,17 @@ export function AppHeader() {
   const navigate = useNavigate();
 
   return (
-    <header className="border-b border-border px-2 sm:px-4 py-2 flex items-center justify-between bg-background">
-      <div className="flex items-center gap-2 sm:gap-3">
+    <header className="border-b border-border px-4 py-3 flex items-center justify-between bg-background">
+      <div className="flex items-center gap-3">
         {/* Mobile sidebar trigger */}
         {isMobile && (
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8 hover:bg-muted"
+            className="h-8 w-8"
             onClick={toggleSidebar}
           >
-            <Menu className="h-5 w-5" />
+            <Menu className="h-4 w-4" />
           </Button>
         )}
         
@@ -40,33 +39,27 @@ export function AppHeader() {
             <Button 
               variant="ghost" 
               size="sm"
-              className="gap-1 sm:gap-2 hover:bg-muted px-2 sm:px-3"
+              className="gap-2 px-2 text-sm font-normal"
             >
-              <Avatar className="h-6 w-6">
-                <AvatarImage src="" />
-                <AvatarFallback className="text-xs bg-primary text-primary-foreground">E</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-normal hidden sm:inline">Emmanuel</span>
-              <ChevronDown className="h-3 w-3 text-muted-foreground" />
+              <span className="h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-medium">
+                E
+              </span>
+              <span className="hidden sm:inline">Emmanuel</span>
             </Button>
           </DropdownMenuTrigger>
           
-          <DropdownMenuContent align="start" className="w-48 bg-popover z-50">
-            <DropdownMenuItem>
-              <User className="h-4 w-4 mr-2" />
+          <DropdownMenuContent align="start" className="w-48 bg-popover">
+            <DropdownMenuItem className="text-sm">
               Perfil
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setIsToolsDialogOpen(true)}>
-              <Wrench className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={() => setIsToolsDialogOpen(true)} className="text-sm">
               Ferramentas
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/configuracoes')}>
-              <Settings className="h-4 w-4 mr-2" />
+            <DropdownMenuItem onClick={() => navigate('/configuracoes')} className="text-sm">
               Configurações
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
-              <LogOut className="h-4 w-4 mr-2" />
+            <DropdownMenuItem className="text-sm">
               Sair
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -77,44 +70,10 @@ export function AppHeader() {
         <Button 
           variant="ghost" 
           size="icon"
-          className="h-8 w-8 relative hover:bg-muted"
+          className="h-8 w-8 relative"
         >
           <Bell className="h-4 w-4" />
-          <span className="absolute top-1 right-1 h-2 w-2 bg-[hsl(var(--todoist-red))] rounded-full"></span>
-        </Button>
-
-        {/* Hide on mobile */}
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-8 w-8 hover:bg-muted hidden sm:flex"
-        >
-          <LayoutGrid className="h-4 w-4" />
-        </Button>
-
-        <Button 
-          variant="ghost" 
-          size="sm"
-          className="gap-2 px-2 sm:px-3 hover:bg-muted hidden md:flex"
-        >
-          <LayoutList className="h-4 w-4" />
-          <span className="text-sm hidden lg:inline">Mostrar</span>
-        </Button>
-
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-8 w-8 hover:bg-muted hidden sm:flex"
-        >
-          <MessageSquare className="h-4 w-4" />
-        </Button>
-
-        <Button 
-          variant="ghost" 
-          size="icon"
-          className="h-8 w-8 hover:bg-muted"
-        >
-          <MoreVertical className="h-4 w-4" />
+          <span className="absolute top-1.5 right-1.5 h-1.5 w-1.5 bg-foreground rounded-full"></span>
         </Button>
       </div>
 

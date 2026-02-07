@@ -28,7 +28,7 @@ export function FocusDurationSelector({
     setIsCustom(true);
     
     const num = parseInt(value, 10);
-    if (num > 0 && num <= 480) { // Max 8 hours
+    if (num > 0 && num <= 480) {
       onSelect(num);
     }
   };
@@ -42,12 +42,12 @@ export function FocusDurationSelector({
   };
 
   return (
-    <div className="space-y-3">
-      <p className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-        Duração da sessão
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground">
+        Duração
       </p>
       
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5">
         {DURATION_PRESETS.map((duration) => (
           <Button
             key={duration}
@@ -56,30 +56,30 @@ export function FocusDurationSelector({
             onClick={() => handlePresetClick(duration)}
             disabled={disabled}
             className={cn(
-              'min-w-[70px]',
-              selectedDuration === duration && !isCustom && 'ring-2 ring-primary ring-offset-2'
+              'h-8 min-w-[60px] text-xs',
+              selectedDuration === duration && !isCustom && 'border-foreground'
             )}
           >
-            {duration} min
+            {duration}m
           </Button>
         ))}
         
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1">
           <Input
             type="number"
             value={customValue}
             onChange={(e) => handleCustomChange(e.target.value)}
             onFocus={handleCustomFocus}
-            placeholder="Outro"
+            placeholder="..."
             disabled={disabled}
             min={1}
             max={480}
             className={cn(
-              'w-20 text-center',
-              isCustom && customValue && 'ring-2 ring-primary ring-offset-2'
+              'w-14 h-8 text-xs text-center',
+              isCustom && customValue && 'border-foreground'
             )}
           />
-          <span className="text-sm text-muted-foreground">min</span>
+          <span className="text-xs text-muted-foreground">m</span>
         </div>
       </div>
     </div>

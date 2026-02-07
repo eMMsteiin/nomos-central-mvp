@@ -2,100 +2,100 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
-All colors MUST be HSL.
+/* NOMOS Design System - Ultra Minimalist
+   Paleta: Preto, Branco, 3 tons de cinza
+   Tipografia: system-ui (Inter-like)
+   Filosofia: A interface deve desaparecer enquanto o usuário pensa.
 */
 
 @layer base {
   :root {
-    /* Paleta Mediterrânea NOMOS */
-    --background: 40 25% 95%;              /* Areia de Delos */
-    --foreground: 210 8% 20%;              /* Antracito Nomos */
+    /* Paleta Minimalista Monocromática */
+    --background: 0 0% 100%;              /* Branco puro */
+    --foreground: 0 0% 8%;                /* Preto suave */
 
-    --card: 0 0% 100%;                     /* Branco puro */
-    --card-foreground: 210 8% 20%;         /* Antracito Nomos */
+    --card: 0 0% 100%;                    /* Branco */
+    --card-foreground: 0 0% 8%;           /* Preto suave */
 
     --popover: 0 0% 100%;
-    --popover-foreground: 210 8% 20%;
+    --popover-foreground: 0 0% 8%;
 
-    --primary: 210 28% 50%;                /* Azul Egeu */
-    --primary-foreground: 40 25% 95%;      /* Areia de Delos */
+    --primary: 0 0% 8%;                   /* Preto */
+    --primary-foreground: 0 0% 100%;      /* Branco */
 
-    --secondary: 150 20% 60%;              /* Verde Oliveira */
-    --secondary-foreground: 210 8% 20%;    /* Antracito Nomos */
+    --secondary: 0 0% 96%;                /* Cinza muito claro */
+    --secondary-foreground: 0 0% 8%;      /* Preto */
 
-    --muted: 30 12% 88%;                   /* Cinza Mármara claro */
-    --muted-foreground: 30 12% 50%;        /* Cinza Mármara escuro */
+    --muted: 0 0% 96%;                    /* Cinza claro */
+    --muted-foreground: 0 0% 45%;         /* Cinza médio */
 
-    --accent: 150 20% 60%;                 /* Verde Oliveira */
-    --accent-foreground: 210 8% 20%;       /* Antracito Nomos */
+    --accent: 0 0% 96%;                   /* Cinza claro */
+    --accent-foreground: 0 0% 8%;         /* Preto */
 
-    --destructive: 15 45% 59%;             /* Terracota Ática */
+    --destructive: 0 0% 30%;              /* Cinza escuro (sem vermelho) */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 30 12% 82%;                  /* Cinza Mármara */
-    --input: 30 12% 82%;
-    --ring: 210 28% 50%;                   /* Azul Egeu */
+    --border: 0 0% 90%;                   /* Cinza borda */
+    --input: 0 0% 90%;
+    --ring: 0 0% 8%;                      /* Preto */
 
-    --radius: 1rem;
+    --radius: 0.375rem;                   /* Bordas mais sutis */
 
-    --sidebar-background: 0 0% 100%;       /* Branco puro */
-    --sidebar-foreground: 210 8% 20%;      /* Antracito Nomos */
-    --sidebar-primary: 210 28% 50%;        /* Azul Egeu */
-    --sidebar-primary-foreground: 40 25% 95%;
-    --sidebar-accent: 45 67% 92%;          /* Areia Dourada claro */
-    --sidebar-accent-foreground: 210 8% 20%;
-    --sidebar-border: 30 12% 82%;          /* Cinza Mármara */
-    --sidebar-ring: 210 28% 50%;           /* Azul Egeu */
+    --sidebar-background: 0 0% 100%;      /* Branco */
+    --sidebar-foreground: 0 0% 8%;        /* Preto */
+    --sidebar-primary: 0 0% 8%;           /* Preto */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 0 0% 96%;           /* Cinza claro */
+    --sidebar-accent-foreground: 0 0% 8%;
+    --sidebar-border: 0 0% 92%;           /* Borda suave */
+    --sidebar-ring: 0 0% 8%;
 
-    /* Todoist colors - Paleta Mediterrânea */
-    --todoist-red: 15 45% 59%;             /* Terracota Ática */
-    --todoist-red-bg: 15 45% 95%;
-    --todoist-red-hover: 15 45% 90%;
-    --todoist-orange-bg: 45 67% 92%;       /* Areia Dourada claro */
-    --todoist-green: 150 20% 60%;          /* Verde Oliveira */
-    --todoist-count-bg: 250 25% 85%;       /* Lavanda Cretense claro */
-    --todoist-count-text: 210 8% 30%;      /* Antracito */
+    /* Estados ativos - minimalistas */
+    --active-bg: 0 0% 96%;
+    --active-border: 0 0% 8%;
   }
 
   .dark {
-    /* Dark Mode - Paleta Mediterrânea */
-    --background: 210 8% 15%;              /* Antracito mais escuro */
-    --foreground: 40 25% 95%;              /* Areia de Delos */
+    /* Dark Mode - Minimalista */
+    --background: 0 0% 6%;                /* Preto profundo */
+    --foreground: 0 0% 95%;               /* Branco suave */
 
-    --card: 210 8% 18%;                    /* Antracito card */
-    --card-foreground: 40 25% 95%;
+    --card: 0 0% 8%;                      /* Preto card */
+    --card-foreground: 0 0% 95%;
 
-    --popover: 210 8% 18%;
-    --popover-foreground: 40 25% 95%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 95%;
 
-    --primary: 210 28% 60%;                /* Azul Egeu mais claro */
-    --primary-foreground: 210 8% 15%;
+    --primary: 0 0% 95%;                  /* Branco */
+    --primary-foreground: 0 0% 6%;        /* Preto */
 
-    --secondary: 150 20% 70%;              /* Verde Oliveira mais claro */
-    --secondary-foreground: 210 8% 15%;
+    --secondary: 0 0% 12%;                /* Cinza escuro */
+    --secondary-foreground: 0 0% 95%;
 
-    --muted: 210 8% 22%;
-    --muted-foreground: 30 12% 70%;
+    --muted: 0 0% 12%;
+    --muted-foreground: 0 0% 55%;         /* Cinza médio */
 
-    --accent: 150 20% 70%;                 /* Verde Oliveira mais claro */
-    --accent-foreground: 210 8% 15%;
+    --accent: 0 0% 12%;
+    --accent-foreground: 0 0% 95%;
 
-    --destructive: 15 45% 65%;             /* Terracota mais claro */
-    --destructive-foreground: 210 8% 15%;
+    --destructive: 0 0% 70%;              /* Cinza claro */
+    --destructive-foreground: 0 0% 6%;
 
-    --border: 210 8% 25%;
-    --input: 210 8% 25%;
-    --ring: 210 28% 60%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 95%;
     
-    --sidebar-background: 210 8% 18%;
-    --sidebar-foreground: 40 25% 95%;
-    --sidebar-primary: 210 28% 60%;
-    --sidebar-primary-foreground: 210 8% 15%;
-    --sidebar-accent: 210 8% 22%;
-    --sidebar-accent-foreground: 40 25% 95%;
-    --sidebar-border: 210 8% 25%;
-    --sidebar-ring: 210 28% 60%;
+    --sidebar-background: 0 0% 6%;
+    --sidebar-foreground: 0 0% 95%;
+    --sidebar-primary: 0 0% 95%;
+    --sidebar-primary-foreground: 0 0% 6%;
+    --sidebar-accent: 0 0% 12%;
+    --sidebar-accent-foreground: 0 0% 95%;
+    --sidebar-border: 0 0% 15%;
+    --sidebar-ring: 0 0% 95%;
+
+    --active-bg: 0 0% 12%;
+    --active-border: 0 0% 95%;
   }
 }
 
@@ -105,11 +105,29 @@ All colors MUST be HSL.
   }
 
   body {
-    @apply bg-background text-foreground;
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  }
+
+  /* Tipografia limpa e hierárquica */
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-medium tracking-tight;
+  }
+  
+  h1 {
+    @apply text-xl;
+  }
+  
+  h2 {
+    @apply text-lg;
+  }
+  
+  h3 {
+    @apply text-base;
   }
 }
 
-/* Handwriting font for post-its */
+/* Handwriting font for post-its - mantido para funcionalidade */
 @import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
 
 .font-handwriting {
@@ -118,17 +136,14 @@ All colors MUST be HSL.
   line-height: 1.5;
 }
 
-/* Cork board texture */
+/* Cork board texture - simplificado */
 .cork-board {
-  background: linear-gradient(135deg, 
-    hsl(30, 35%, 65%) 0%, 
-    hsl(35, 40%, 68%) 25%,
-    hsl(30, 35%, 63%) 50%,
-    hsl(35, 38%, 66%) 75%,
-    hsl(30, 35%, 64%) 100%
-  );
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.1);
+  background: hsl(0 0% 94%);
   position: relative;
+}
+
+.dark .cork-board {
+  background: hsl(0 0% 10%);
 }
 
 .cork-board::before {
@@ -136,52 +151,88 @@ All colors MUST be HSL.
   position: absolute;
   inset: 0;
   background-image: 
-    radial-gradient(circle at 20% 30%, rgba(139, 94, 60, 0.1) 1px, transparent 1px),
-    radial-gradient(circle at 80% 70%, rgba(139, 94, 60, 0.08) 1px, transparent 1px),
-    radial-gradient(circle at 40% 80%, rgba(139, 94, 60, 0.12) 1px, transparent 1px),
-    radial-gradient(circle at 90% 20%, rgba(139, 94, 60, 0.09) 1px, transparent 1px),
-    radial-gradient(circle at 60% 50%, rgba(139, 94, 60, 0.1) 1px, transparent 1px);
-  background-size: 8px 8px, 12px 12px, 10px 10px, 15px 15px, 6px 6px;
-  background-position: 0 0, 4px 4px, 2px 6px, 7px 1px, 3px 8px;
+    radial-gradient(circle at 20% 30%, hsl(0 0% 50% / 0.03) 1px, transparent 1px),
+    radial-gradient(circle at 80% 70%, hsl(0 0% 50% / 0.02) 1px, transparent 1px);
+  background-size: 8px 8px, 12px 12px;
   pointer-events: none;
-  opacity: 0.6;
+  opacity: 0.5;
 }
 
-/* Wooden frame effect */
+/* Wooden frame - simplificado para borda simples */
 .cork-board::after {
   content: '';
   position: absolute;
-  inset: -8px;
-  background: linear-gradient(135deg, 
-    hsl(25, 45%, 35%) 0%,
-    hsl(28, 50%, 40%) 50%,
-    hsl(25, 45%, 38%) 100%
-  );
+  inset: -2px;
+  background: hsl(0 0% 80%);
   z-index: -1;
-  border-radius: 0.5rem;
-  box-shadow: 
-    0 4px 6px rgba(0, 0, 0, 0.1),
-    0 8px 20px rgba(0, 0, 0, 0.15),
-    inset 0 2px 4px rgba(255, 255, 255, 0.1);
+  border-radius: 0.25rem;
 }
 
-/* Post-it landing animation */
+.dark .cork-board::after {
+  background: hsl(0 0% 20%);
+}
+
+/* Post-it landing animation - mais sutil */
 .postit-landing {
   animation: none;
 }
 
 .postit-landing:not(.dragging) {
-  animation: land 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  animation: land 0.2s ease-out;
 }
 
 @keyframes land {
   0% {
-    transform: translateY(-5px) scale(1.02);
-  }
-  50% {
-    transform: translateY(2px) scale(0.98);
+    transform: translateY(-2px);
+    opacity: 0.8;
   }
   100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0);
+    opacity: 1;
   }
+}
+
+/* Focus mode utilities */
+.focus-minimal {
+  @apply transition-opacity duration-300;
+}
+
+.focus-active .focus-minimal:not(.focus-essential) {
+  @apply opacity-40 pointer-events-none;
+}
+
+.focus-active .focus-essential {
+  @apply opacity-100;
+}
+
+/* Estados ativos minimalistas */
+.nav-active {
+  @apply font-medium border-l-2 border-foreground pl-3;
+}
+
+/* Scrollbar minimalista */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 70%);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 50%);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: hsl(0 0% 30%);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(0 0% 50%);
 }

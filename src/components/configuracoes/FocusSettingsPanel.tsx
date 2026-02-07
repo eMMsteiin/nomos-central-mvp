@@ -7,7 +7,6 @@ import { FocusDurationSelector } from '@/components/focus/FocusDurationSelector'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   AlertDialog,
@@ -19,9 +18,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Focus, Clock, Shield, ShieldCheck, Info, Play, Square, Settings2, ChevronDown } from 'lucide-react';
+import { Clock, ChevronDown, Play, Square } from 'lucide-react';
 import { toast } from 'sonner';
-import { motion } from 'framer-motion';
 
 export default function FocusSettingsPanel() {
   const { 
@@ -43,11 +41,10 @@ export default function FocusSettingsPanel() {
 
   const handleStartSession = () => {
     if (!selectedDuration || selectedDuration <= 0) {
-      toast.error('Selecione uma duração válida');
+      toast.error('Selecione uma duração');
       return;
     }
 
-    // Check if blocklist is empty and suggest defaults
     if (state.blocklist.length === 0) {
       setShowSuggestDialog(true);
       return;
@@ -63,7 +60,6 @@ export default function FocusSettingsPanel() {
     }
     setShowSuggestDialog(false);
     
-    // Small delay to ensure state is updated
     setTimeout(() => {
       if (selectedDuration) {
         startSession(selectedDuration);
@@ -84,245 +80,175 @@ export default function FocusSettingsPanel() {
   };
 
   return (
-    <div className="p-6 max-w-3xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-primary/10">
-          <Focus className="h-6 w-6 text-primary" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">Modo Foco</h1>
-          <p className="text-muted-foreground">
-            Proteja seu tempo de estudo de distrações
-          </p>
-        </div>
+    <div className="p-6 max-w-xl space-y-6">
+      {/* Header - Minimal */}
+      <div>
+        <h1 className="text-base font-medium">Modo Foco</h1>
+        <p className="text-sm text-muted-foreground">
+          Proteja seu tempo de estudo
+        </p>
       </div>
 
-      {/* Status Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-      >
-        <Card className={state.active ? 'border-primary bg-primary/5' : ''}>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {state.active ? (
-                  <ShieldCheck className="h-5 w-5 text-primary" />
-                ) : (
-                  <Shield className="h-5 w-5 text-muted-foreground" />
-                )}
-                <CardTitle className="text-lg">
-                  {state.active ? 'Modo Foco ativo' : 'Modo Foco desligado'}
-                </CardTitle>
-              </div>
-              <Switch 
-                checked={state.active} 
-                onCheckedChange={(checked) => {
-                  if (checked) {
-                    handleStartSession();
-                  } else {
-                    setShowEndDialog(true);
-                  }
-                }}
-              />
-            </div>
-          </CardHeader>
-          
-          {state.active && (
-            <CardContent className="pt-0">
-              <div className="flex items-center gap-4 text-lg">
-                <Clock className="h-5 w-5 text-primary" />
-                <span className="font-mono font-bold text-2xl text-primary">
-                  {remainingFormatted}
+      {/* Status - Minimal */}
+      <Card className={state.active ? 'border-foreground' : ''}>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-sm">
+              {state.active ? 'Ativo' : 'Inativo'}
+            </CardTitle>
+            <Switch 
+              checked={state.active} 
+              onCheckedChange={(checked) => {
+                if (checked) {
+                  handleStartSession();
+                } else {
+                  setShowEndDialog(true);
+                }
+              }}
+            />
+          </div>
+        </CardHeader>
+        
+        {state.active && (
+          <CardContent className="pt-0">
+            <div className="flex items-center gap-3 text-base">
+              <Clock className="h-4 w-4" />
+              <span className="font-mono font-medium text-lg">
+                {remainingFormatted}
+              </span>
+              {endTimeFormatted && (
+                <span className="text-muted-foreground text-sm">
+                  até {endTimeFormatted}
                 </span>
-                {endTimeFormatted && (
-                  <span className="text-muted-foreground">
-                    termina às {endTimeFormatted}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Você escolheu foco por {state.durationMin} minutos
-              </p>
-            </CardContent>
-          )}
-        </Card>
-      </motion.div>
+              )}
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {state.durationMin} minutos
+            </p>
+          </CardContent>
+        )}
+      </Card>
 
-      {/* Duration Selector */}
+      {/* Duration Selector - Minimal */}
       {!state.active && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-        >
-          <Card>
-            <CardContent className="pt-6">
-              <FocusDurationSelector
-                selectedDuration={selectedDuration}
-                onSelect={setSelectedDuration}
-                disabled={state.active}
-              />
-            </CardContent>
-          </Card>
-        </motion.div>
+        <Card>
+          <CardContent className="pt-4">
+            <FocusDurationSelector
+              selectedDuration={selectedDuration}
+              onSelect={setSelectedDuration}
+              disabled={state.active}
+            />
+          </CardContent>
+        </Card>
       )}
 
-      {/* Blocklist - Icon Picker */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              Sites para bloquear
-            </CardTitle>
-            <CardDescription>
-              Selecione os sites que serão bloqueados durante a sessão de foco
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <AppIconPicker
-              selectedDomains={state.blocklist}
-              onChange={updateBlocklist}
-              disabled={state.active}
-            />
-            
-            {/* Advanced Mode - Manual Editor */}
-            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="w-full gap-2 text-muted-foreground"
-                >
-                  <Settings2 className="h-4 w-4" />
-                  Modo avançado
-                  <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent className="pt-3">
-                <div className="border rounded-lg p-3 bg-muted/30">
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Adicione domínios personalizados manualmente:
-                  </p>
-                  <DomainListEditor
-                    domains={state.blocklist}
-                    onChange={updateBlocklist}
-                    placeholder="Digite um site (ex: medium.com)"
-                    emptyMessage="Nenhum site na lista de bloqueio"
-                    disabled={state.active}
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-          </CardContent>
-        </Card>
-      </motion.div>
+      {/* Blocklist */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Sites para bloquear</CardTitle>
+          <CardDescription className="text-xs">
+            Selecione os sites que serão bloqueados
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <AppIconPicker
+            selectedDomains={state.blocklist}
+            onChange={updateBlocklist}
+            disabled={state.active}
+          />
+          
+          {/* Advanced Mode */}
+          <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="w-full gap-2 text-xs text-muted-foreground"
+              >
+                Avançado
+                <ChevronDown className={`h-3 w-3 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-3">
+              <div className="border border-border rounded-sm p-3">
+                <p className="text-xs text-muted-foreground mb-2">
+                  Adicionar manualmente:
+                </p>
+                <DomainListEditor
+                  domains={state.blocklist}
+                  onChange={updateBlocklist}
+                  placeholder="ex: medium.com"
+                  emptyMessage="Nenhum site"
+                  disabled={state.active}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
 
       {/* Allowlist */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <ShieldCheck className="h-4 w-4" />
-              Exceções permitidas
-            </CardTitle>
-            <CardDescription>
-              Estes sites sempre estarão liberados, mesmo durante o foco
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DomainListEditor
-              domains={state.allowlist}
-              onChange={updateAllowlist}
-              placeholder="Digite uma exceção (ex: docs.google.com)"
-              emptyMessage="Nenhuma exceção adicionada"
-              disabled={state.active}
-            />
-          </CardContent>
-        </Card>
-      </motion.div>
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Exceções</CardTitle>
+          <CardDescription className="text-xs">
+            Sites sempre liberados
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <DomainListEditor
+            domains={state.allowlist}
+            onChange={updateAllowlist}
+            placeholder="ex: docs.google.com"
+            emptyMessage="Nenhuma exceção"
+            disabled={state.active}
+          />
+        </CardContent>
+      </Card>
 
       {/* Action Button */}
       {!state.active && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
+        <Button 
+          onClick={handleStartSession}
+          className="w-full gap-2"
+          disabled={!selectedDuration}
         >
-          <Button 
-            onClick={handleStartSession}
-            size="lg"
-            className="w-full gap-2 h-12 text-base"
-            disabled={!selectedDuration}
-          >
-            <Play className="h-5 w-5" />
-            Iniciar sessão de foco
-          </Button>
-        </motion.div>
+          <Play className="h-4 w-4" />
+          Iniciar foco
+        </Button>
       )}
 
       {state.active && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+        <Button 
+          onClick={() => setShowEndDialog(true)}
+          variant="outline"
+          className="w-full gap-2"
         >
-          <Button 
-            onClick={() => setShowEndDialog(true)}
-            size="lg"
-            variant="outline"
-            className="w-full gap-2 h-12 text-base"
-          >
-            <Square className="h-5 w-5" />
-            Encerrar sessão
-          </Button>
-        </motion.div>
+          <Square className="h-4 w-4" />
+          Encerrar
+        </Button>
       )}
 
-      {/* Info Alert */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-      >
-        <Alert>
-          <Info className="h-4 w-4" />
-          <AlertDescription className="text-sm">
-            Bloqueio total do navegador será habilitado com uma extensão. 
-            Por enquanto, a NOMOS te ajuda com o ritual, o timer e lembretes — 
-            sem monitorar sua navegação.
-          </AlertDescription>
-        </Alert>
-      </motion.div>
+      {/* Info - Minimal */}
+      <p className="text-xs text-muted-foreground text-center">
+        Bloqueio total será habilitado com extensão futura.
+      </p>
 
       {/* Suggest Defaults Dialog */}
       <AlertDialog open={showSuggestDialog} onOpenChange={setShowSuggestDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Adicionar sites populares?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Sua lista de bloqueio está vazia. Quer adicionar os sites mais comuns de distração?
-              <br /><br />
-              <span className="text-muted-foreground">
-                Instagram, TikTok, YouTube, X/Twitter, Facebook, Reddit
-              </span>
+            <AlertDialogTitle className="text-sm font-medium">Adicionar sites populares?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Lista vazia. Adicionar Instagram, TikTok, YouTube, X, Facebook, Reddit?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={handleStartWithoutDefaults}>
-              Iniciar sem sites
+            <AlertDialogCancel onClick={handleStartWithoutDefaults} className="text-xs">
+              Sem sites
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleStartWithDefaults}>
-              Adicionar e iniciar
+            <AlertDialogAction onClick={handleStartWithDefaults} className="text-xs">
+              Adicionar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -332,16 +258,15 @@ export default function FocusSettingsPanel() {
       <AlertDialog open={showEndDialog} onOpenChange={setShowEndDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Encerrar sessão de foco?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você ainda tem {remainingFormatted} restantes. 
-              Tudo bem ajustar — você pode reiniciar quando quiser.
+            <AlertDialogTitle className="text-sm font-medium">Encerrar?</AlertDialogTitle>
+            <AlertDialogDescription className="text-xs">
+              Ainda resta {remainingFormatted}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Continuar focando</AlertDialogCancel>
-            <AlertDialogAction onClick={handleEndSession}>
-              Encerrar sessão
+            <AlertDialogCancel className="text-xs">Continuar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleEndSession} className="text-xs">
+              Encerrar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

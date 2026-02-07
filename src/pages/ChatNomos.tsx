@@ -10,7 +10,7 @@ import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
-import { Bot, Sparkles, Menu } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 
 export default function ChatNomos() {
@@ -47,7 +47,6 @@ export default function ChatNomos() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -64,7 +63,7 @@ export default function ChatNomos() {
   };
 
   const handleNewConversation = async () => {
-    await createConversation(); // Cria nova conversa no banco
+    await createConversation();
     setSidebarOpen(false);
   };
 
@@ -88,37 +87,33 @@ export default function ChatNomos() {
     <div className="flex h-[calc(100vh-4rem)] max-h-[calc(100vh-4rem)]">
       {/* Desktop Sidebar */}
       {!isMobile && (
-        <div className="w-64 flex-shrink-0 border-r">
+        <div className="w-56 flex-shrink-0 border-r">
           {SidebarContent}
         </div>
       )}
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <div className="flex-shrink-0 border-b bg-gradient-to-r from-violet-500/10 to-purple-500/10 px-4 py-4">
+        {/* Header - Minimal */}
+        <div className="flex-shrink-0 border-b px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Mobile menu button */}
               {isMobile && (
                 <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
                   <SheetTrigger asChild>
-                    <Button variant="ghost" size="icon" className="mr-1">
-                      <Menu className="w-5 h-5" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Menu className="w-4 h-4" />
                     </Button>
                   </SheetTrigger>
-                  <SheetContent side="left" className="p-0 w-72">
+                  <SheetContent side="left" className="p-0 w-64">
                     {SidebarContent}
                   </SheetContent>
                 </Sheet>
               )}
-              <div className="p-2 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 text-white">
-                <Bot className="w-6 h-6" />
-              </div>
               <div>
-                <h1 className="font-semibold text-lg">Chat NOMOS</h1>
+                <h1 className="font-medium text-sm">Chat</h1>
                 <p className="text-xs text-muted-foreground">
-                  Rotina realista. Sem culpa. Vamos ajustar a dose.
+                  Rotina realista. Sem culpa.
                 </p>
               </div>
             </div>
@@ -128,20 +123,14 @@ export default function ChatNomos() {
 
         {/* Messages area */}
         <ScrollArea className="flex-1 px-4">
-          <div className="py-4 space-y-4">
+          <div className="py-4 space-y-4 max-w-2xl mx-auto">
             {messages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <div className="p-4 rounded-full bg-gradient-to-br from-violet-500/20 to-purple-500/20 mb-4">
-                  <Sparkles className="w-8 h-8 text-violet-500" />
-                </div>
-                <h2 className="text-lg font-semibold mb-2">Olá! Eu sou a Nomos</h2>
-                <p className="text-muted-foreground text-sm max-w-sm">
-                  Estou aqui pra te ajudar a organizar sua rotina de forma sustentável. 
-                  O que você precisa hoje?
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <h2 className="text-sm font-medium mb-2">Olá</h2>
+                <p className="text-muted-foreground text-xs max-w-sm mb-6">
+                  Estou aqui para ajudar a organizar sua rotina.
                 </p>
-                <div className="mt-6">
-                  <QuickActionChips onSelect={sendMessage} disabled={isLoading} />
-                </div>
+                <QuickActionChips onSelect={sendMessage} disabled={isLoading} />
               </div>
             ) : (
               <>
@@ -150,7 +139,7 @@ export default function ChatNomos() {
                     <ChatMessage message={message} />
                     
                     {message.proposal && message.role === 'assistant' && (
-                      <div className="ml-11">
+                      <div className="ml-8">
                         <ProposalCard
                           proposal={message.proposal}
                           action={findActionForProposal(message.id)}
@@ -170,14 +159,14 @@ export default function ChatNomos() {
                 
                 {isLoading && (
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                      <Bot className="w-4 h-4 text-white" />
+                    <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center text-background text-xs">
+                      N
                     </div>
-                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-3">
+                    <div className="bg-muted rounded px-3 py-2">
                       <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                        <span className="w-2 h-2 bg-muted-foreground/50 rounded-full animate-bounce" />
+                        <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                        <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                        <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" />
                       </div>
                     </div>
                   </div>
@@ -189,14 +178,16 @@ export default function ChatNomos() {
           </div>
         </ScrollArea>
 
-        {/* Footer with quick actions and input */}
-        <div className="flex-shrink-0 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+        {/* Footer */}
+        <div className="flex-shrink-0 border-t bg-background">
           {messages.length > 0 && (
-            <div className="px-4 pt-3">
+            <div className="px-4 pt-3 max-w-2xl mx-auto">
               <QuickActionChips onSelect={sendMessage} disabled={isLoading} />
             </div>
           )}
-          <ChatInput onSend={sendMessage} isLoading={isLoading} />
+          <div className="max-w-2xl mx-auto">
+            <ChatInput onSend={sendMessage} isLoading={isLoading} />
+          </div>
         </div>
       </div>
     </div>

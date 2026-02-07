@@ -379,56 +379,56 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
   return (
     <div className={`flex-1 bg-background flex flex-col relative ${session ? 'md:mr-64' : ''}`}>
       {/* Main content */}
-      <div className="px-4 sm:px-6 py-6 sm:py-8 md:py-12 flex-1">
-        <div className="max-w-4xl mx-auto space-y-6 sm:space-y-8">
+      <div className="px-4 sm:px-6 py-6 flex-1">
+        <div className="max-w-2xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <h1 className="text-2xl sm:text-3xl font-semibold">{getTitle()}</h1>
+            <h1 className="text-base font-medium">{getTitle()}</h1>
             <Button 
               onClick={() => setImportModalOpen(true)}
-              variant="outline"
+              variant="ghost"
               size="sm"
-              className="gap-2 w-full sm:w-auto"
+              className="gap-2 text-xs text-muted-foreground hover:text-foreground"
             >
-              <Download className="h-4 w-4" />
-              <span className="sm:inline">Importar do AVA</span>
+              <Download className="h-3 w-3" />
+              <span>Importar</span>
             </Button>
           </div>
           
           {/* Input Section */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
             className="border-b border-border pb-3"
           >
-            <div className="flex gap-3 items-center">
+            <div className="flex gap-2 items-center">
               <Button
                 onClick={addTask}
                 size="icon"
                 variant="ghost"
-                className="shrink-0 h-8 w-8"
+                className="shrink-0 h-7 w-7"
                 aria-label="Adicionar tarefa"
               >
-                <Plus className="h-5 w-5" />
+                <Plus className="h-4 w-4" />
               </Button>
               
               <Button
                 onClick={cyclePriority}
                 size="icon"
                 variant="ghost"
-                className="shrink-0 h-8 w-8 relative group"
+                className="shrink-0 h-7 w-7 relative group"
                 aria-label="Alternar prioridade"
               >
                 <Star
-                  className={`h-5 w-5 transition-all duration-300 ${
+                  className={`h-3.5 w-3.5 transition-colors ${
                     priority === 'alta'
-                      ? 'fill-destructive text-destructive'
+                      ? 'fill-foreground text-foreground'
                       : priority === 'media'
-                      ? 'fill-primary text-primary'
-                      : 'fill-secondary text-secondary'
+                      ? 'fill-muted-foreground text-muted-foreground'
+                      : 'text-muted-foreground'
                   }`}
                 />
-                <span className="absolute -bottom-8 left-1/2 -translate-x-1/2 text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                <span className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                   {priority === 'alta' ? 'Alta' : priority === 'media' ? 'Média' : 'Baixa'}
                 </span>
               </Button>
@@ -447,8 +447,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Adicionar tarefa (ex: Estudar 14:30)"
-                className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-base px-0"
+                placeholder="Nova tarefa..."
+                className="flex-1 border-0 focus-visible:ring-0 focus-visible:ring-offset-0 text-sm px-0 bg-transparent"
               />
             </div>
           </motion.div>
@@ -461,12 +461,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="text-center py-16"
+                  className="text-center py-12"
                 >
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground text-xs">
                     {filterMode === 'hoje' 
-                      ? "Ops nenhuma tarefa para hoje. Vida fácil em!!!" 
-                      : "Nenhuma tarefa nesta categoria."
+                      ? "Nenhuma tarefa para hoje" 
+                      : "Nenhuma tarefa"
                     }
                   </p>
                 </motion.div>
@@ -504,8 +504,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                             }
                           }
                     }
-                    exit={{ opacity: 0, scale: 0.9, x: 100, transition: { duration: 0.3 } }}
-                    className="hover:bg-muted/20 rounded-lg transition-all duration-200 overflow-hidden group"
+                    exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
+                    className="hover:bg-muted/50 rounded-sm transition-colors overflow-hidden group"
                   >
                     <div className="flex items-start gap-3 py-2 px-1">
                       <Checkbox
@@ -515,12 +515,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                       />
                       
                       <div
-                        className={`w-1 h-full rounded-full self-stretch ${
+                        className={`w-0.5 h-full rounded-full self-stretch ${
                           task.priority === 'alta' 
-                            ? 'bg-destructive' 
+                            ? 'bg-foreground' 
                             : task.priority === 'media'
-                            ? 'bg-primary'
-                            : 'bg-secondary'
+                            ? 'bg-muted-foreground'
+                            : 'bg-border'
                         }`}
                       />
                       
@@ -534,20 +534,20 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                               animate={{
                                 opacity: completingTasks.has(task.id) ? 0.4 : 1,
                               }}
-                              className={`text-sm text-foreground leading-relaxed break-words hover:text-primary transition-colors ${
-                                completingTasks.has(task.id) ? "line-through" : ""
+                              className={`text-sm text-foreground leading-relaxed break-words hover:underline underline-offset-2 ${
+                                completingTasks.has(task.id) ? "line-through opacity-40" : ""
                               }`}
                             >
                               {task.text}
                             </motion.p>
                             
                             <span
-                              className={`text-xs px-2 py-0.5 rounded-full ${
+                              className={`text-[10px] px-1.5 py-0.5 rounded-sm ${
                                 task.priority === 'alta'
-                                  ? 'bg-destructive/10 text-destructive'
+                                  ? 'bg-foreground/10 text-foreground font-medium'
                                   : task.priority === 'media'
-                                  ? 'bg-primary/10 text-primary'
-                                  : 'bg-secondary/10 text-secondary'
+                                  ? 'bg-muted text-muted-foreground'
+                                  : 'text-muted-foreground'
                               }`}
                             >
                               {task.priority === 'alta' ? 'Alta' : task.priority === 'media' ? 'Média' : 'Baixa'}
@@ -555,13 +555,13 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
 
                             {/* Canva badge for linked tasks */}
                             {task.canvaDesignUrl && (
-                              <span className="text-xs px-2 py-0.5 rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded-sm bg-muted text-muted-foreground">
                                 Canva
                               </span>
                             )}
                             
                             {/* Arrow indicator for detail page */}
-                            <ChevronRight className="h-4 w-4 text-muted-foreground/50" />
+                            <ChevronRight className="h-3 w-3 text-muted-foreground" />
                           </div>
                           
                           <div className="flex items-center gap-1">
@@ -570,11 +570,11 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-violet-600 hover:text-violet-700 hover:bg-violet-500/10"
+                                className="h-6 px-2 opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-muted-foreground hover:text-foreground"
                                 onClick={() => handleOpenCanva(task)}
                               >
                                 <Palette className="h-3 w-3" />
-                                <span className="text-xs">Canva</span>
+                                <span className="text-[10px]">Canva</span>
                               </Button>
                             )}
                             
@@ -582,7 +582,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
                               onClick={() => setEditingTask(task)}
                             >
                               <Pencil className="h-3 w-3" />
@@ -594,64 +594,35 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                         {(() => {
                           const dateInfo = formatTaskDate(task.dueDate);
                           return (
-                            <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-                              {/* Date badge with dynamic colors */}
-                              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md ${
+                            <div className="flex items-center gap-2 mt-1 flex-wrap">
+                              {/* Date badge - minimal */}
+                              <div className={`flex items-center gap-1 text-[10px] ${
                                 dateInfo.isOverdue 
-                                  ? 'bg-destructive/10' 
-                                  : dateInfo.isToday 
-                                  ? 'bg-primary/10' 
-                                  : dateInfo.isTomorrow 
-                                  ? 'bg-blue-500/10' 
-                                  : 'bg-muted'
+                                  ? 'text-foreground font-medium' 
+                                  : 'text-muted-foreground'
                               }`}>
-                                {dateInfo.isOverdue ? (
-                                  <AlertCircle className="h-3 w-3 text-destructive" />
-                                ) : (
-                                  <Calendar className={`h-3 w-3 ${
-                                    dateInfo.isToday 
-                                      ? 'text-primary' 
-                                      : dateInfo.isTomorrow 
-                                      ? 'text-blue-500' 
-                                      : 'text-muted-foreground'
-                                  }`} />
-                                )}
-                                <span className={`text-xs font-medium ${
-                                  dateInfo.isOverdue 
-                                    ? 'text-destructive' 
-                                    : dateInfo.isToday 
-                                    ? 'text-primary' 
-                                    : dateInfo.isTomorrow 
-                                    ? 'text-blue-500' 
-                                    : 'text-muted-foreground'
-                                }`}>
-                                  {dateInfo.text}
-                                </span>
+                                <Calendar className="h-2.5 w-2.5" />
+                                <span>{dateInfo.text}</span>
                                 {dateInfo.isOverdue && (
-                                  <span className="text-[10px] text-destructive font-medium">
-                                    Atrasada
-                                  </span>
+                                  <span className="font-medium">• Atrasada</span>
                                 )}
                               </div>
                               
                               {/* Time */}
                               {task.dueTime && (
                                 <>
-                                  <span className="text-xs text-muted-foreground">•</span>
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3 text-muted-foreground" />
-                                    <span className="text-xs text-muted-foreground font-medium">
-                                      {task.dueTime}
-                                    </span>
-                                  </div>
+                                  <span className="text-[10px] text-muted-foreground">•</span>
+                                  <span className="text-[10px] text-muted-foreground">
+                                    {task.dueTime}
+                                  </span>
                                 </>
                               )}
                               
                               {/* Course */}
                               {task.course && (
                                 <>
-                                  <span className="text-xs text-muted-foreground">•</span>
-                                  <span className="text-xs bg-muted px-2 py-0.5 rounded font-medium">
+                                  <span className="text-[10px] text-muted-foreground">•</span>
+                                  <span className="text-[10px] text-muted-foreground">
                                     {task.course}
                                   </span>
                                 </>
@@ -660,8 +631,8 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
                               {/* AVA source badge */}
                               {task.sourceType === 'ava' && (
                                 <>
-                                  <span className="text-xs text-muted-foreground">•</span>
-                                  <span className="text-xs bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded font-medium">
+                                  <span className="text-[10px] text-muted-foreground">•</span>
+                                  <span className="text-[10px] text-muted-foreground">
                                     AVA
                                   </span>
                                 </>

@@ -9,7 +9,7 @@ interface ChatInputProps {
   placeholder?: string;
 }
 
-export function ChatInput({ onSend, isLoading, placeholder = 'Digite sua mensagem...' }: ChatInputProps) {
+export function ChatInput({ onSend, isLoading, placeholder = 'Mensagem...' }: ChatInputProps) {
   const [value, setValue] = useState('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -18,7 +18,6 @@ export function ChatInput({ onSend, isLoading, placeholder = 'Digite sua mensage
     onSend(value.trim());
     setValue('');
     
-    // Reset textarea height
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
     }
@@ -35,12 +34,12 @@ export function ChatInput({ onSend, isLoading, placeholder = 'Digite sua mensage
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 100)}px`;
     }
   };
 
   return (
-    <div className="flex items-end gap-2 p-2 bg-background border-t">
+    <div className="flex items-end gap-2 p-3">
       <Textarea
         ref={textareaRef}
         value={value}
@@ -49,19 +48,19 @@ export function ChatInput({ onSend, isLoading, placeholder = 'Digite sua mensage
         onInput={handleInput}
         placeholder={placeholder}
         disabled={isLoading}
-        className="min-h-[44px] max-h-[120px] resize-none rounded-xl border-muted-foreground/20 focus:border-primary"
+        className="min-h-[40px] max-h-[100px] resize-none rounded-sm border-border focus:border-foreground text-sm"
         rows={1}
       />
       <Button
         onClick={handleSend}
         disabled={!value.trim() || isLoading}
         size="icon"
-        className="h-11 w-11 rounded-xl shrink-0 bg-gradient-to-r from-violet-500 to-purple-600 hover:from-violet-600 hover:to-purple-700"
+        className="h-10 w-10 rounded-sm shrink-0"
       >
         {isLoading ? (
-          <Loader2 className="w-5 h-5 animate-spin" />
+          <Loader2 className="w-4 h-4 animate-spin" />
         ) : (
-          <Send className="w-5 h-5" />
+          <Send className="w-4 h-4" />
         )}
       </Button>
     </div>
