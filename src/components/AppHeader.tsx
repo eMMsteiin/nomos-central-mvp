@@ -1,4 +1,5 @@
 import { Bell, LayoutGrid, LayoutList, MessageSquare, MoreVertical, ChevronDown, Wrench, User, Settings, LogOut, Menu } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -17,6 +18,7 @@ export function AppHeader() {
   const [isToolsDialogOpen, setIsToolsDialogOpen] = useState(false);
   const isMobile = useIsMobile();
   const { toggleSidebar } = useSidebar();
+  const navigate = useNavigate();
 
   return (
     <header className="border-b border-border px-2 sm:px-4 py-2 flex items-center justify-between bg-background">
@@ -58,7 +60,7 @@ export function AppHeader() {
               <Wrench className="h-4 w-4 mr-2" />
               Ferramentas
             </DropdownMenuItem>
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate('/configuracoes')}>
               <Settings className="h-4 w-4 mr-2" />
               Configurações
             </DropdownMenuItem>

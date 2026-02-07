@@ -25,6 +25,7 @@ import Caderno from "./pages/Caderno";
 import ChatNomos from "./pages/ChatNomos";
 import Flashcards from "./pages/Flashcards";
 import ModoFoco from "./pages/ModoFoco";
+import FocusSettingsPanel from "./components/configuracoes/FocusSettingsPanel";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
@@ -70,10 +71,13 @@ function MainContent() {
             <Route path="/flashcards" element={<Flashcards />} />
             <Route path="/modo-foco" element={<ModoFoco />} />
             <Route path="/tarefa/:id" element={<TaskDetail />} />
+            <Route path="/tarefa/:id" element={<TaskDetail />} />
             <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
             <Route path="/configuracoes" element={<Configuracoes />}>
+              <Route path="modo-foco" element={<FocusSettingsPanel />} />
               <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
             </Route>
+            <Route path="*" element={<NotFound />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
