@@ -35,8 +35,8 @@
     --destructive: 0 0% 30%;              /* Cinza escuro (sem vermelho) */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 0 0% 90%;                   /* Cinza borda */
-    --input: 0 0% 90%;
+    --border: 0 0% 95%;                   /* Borda quase invisível */
+    --input: 0 0% 95%;
     --ring: 0 0% 8%;                      /* Preto */
 
     --radius: 0.375rem;                   /* Bordas mais sutis */
@@ -81,8 +81,8 @@
     --destructive: 0 0% 70%;              /* Cinza claro */
     --destructive-foreground: 0 0% 6%;
 
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
+    --border: 0 0% 10%;
+    --input: 0 0% 10%;
     --ring: 0 0% 95%;
     
     --sidebar-background: 0 0% 6%;

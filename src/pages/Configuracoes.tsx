@@ -17,7 +17,7 @@ export default function Configuracoes() {
   return (
     <div className="flex flex-col md:flex-row min-h-full">
       {/* Sidebar Navigation */}
-      <nav className="w-full md:w-48 border-b md:border-b-0 md:border-r border-border p-4 space-y-1">
+      <nav className="w-full md:w-48 p-4 space-y-1">
         <h2 className="text-sm font-medium mb-4 px-2">Configurações</h2>
         {navItems.map((item) => (
           <NavLink
@@ -51,7 +51,7 @@ export default function Configuracoes() {
               Personalize sua experiência
             </p>
             
-            <div className="border border-dashed border-border p-8 text-center rounded-sm">
+            <div className="py-8 text-center">
               <p className="text-sm text-muted-foreground">
                 Em breve
               </p>
