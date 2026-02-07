@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { useFocusMode } from '@/hooks/useFocusMode';
 import { DEFAULT_BLOCKLIST, DEFAULT_ALLOWLIST } from '@/types/focusMode';
 import { DomainListEditor } from '@/components/focus/DomainListEditor';
+import { AppIconPicker } from '@/components/focus/AppIconPicker';
 import { FocusDurationSelector } from '@/components/focus/FocusDurationSelector';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -17,7 +19,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { Focus, Clock, Shield, ShieldCheck, Info, Play, Square } from 'lucide-react';
+import { Focus, Clock, Shield, ShieldCheck, Info, Play, Square, Settings2, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -37,6 +39,7 @@ export default function ModoFoco() {
   );
   const [showSuggestDialog, setShowSuggestDialog] = useState(false);
   const [showEndDialog, setShowEndDialog] = useState(false);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const handleStartSession = () => {
     if (!selectedDuration || selectedDuration <= 0) {
@@ -166,7 +169,7 @@ export default function ModoFoco() {
         </motion.div>
       )}
 
-      {/* Blocklist */}
+      {/* Blocklist - Icon Picker */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -179,17 +182,44 @@ export default function ModoFoco() {
               Sites para bloquear
             </CardTitle>
             <CardDescription>
-              Estes sites serão bloqueados durante a sessão de foco
+              Selecione os sites que serão bloqueados durante a sessão de foco
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <DomainListEditor
-              domains={state.blocklist}
+          <CardContent className="space-y-4">
+            <AppIconPicker
+              selectedDomains={state.blocklist}
               onChange={updateBlocklist}
-              placeholder="Digite um site (ex: instagram.com)"
-              emptyMessage="Nenhum site na lista de bloqueio"
               disabled={state.active}
             />
+            
+            {/* Advanced Mode - Manual Editor */}
+            <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+              <CollapsibleTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full gap-2 text-muted-foreground"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  Modo avançado
+                  <ChevronDown className={`h-4 w-4 transition-transform ${advancedOpen ? 'rotate-180' : ''}`} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="pt-3">
+                <div className="border rounded-lg p-3 bg-muted/30">
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Adicione domínios personalizados manualmente:
+                  </p>
+                  <DomainListEditor
+                    domains={state.blocklist}
+                    onChange={updateBlocklist}
+                    placeholder="Digite um site (ex: medium.com)"
+                    emptyMessage="Nenhum site na lista de bloqueio"
+                    disabled={state.active}
+                  />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
         </Card>
       </motion.div>
