@@ -367,8 +367,8 @@ const SidebarContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"di
       {ScrollTrailIndicator && (
         <ScrollTrailIndicator 
           targetRef={internalRef as React.RefObject<HTMLElement>} 
-          width={6} 
-          dotSize={3} 
+          width={8} 
+          dotSize={5} 
         />
       )}
     </div>
