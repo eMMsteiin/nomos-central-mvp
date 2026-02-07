@@ -326,16 +326,52 @@ const SidebarSeparator = React.forwardRef<React.ElementRef<typeof Separator>, Re
 SidebarSeparator.displayName = "SidebarSeparator";
 
 const SidebarContent = React.forwardRef<HTMLDivElement, React.ComponentProps<"div">>(({ className, ...props }, ref) => {
+  const internalRef = React.useRef<HTMLDivElement>(null);
+  const combinedRef = React.useMemo(() => {
+    return (node: HTMLDivElement | null) => {
+      (internalRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      if (typeof ref === 'function') {
+        ref(node);
+      } else if (ref) {
+        (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      }
+    };
+  }, [ref]);
+
+  // Dynamically import ScrollTrailIndicator to avoid circular deps
+  const [ScrollTrailIndicator, setScrollTrailIndicator] = React.useState<React.ComponentType<{
+    targetRef: React.RefObject<HTMLElement>;
+    width?: number;
+    dotSize?: number;
+  }> | null>(null);
+
+  React.useEffect(() => {
+    import('./ScrollTrailIndicator').then((mod) => {
+      setScrollTrailIndicator(() => mod.ScrollTrailIndicator);
+    });
+  }, []);
+
   return (
-    <div
-      ref={ref}
-      data-sidebar="content"
-      className={cn(
-        "flex min-h-0 flex-1 flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
-        className,
+    <div className="relative flex-1 min-h-0">
+      <div
+        ref={combinedRef}
+        data-sidebar="content"
+        className={cn(
+          "flex h-full flex-col gap-2 overflow-auto group-data-[collapsible=icon]:overflow-hidden",
+          // Hide native scrollbar
+          "scrollbar-none [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none]",
+          className,
+        )}
+        {...props}
+      />
+      {ScrollTrailIndicator && (
+        <ScrollTrailIndicator 
+          targetRef={internalRef as React.RefObject<HTMLElement>} 
+          width={6} 
+          dotSize={3} 
+        />
       )}
-      {...props}
-    />
+    </div>
   );
 });
 SidebarContent.displayName = "SidebarContent";
