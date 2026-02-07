@@ -71,13 +71,13 @@ export function ChatSidebar({
   };
 
   return (
-    <div className={cn("flex flex-col h-full bg-muted/30 border-r", className)}>
+    <div className={cn("flex flex-col h-full bg-muted/30", className)}>
       {/* New Conversation Button */}
-      <div className="p-3 border-b">
+      <div className="p-3">
         <Button 
           onClick={onNewConversation}
           className="w-full justify-start gap-2"
-          variant="outline"
+          variant="ghost"
         >
           <Plus className="w-4 h-4" />
           Nova conversa

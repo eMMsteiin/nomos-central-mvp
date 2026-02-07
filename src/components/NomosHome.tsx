@@ -399,7 +399,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="border-b border-border pb-3"
+            className="pb-4"
           >
             <div className="flex gap-2 items-center">
               <Button
@@ -454,7 +454,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
           </motion.div>
 
           {/* Tasks List */}
-          <div className="space-y-4">
+          <div className="space-y-1">
             <AnimatePresence mode="popLayout">
               {displayedTasks.length === 0 ? (
                 <motion.div
