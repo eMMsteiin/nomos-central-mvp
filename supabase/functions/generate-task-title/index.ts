@@ -1,9 +1,25 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
+
+async function verifyUser(req: Request) {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return { error: 'Authorization header missing', status: 401 };
+
+  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: authHeader } }
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) return { error: 'Unauthorized', status: 401 };
+  return { userId: user.id };
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -11,9 +27,21 @@ serve(async (req) => {
   }
 
   try {
+    // Verify authentication
+    const authResult = await verifyUser(req);
+    if ('error' in authResult) {
+      return new Response(JSON.stringify({ error: authResult.error }), {
+        status: authResult.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     const { annotationText } = await req.json();
     
-    if (!annotationText || annotationText.trim().length === 0) {
+    // Cap input length server-side
+    const sanitizedText = typeof annotationText === 'string' ? annotationText.slice(0, 2000) : '';
+    
+    if (!sanitizedText || sanitizedText.trim().length === 0) {
       return new Response(JSON.stringify({ title: 'Nova tarefa' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -22,13 +50,13 @@ serve(async (req) => {
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY is not configured");
-      const fallback = annotationText.split('\n')[0].slice(0, 40);
+      const fallback = sanitizedText.split('\n')[0].slice(0, 40);
       return new Response(JSON.stringify({ title: fallback || 'Nova tarefa' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log("Generating smart title for annotation:", annotationText.slice(0, 100));
+    console.log("Generating smart title for user:", authResult.userId);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -67,7 +95,7 @@ Título: Desenvolver projeto TCC`
           },
           {
             role: "user",
-            content: `Gere um título curto para esta anotação:\n\n${annotationText.slice(0, 500)}`
+            content: `Gere um título curto para esta anotação:\n\n${sanitizedText.slice(0, 500)}`
           }
         ],
         max_tokens: 50,
@@ -76,7 +104,7 @@ Título: Desenvolver projeto TCC`
 
     if (!response.ok) {
       console.error("AI gateway error:", response.status);
-      const fallback = annotationText.split('\n')[0].slice(0, 40);
+      const fallback = sanitizedText.split('\n')[0].slice(0, 40);
       return new Response(JSON.stringify({ title: fallback || 'Nova tarefa' }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -85,12 +113,11 @@ Título: Desenvolver projeto TCC`
     const data = await response.json();
     let title = data.choices?.[0]?.message?.content?.trim() || '';
     
-    // Limpar e validar título
     title = title.replace(/^["']|["']$/g, '').trim();
     title = title.replace(/\.$/g, '');
     
     if (!title || title.length > 60) {
-      title = annotationText.split('\n')[0].slice(0, 40);
+      title = sanitizedText.split('\n')[0].slice(0, 40);
     }
 
     console.log("Generated title:", title);
@@ -101,9 +128,8 @@ Título: Desenvolver projeto TCC`
 
   } catch (error) {
     console.error('Error generating title:', error);
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ title: 'Nova tarefa', error: errorMessage }), {
-      status: 200,
+    return new Response(JSON.stringify({ error: 'Internal server error' }), {
+      status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
