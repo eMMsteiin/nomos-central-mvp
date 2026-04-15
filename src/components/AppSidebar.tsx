@@ -12,7 +12,7 @@ import {
   StickyNote,
   Book,
   MoreVertical,
-  MessageCircle,
+  
   Settings,
   PanelLeftClose,
   PanelLeft,
