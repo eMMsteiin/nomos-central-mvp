@@ -35,13 +35,13 @@ export function FlashcardViewer({
   return (
     <div
       className={cn(
-        'relative w-full aspect-[3/2] cursor-pointer perspective-1000',
+        'relative w-full cursor-pointer perspective-1000',
         className
       )}
       onClick={handleFlip}
     >
       <motion.div
-        className="absolute inset-0 w-full h-full"
+        className="relative w-full"
         initial={false}
         animate={{ rotateY: isFlipped ? 180 : 0 }}
         transition={{ duration: 0.5, ease: 'easeInOut' }}
@@ -49,16 +49,19 @@ export function FlashcardViewer({
       >
         {/* Front side */}
         <div
-          className="absolute inset-0 w-full h-full rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center backface-hidden"
+          className={cn(
+            'w-full rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center min-h-[200px]',
+            isFlipped && 'invisible'
+          )}
           style={{
             backgroundColor: color,
             backfaceVisibility: 'hidden',
           }}
         >
-          <p className="text-white text-xl md:text-2xl font-medium text-center leading-relaxed">
+          <p className="text-white text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full">
             {front}
           </p>
-          <div className="absolute bottom-4 flex items-center gap-2 text-white/70 text-sm">
+          <div className="mt-4 flex items-center gap-2 text-white/70 text-sm shrink-0">
             <RotateCcw className="w-4 h-4" />
             <span>Toque para ver resposta</span>
           </div>
@@ -66,17 +69,17 @@ export function FlashcardViewer({
 
         {/* Back side */}
         <div
-          className="absolute inset-0 w-full h-full rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center bg-card border-2"
+          className="absolute inset-0 w-full rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center min-h-[200px] bg-card border-2"
           style={{
             backfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
             borderColor: color,
           }}
         >
-          <p className="text-foreground text-xl md:text-2xl font-medium text-center leading-relaxed">
+          <p className="text-foreground text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full">
             {back}
           </p>
-          <div className="absolute bottom-4 flex items-center gap-2 text-muted-foreground text-sm">
+          <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm shrink-0">
             <RotateCcw className="w-4 h-4" />
             <span>Toque para voltar</span>
           </div>
