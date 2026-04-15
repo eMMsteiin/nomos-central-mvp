@@ -200,6 +200,9 @@ export function DeckDetail({
         </div>
       )}
 
+      {/* Sources section */}
+      {sourcesSection}
+
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
         <Card>
