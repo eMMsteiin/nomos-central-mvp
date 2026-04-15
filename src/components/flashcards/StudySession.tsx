@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, useEffect, useRef } from 'react';
+import { motion, AnimatePresence, useMotionValue, useTransform, PanInfo } from 'framer-motion';
 import { ArrowLeft, RotateCcw, X, Check, Zap, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -7,6 +7,7 @@ import { FlashcardViewer } from './FlashcardViewer';
 import { Flashcard, FlashcardRating, Deck } from '@/types/flashcard';
 import { cn } from '@/lib/utils';
 import { getNextIntervalPreview } from '@/utils/ankiAlgorithm';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface StudySessionProps {
   deck: Deck;
