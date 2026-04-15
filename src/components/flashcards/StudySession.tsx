@@ -123,7 +123,21 @@ export function StudySession({
     setReviewedCount(prev => prev + 1);
     setIsFlipped(false);
 
-    if (currentIndex < cards.length - 1) {
+    if (rating === 'again') {
+      // Re-queue the card: remove from current position and add near the end
+      // Card will reappear after ~3-5 more cards (or at the end if fewer remain)
+      setTimeout(() => {
+        setStudyQueue(prev => {
+          const newQueue = [...prev];
+          const reinsertPos = Math.min(currentIndex + Math.min(4, Math.max(1, newQueue.length - currentIndex - 1)), newQueue.length);
+          // Remove current card and reinsert later
+          const [card] = newQueue.splice(currentIndex, 1);
+          newQueue.splice(reinsertPos - 1, 0, card);
+          return newQueue;
+        });
+        // Don't increment index since we removed the current card
+      }, 200);
+    } else if (currentIndex < studyQueue.length - 1) {
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
       }, 200);
@@ -140,7 +154,7 @@ export function StudySession({
         });
       }
     }
-  }, [currentCard, currentIndex, cards.length, onReview, stats, sessionId, onSessionEnd, reviewedCount]);
+  }, [currentCard, currentIndex, studyQueue.length, onReview, stats, sessionId, onSessionEnd, reviewedCount]);
 
   const handleClose = useCallback(async () => {
     // End session early if leaving
