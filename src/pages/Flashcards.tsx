@@ -483,6 +483,22 @@ export default function Flashcards() {
           onDeleteCard={handleDeleteCard}
           onEditCard={handleEditCard}
           onEditDeck={() => setIsEditDeckOpen(true)}
+          sourcesSection={
+            <DeckSourcesSection
+              sources={deckSources.sources}
+              isUploading={deckSources.isUploading}
+              isGenerating={deckSources.isGenerating}
+              canUpload={deckSources.canUpload}
+              canGenerate={deckSources.canGenerate}
+              readyCount={deckSources.readyCount}
+              processingCount={deckSources.processingCount}
+              onUpload={deckSources.uploadSource}
+              onDelete={deckSources.deleteSource}
+              onRetry={deckSources.retrySource}
+              onGenerate={deckSources.generateFromSources}
+              onCardsGenerated={handleGenerateFlashcards}
+            />
+          }
         />
         <CreateFlashcardDialog
           open={isCreateCardOpen}
