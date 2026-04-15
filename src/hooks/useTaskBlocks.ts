@@ -223,13 +223,7 @@ export function useTaskBlocks(taskId: string | undefined) {
     }
   }, [taskId, getNextPosition]);
 
-  const updateTextBlock = useCallback(async (blockId: string, text: string) => {
-    const block = blocks.find(b => b.id === blockId);
-    if (!block || block.type !== 'text') return;
-
-    const newContent: TextContent = { text };
-    await updateBlockContent(blockId, newContent);
-  }, [blocks, updateBlockContent]);
+  // updateTextBlock is defined after updateBlockContent below
 
   const addNotebookPagesAsImages = useCallback(async (notebook: Notebook, pageIndexes: number[]) => {
     if (!taskId || !isValidUUID(taskId)) return;
