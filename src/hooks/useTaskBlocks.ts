@@ -324,6 +324,14 @@ export function useTaskBlocks(taskId: string | undefined) {
     }
   }, []);
 
+  const updateTextBlock = useCallback(async (blockId: string, text: string) => {
+    const block = blocks.find(b => b.id === blockId);
+    if (!block || block.type !== 'text') return;
+
+    const newContent: TextContent = { text };
+    await updateBlockContent(blockId, newContent);
+  }, [blocks, updateBlockContent]);
+
   const toggleSubtaskCompletion = useCallback(async (blockId: string) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block || block.type !== 'subtask') return;
