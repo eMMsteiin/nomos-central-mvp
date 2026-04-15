@@ -21,8 +21,21 @@ async function verifyUser(req: Request) {
   return { userId: user.id, supabase };
 }
 
+// Chunked base64 encoding to avoid stack overflow on large files
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const CHUNK_SIZE = 8192;
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+    const chunk = bytes.subarray(i, Math.min(i + CHUNK_SIZE, bytes.length));
+    for (let j = 0; j < chunk.length; j++) {
+      binary += String.fromCharCode(chunk[j]);
+    }
+  }
+  return btoa(binary);
+}
+
 async function extractTextFromImage(imageBytes: Uint8Array, mimeType: string, apiKey: string): Promise<string> {
-  const base64 = btoa(String.fromCharCode(...imageBytes));
+  const base64 = uint8ArrayToBase64(imageBytes);
   
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -56,7 +69,7 @@ async function extractTextFromImage(imageBytes: Uint8Array, mimeType: string, ap
   if (!response.ok) {
     const errorText = await response.text();
     console.error('[process-deck-source] Vision API error:', response.status, errorText);
-    throw new Error(`Vision API error: ${response.status}`);
+    throw new Error(`Vision API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
@@ -64,8 +77,8 @@ async function extractTextFromImage(imageBytes: Uint8Array, mimeType: string, ap
 }
 
 async function extractTextFromPdf(pdfBytes: Uint8Array, apiKey: string): Promise<string> {
-  // Use Gemini vision to extract text from PDF by sending it as a document
-  const base64 = btoa(String.fromCharCode(...pdfBytes));
+  const base64 = uint8ArrayToBase64(pdfBytes);
+  console.log(`[process-deck-source] PDF base64 length: ${base64.length} chars (~${Math.round(pdfBytes.length / 1024)}KB)`);
   
   const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
     method: 'POST',
@@ -81,7 +94,7 @@ async function extractTextFromPdf(pdfBytes: Uint8Array, apiKey: string): Promise
           content: [
             {
               type: 'text',
-              text: 'Extraia TODO o texto deste documento PDF preservando a estrutura. Inclua títulos, parágrafos, bullets, tabelas e qualquer texto visível. Retorne apenas o texto extraído, sem comentários adicionais.'
+              text: 'Extraia TODO o texto deste documento PDF preservando a estrutura. Mantenha títulos, subtítulos, bullets e parágrafos. Retorne apenas o texto extraído.'
             },
             {
               type: 'image_url',
@@ -92,18 +105,20 @@ async function extractTextFromPdf(pdfBytes: Uint8Array, apiKey: string): Promise
           ]
         }
       ],
-      max_tokens: 4000,
+      max_tokens: 16000,
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error('[process-deck-source] PDF extraction error:', response.status, errorText);
-    throw new Error(`PDF extraction error: ${response.status}`);
+    console.error('[process-deck-source] PDF extraction API error:', response.status, errorText);
+    throw new Error(`PDF extraction error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
+  const text = data.choices?.[0]?.message?.content || '';
+  console.log(`[process-deck-source] PDF extraction returned ${text.length} chars`);
+  return text;
 }
 
 serve(async (req) => {
@@ -129,7 +144,7 @@ serve(async (req) => {
       });
     }
 
-    console.log(`[process-deck-source] Processing source ${source_id}, type: ${file_type}`);
+    console.log(`[process-deck-source] Processing source ${source_id}, type: ${file_type}, path: ${storage_path}`);
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
@@ -142,7 +157,7 @@ serve(async (req) => {
       .download(storage_path);
 
     if (downloadError || !fileData) {
-      console.error('[process-deck-source] Download error:', downloadError);
+      console.error('[process-deck-source] Download error:', downloadError?.message || 'No data');
       await supabase.from('deck_sources').update({ status: 'error' }).eq('id', source_id);
       return new Response(JSON.stringify({ error: 'Failed to download file' }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -150,13 +165,13 @@ serve(async (req) => {
     }
 
     const fileBytes = new Uint8Array(await fileData.arrayBuffer());
+    console.log(`[process-deck-source] Downloaded file: ${fileBytes.length} bytes`);
     let extractedText = '';
 
     try {
       if (file_type === 'pdf') {
         extractedText = await extractTextFromPdf(fileBytes, LOVABLE_API_KEY);
       } else if (file_type === 'image') {
-        // Determine MIME type from storage_path
         const ext = storage_path.split('.').pop()?.toLowerCase() || 'png';
         const mimeMap: Record<string, string> = {
           'png': 'image/png', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
@@ -165,8 +180,7 @@ serve(async (req) => {
         const mimeType = mimeMap[ext] || 'image/png';
         extractedText = await extractTextFromImage(fileBytes, mimeType, LOVABLE_API_KEY);
       } else if (file_type === 'pptx') {
-        // For PPTX, send as document to Gemini
-        const base64 = btoa(String.fromCharCode(...fileBytes));
+        const base64 = uint8ArrayToBase64(fileBytes);
         const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -182,19 +196,26 @@ serve(async (req) => {
                 { type: 'image_url', image_url: { url: `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${base64}` } }
               ]
             }],
-            max_tokens: 4000,
+            max_tokens: 16000,
           }),
         });
-        if (!response.ok) throw new Error(`PPTX extraction error: ${response.status}`);
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('[process-deck-source] PPTX extraction error:', response.status, errorText);
+          throw new Error(`PPTX extraction error: ${response.status} - ${errorText}`);
+        }
         const data = await response.json();
         extractedText = data.choices?.[0]?.message?.content || '';
       } else {
         throw new Error(`Unsupported file type: ${file_type}`);
       }
     } catch (extractError) {
-      console.error('[process-deck-source] Extraction error:', extractError);
+      const errorMsg = extractError instanceof Error ? extractError.message : String(extractError);
+      const errorStack = extractError instanceof Error ? extractError.stack : '';
+      console.error(`[process-deck-source] Extraction failed for source ${source_id}:`, errorMsg);
+      console.error('[process-deck-source] Stack:', errorStack);
       await supabase.from('deck_sources').update({ status: 'error' }).eq('id', source_id);
-      return new Response(JSON.stringify({ error: 'Não conseguimos ler este arquivo. Tente exportar como PDF ou tirar uma foto mais nítida.' }), {
+      return new Response(JSON.stringify({ error: 'Não conseguimos ler este arquivo. Tente exportar como PDF ou tirar uma foto mais nítida.', details: errorMsg }), {
         status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -210,7 +231,7 @@ serve(async (req) => {
     }).eq('id', source_id);
 
     if (updateError) {
-      console.error('[process-deck-source] Update error:', updateError);
+      console.error('[process-deck-source] DB update error:', updateError.message);
       throw updateError;
     }
 
@@ -223,8 +244,11 @@ serve(async (req) => {
     });
 
   } catch (error) {
-    console.error('[process-deck-source] Error:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+    const errorMsg = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : '';
+    console.error('[process-deck-source] Unhandled error:', errorMsg);
+    console.error('[process-deck-source] Stack:', errorStack);
+    return new Response(JSON.stringify({ error: errorMsg }), {
       status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
