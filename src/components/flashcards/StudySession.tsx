@@ -223,7 +223,7 @@ export function StudySession({
         </Button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} / {cards.length}
+            {currentIndex + 1} / {studyQueue.length}
           </span>
         </div>
       </div>
