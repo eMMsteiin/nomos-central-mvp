@@ -50,10 +50,11 @@ export function StudySession({
     easy: '',
   });
   const [swipeHint, setSwipeHint] = useState<FlashcardRating | null>(null);
+  const [studyQueue, setStudyQueue] = useState<Flashcard[]>(() => [...cards]);
   const isMobile = useIsMobile();
 
-  const currentCard = cards[currentIndex];
-  const progress = cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0;
+  const currentCard = studyQueue[currentIndex];
+  const progress = studyQueue.length > 0 ? (reviewedCount / studyQueue.length) * 100 : 0;
 
   // Start session on mount
   useEffect(() => {
