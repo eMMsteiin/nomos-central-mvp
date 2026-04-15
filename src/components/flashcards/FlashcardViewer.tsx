@@ -40,51 +40,51 @@ export function FlashcardViewer({
       )}
       onClick={handleFlip}
     >
-      <motion.div
-        className="relative w-full"
-        initial={false}
-        animate={{ rotateY: isFlipped ? 180 : 0 }}
-        transition={{ duration: 0.5, ease: 'easeInOut' }}
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        {/* Front side */}
-        <div
-          className={cn(
-            'w-full rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center min-h-[200px]',
-            isFlipped && 'invisible'
-          )}
-          style={{
-            backgroundColor: color,
-            backfaceVisibility: 'hidden',
-          }}
+      {/* We render front/back separately and toggle visibility instead of using
+           absolute positioning, so both sides can grow with their content */}
+      {!isFlipped && (
+        <motion.div
+          className="w-full"
+          initial={{ rotateY: 0 }}
+          animate={{ rotateY: 0 }}
+          transition={{ duration: 0.3 }}
         >
-          <p className="text-white text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full">
-            {front}
-          </p>
-          <div className="mt-4 flex items-center gap-2 text-white/70 text-sm shrink-0">
-            <RotateCcw className="w-4 h-4" />
-            <span>Toque para ver resposta</span>
+          <div
+            className="w-full rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center justify-center min-h-[200px]"
+            style={{ backgroundColor: color }}
+          >
+            <p className="text-white text-base sm:text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full overflow-hidden">
+              {front}
+            </p>
+            <div className="mt-4 flex items-center gap-2 text-white/70 text-sm shrink-0">
+              <RotateCcw className="w-4 h-4" />
+              <span>Toque para ver resposta</span>
+            </div>
           </div>
-        </div>
+        </motion.div>
+      )}
 
-        {/* Back side */}
-        <div
-          className="absolute inset-0 w-full rounded-2xl shadow-lg p-6 flex flex-col items-center justify-center min-h-[200px] bg-card border-2"
-          style={{
-            backfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-            borderColor: color,
-          }}
+      {isFlipped && (
+        <motion.div
+          className="w-full"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
         >
-          <p className="text-foreground text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full">
-            {back}
-          </p>
-          <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm shrink-0">
-            <RotateCcw className="w-4 h-4" />
-            <span>Toque para voltar</span>
+          <div
+            className="w-full rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center justify-center min-h-[200px] bg-card border-2"
+            style={{ borderColor: color }}
+          >
+            <p className="text-foreground text-base sm:text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full overflow-hidden">
+              {back}
+            </p>
+            <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm shrink-0">
+              <RotateCcw className="w-4 h-4" />
+              <span>Toque para voltar</span>
+            </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

@@ -244,14 +244,14 @@ export function DeckSourcesSection({
 
       {/* Source selection dialog */}
       <Dialog open={showSelectDialog} onOpenChange={setShowSelectDialog}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md max-w-[calc(100vw-2rem)] overflow-hidden">
           <DialogHeader>
             <DialogTitle>Selecione as fontes</DialogTitle>
           </DialogHeader>
           <p className="text-sm text-muted-foreground">
             Escolha quais arquivos serão usados para gerar os flashcards. Os cards serão distribuídos igualmente entre as fontes selecionadas.
           </p>
-          <div className="space-y-2 py-2">
+          <div className="space-y-2 py-2 max-h-[50vh] overflow-y-auto">
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors mb-1"
@@ -265,14 +265,15 @@ export function DeckSourcesSection({
               return (
                 <label
                   key={source.id}
-                  className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/30 transition-colors"
+                  className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/30 transition-colors overflow-hidden"
                 >
                   <Checkbox
                     checked={selectedIds.has(source.id)}
                     onCheckedChange={() => toggleSource(source.id)}
+                    className="shrink-0"
                   />
                   <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 overflow-hidden">
                     <p className="text-sm font-medium truncate">{source.fileName}</p>
                     <p className="text-xs text-muted-foreground">~{wordCount.toLocaleString()} palavras</p>
                   </div>
