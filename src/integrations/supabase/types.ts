@@ -828,6 +828,7 @@ export type Database = {
           timer_started_at: string | null
           type: string | null
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           canva_design_title?: string | null
@@ -855,6 +856,7 @@ export type Database = {
           timer_started_at?: string | null
           type?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           canva_design_title?: string | null
@@ -882,6 +884,7 @@ export type Database = {
           timer_started_at?: string | null
           type?: string | null
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
