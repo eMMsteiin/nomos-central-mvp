@@ -21,6 +21,11 @@ export async function fetchAndParseICS(url: string): Promise<ICSEvent[]> {
     throw new Error('Erro ao buscar calendário');
   }
   
+  if (data?.error) {
+    console.error('Erro do servidor:', data.error, 'status:', data.status, 'url:', data.url);
+    throw new Error(data.error);
+  }
+
   if (!data?.icsText) {
     throw new Error('Calendário vazio ou inválido');
   }
