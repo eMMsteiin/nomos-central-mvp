@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { DeckSource } from '@/hooks/useDeckSources';
 
@@ -18,7 +20,7 @@ interface DeckSourcesSectionProps {
   onUpload: (file: File) => void;
   onDelete: (sourceId: string) => void;
   onRetry: (sourceId: string) => void;
-  onGenerate: (focus?: string) => Promise<Array<{ front: string; back: string }> | null>;
+  onGenerate: (focus?: string, selectedSourceIds?: string[]) => Promise<Array<{ front: string; back: string }> | null>;
   onCardsGenerated: (cards: Array<{ front: string; back: string }>) => void;
 }
 
@@ -48,7 +50,11 @@ export function DeckSourcesSection({
   onCardsGenerated,
 }: DeckSourcesSectionProps) {
   const [focus, setFocus] = useState('');
+  const [showSelectDialog, setShowSelectDialog] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const readySources = sources.filter(s => s.status === 'ready');
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -58,10 +64,35 @@ export function DeckSourcesSection({
     }
   };
 
-  const handleGenerate = async () => {
-    const cards = await onGenerate(focus || undefined);
+  const handleGenerateClick = () => {
+    // Pre-select all ready sources
+    setSelectedIds(new Set(readySources.map(s => s.id)));
+    setShowSelectDialog(true);
+  };
+
+  const handleConfirmGenerate = async () => {
+    setShowSelectDialog(false);
+    const ids = Array.from(selectedIds);
+    const cards = await onGenerate(focus || undefined, ids);
     if (cards && cards.length > 0) {
       onCardsGenerated(cards);
+    }
+  };
+
+  const toggleSource = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = () => {
+    if (selectedIds.size === readySources.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(readySources.map(s => s.id)));
     }
   };
 
@@ -188,7 +219,7 @@ export function DeckSourcesSection({
                   <Button
                     className="w-full"
                     disabled={!canGenerate}
-                    onClick={handleGenerate}
+                    onClick={handleGenerateClick}
                   >
                     {isGenerating ? (
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -210,6 +241,59 @@ export function DeckSourcesSection({
           </TooltipProvider>
         </div>
       )}
+
+      {/* Source selection dialog */}
+      <Dialog open={showSelectDialog} onOpenChange={setShowSelectDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Selecione as fontes</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Escolha quais arquivos serão usados para gerar os flashcards. Os cards serão distribuídos igualmente entre as fontes selecionadas.
+          </p>
+          <div className="space-y-2 py-2">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors mb-1"
+              onClick={toggleAll}
+            >
+              {selectedIds.size === readySources.length ? 'Desmarcar todos' : 'Selecionar todos'}
+            </button>
+            {readySources.map(source => {
+              const Icon = FILE_TYPE_ICONS[source.fileType] || FileText;
+              const wordCount = getWordCount(source.extractedText);
+              return (
+                <label
+                  key={source.id}
+                  className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/30 transition-colors"
+                >
+                  <Checkbox
+                    checked={selectedIds.has(source.id)}
+                    onCheckedChange={() => toggleSource(source.id)}
+                  />
+                  <Icon className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{source.fileName}</p>
+                    <p className="text-xs text-muted-foreground">~{wordCount.toLocaleString()} palavras</p>
+                  </div>
+                </label>
+              );
+            })}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowSelectDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              disabled={selectedIds.size === 0}
+              onClick={handleConfirmGenerate}
+            >
+              <Sparkles className="w-4 h-4 mr-2" />
+              Gerar de {selectedIds.size} fonte{selectedIds.size !== 1 ? 's' : ''}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
