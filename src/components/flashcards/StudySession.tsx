@@ -50,10 +50,11 @@ export function StudySession({
     easy: '',
   });
   const [swipeHint, setSwipeHint] = useState<FlashcardRating | null>(null);
+  const [studyQueue, setStudyQueue] = useState<Flashcard[]>(() => [...cards]);
   const isMobile = useIsMobile();
 
-  const currentCard = cards[currentIndex];
-  const progress = cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0;
+  const currentCard = studyQueue[currentIndex];
+  const progress = studyQueue.length > 0 ? (reviewedCount / studyQueue.length) * 100 : 0;
 
   // Start session on mount
   useEffect(() => {
@@ -122,7 +123,21 @@ export function StudySession({
     setReviewedCount(prev => prev + 1);
     setIsFlipped(false);
 
-    if (currentIndex < cards.length - 1) {
+    if (rating === 'again') {
+      // Re-queue the card: remove from current position and add near the end
+      // Card will reappear after ~3-5 more cards (or at the end if fewer remain)
+      setTimeout(() => {
+        setStudyQueue(prev => {
+          const newQueue = [...prev];
+          const reinsertPos = Math.min(currentIndex + Math.min(4, Math.max(1, newQueue.length - currentIndex - 1)), newQueue.length);
+          // Remove current card and reinsert later
+          const [card] = newQueue.splice(currentIndex, 1);
+          newQueue.splice(reinsertPos - 1, 0, card);
+          return newQueue;
+        });
+        // Don't increment index since we removed the current card
+      }, 200);
+    } else if (currentIndex < studyQueue.length - 1) {
       setTimeout(() => {
         setCurrentIndex(prev => prev + 1);
       }, 200);
@@ -139,7 +154,7 @@ export function StudySession({
         });
       }
     }
-  }, [currentCard, currentIndex, cards.length, onReview, stats, sessionId, onSessionEnd, reviewedCount]);
+  }, [currentCard, currentIndex, studyQueue.length, onReview, stats, sessionId, onSessionEnd, reviewedCount]);
 
   const handleClose = useCallback(async () => {
     // End session early if leaving
@@ -154,7 +169,7 @@ export function StudySession({
     onClose();
   }, [onSessionEnd, sessionId, reviewedCount, isComplete, stats, onClose]);
 
-  if (cards.length === 0 || !currentCard) {
+  if (studyQueue.length === 0 || !currentCard) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
         <Brain className="w-16 h-16 text-muted-foreground" />
@@ -208,7 +223,7 @@ export function StudySession({
         </Button>
         <div className="flex items-center gap-2">
           <span className="text-sm text-muted-foreground">
-            {currentIndex + 1} / {cards.length}
+            {currentIndex + 1} / {studyQueue.length}
           </span>
         </div>
       </div>

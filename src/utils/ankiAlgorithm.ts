@@ -290,23 +290,71 @@ function scheduleNewCard(
     };
   }
 
-  // Start learning process
-  const stepIndex = 0;
-  const stepMs = steps.length > 0 ? parseStepToMs(steps[stepIndex]) : 60000; // Default 1 min
-  
-  let delay = stepMs;
   if (rating === 'again') {
-    delay = stepMs; // Same as first step
-  } else if (rating === 'hard') {
-    delay = Math.round(stepMs * 1.2); // 20% longer
+    // Start at step 0
+    const stepMs = steps.length > 0 ? parseStepToMs(steps[0]) : 60000;
+    const due = new Date(now.getTime() + stepMs);
+
+    return {
+      cardState: 'learning',
+      currentStep: 0,
+      stepsLeft: steps.length,
+      due: due.toISOString(),
+      interval: 0,
+      easeFactor: startingEase,
+      repetitions: 0,
+      lapses: 0,
+      nextReview: due.toISOString(),
+    };
   }
 
-  const due = new Date(now.getTime() + delay);
+  if (rating === 'hard') {
+    // Stay at step 0 with 1.2x delay
+    const stepMs = steps.length > 0 ? parseStepToMs(steps[0]) : 60000;
+    const delay = Math.round(stepMs * 1.2);
+    const due = new Date(now.getTime() + delay);
+
+    return {
+      cardState: 'learning',
+      currentStep: 0,
+      stepsLeft: steps.length,
+      due: due.toISOString(),
+      interval: 0,
+      easeFactor: startingEase,
+      repetitions: 0,
+      lapses: 0,
+      nextReview: due.toISOString(),
+    };
+  }
+
+  // Good: advance to next step (or graduate if only 1 step)
+  if (steps.length <= 1) {
+    // Only 1 step — graduate immediately
+    const interval = fuzzInterval(config.graduatingInterval);
+    const due = new Date(now);
+    due.setDate(due.getDate() + interval);
+
+    return {
+      cardState: 'review',
+      currentStep: 0,
+      stepsLeft: 0,
+      due: due.toISOString(),
+      interval,
+      easeFactor: startingEase,
+      repetitions: 1,
+      lapses: 0,
+      nextReview: due.toISOString(),
+    };
+  }
+
+  // Multiple steps — advance to step 1
+  const nextStepMs = parseStepToMs(steps[1]);
+  const due = new Date(now.getTime() + nextStepMs);
 
   return {
     cardState: 'learning',
-    currentStep: 0,
-    stepsLeft: steps.length,
+    currentStep: 1,
+    stepsLeft: steps.length - 1,
     due: due.toISOString(),
     interval: 0,
     easeFactor: startingEase,
