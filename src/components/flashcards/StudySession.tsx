@@ -217,7 +217,26 @@ export function StudySession({
       <Progress value={progress} className="mb-6 h-2" />
 
       {/* Card */}
-      <div className="flex-1 flex flex-col items-center justify-center px-4">
+      <div className="flex-1 flex flex-col items-center justify-center px-4 relative">
+        {/* Swipe hint overlay (mobile only) */}
+        {isMobile && isFlipped && swipeHint && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="absolute inset-0 z-10 pointer-events-none flex items-center justify-center"
+          >
+            <div className={cn(
+              'px-6 py-3 rounded-full text-white font-semibold text-lg',
+              swipeHint === 'good' && 'bg-green-500',
+              swipeHint === 'easy' && 'bg-blue-500',
+              swipeHint === 'hard' && 'bg-orange-500',
+              swipeHint === 'again' && 'bg-red-500',
+            )}>
+              {RATING_BUTTONS.find(b => b.rating === swipeHint)?.label}
+            </div>
+          </motion.div>
+        )}
+
         <AnimatePresence mode="wait">
           <motion.div
             key={currentCard.id}
@@ -225,6 +244,11 @@ export function StudySession({
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -50 }}
             className="w-full max-w-md"
+            drag={isMobile && isFlipped ? true : false}
+            dragConstraints={{ top: 0, bottom: 0, left: 0, right: 0 }}
+            dragElastic={0.7}
+            onDrag={isMobile ? handleDrag : undefined}
+            onDragEnd={isMobile ? handleDragEnd : undefined}
           >
             <FlashcardViewer
               front={currentCard.front}
@@ -237,9 +261,9 @@ export function StudySession({
         </AnimatePresence>
       </div>
 
-      {/* Rating buttons */}
+      {/* Rating buttons (desktop) */}
       <AnimatePresence>
-        {isFlipped && (
+        {isFlipped && !isMobile && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -253,7 +277,7 @@ export function StudySession({
               {RATING_BUTTONS.map(({ rating, label, icon, color }) => (
                 <Button
                   key={rating}
-                  onClick={() => handleRating(rating)}
+                  onClick={() => handleRatingAction(rating)}
                   className={cn('flex flex-col gap-1 h-auto py-4 text-white', color)}
                 >
                   <span className="text-xs font-semibold opacity-90">{intervalPreviews[rating]}</span>
@@ -266,10 +290,25 @@ export function StudySession({
         )}
       </AnimatePresence>
 
+      {/* Mobile swipe hint */}
+      {isFlipped && isMobile && !swipeHint && (
+        <div className="mt-4 pb-6 text-center">
+          <p className="text-sm text-muted-foreground">
+            Arraste o card para classificar
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-1 max-w-[200px] mx-auto text-xs text-muted-foreground">
+            <span>↖ Bom</span>
+            <span className="text-right">↗ Fácil</span>
+            <span>↙ Difícil</span>
+            <span className="text-right">↘ De novo</span>
+          </div>
+        </div>
+      )}
+
       {!isFlipped && (
         <div className="mt-6 pb-6 text-center">
           <p className="text-sm text-muted-foreground">
-            Toque no card para ver a resposta
+            {isMobile ? 'Toque no card para ver a resposta' : 'Toque no card para ver a resposta'}
           </p>
         </div>
       )}
