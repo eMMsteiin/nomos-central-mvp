@@ -221,6 +221,53 @@ export type Database = {
         }
         Relationships: []
       }
+      deck_sources: {
+        Row: {
+          created_at: string
+          deck_id: string
+          extracted_text: string | null
+          file_name: string
+          file_type: string
+          id: string
+          page_count: number | null
+          status: string
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          deck_id: string
+          extracted_text?: string | null
+          file_name: string
+          file_type: string
+          id?: string
+          page_count?: number | null
+          status?: string
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          deck_id?: string
+          extracted_text?: string | null
+          file_name?: string
+          file_type?: string
+          id?: string
+          page_count?: number | null
+          status?: string
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deck_sources_deck_id_fkey"
+            columns: ["deck_id"]
+            isOneToOne: false
+            referencedRelation: "flashcard_decks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flashcard_decks: {
         Row: {
           color: string | null
