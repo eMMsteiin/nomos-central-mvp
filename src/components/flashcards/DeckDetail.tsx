@@ -52,6 +52,7 @@ interface DeckDetailProps {
   onOpenOptions?: () => void;
   onCreateSubdeck?: () => void;
   onSelectSubdeck?: (deck: Deck) => void;
+  sourcesSection?: React.ReactNode;
 }
 
 export function DeckDetail({
@@ -72,6 +73,7 @@ export function DeckDetail({
   onOpenOptions,
   onCreateSubdeck,
   onSelectSubdeck,
+  sourcesSection,
 }: DeckDetailProps) {
   const [cardToDelete, setCardToDelete] = useState<string | null>(null);
   const [revealedCards, setRevealedCards] = useState<Set<string>>(new Set());
@@ -197,6 +199,9 @@ export function DeckDetail({
           </div>
         </div>
       )}
+
+      {/* Sources section */}
+      {sourcesSection}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">

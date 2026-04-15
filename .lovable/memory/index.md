@@ -1,0 +1,53 @@
+# Project Memory
+
+## Core
+- Ultra-minimalist, monochromatic UI (black/white). No borders, gradients, or shadows. Hierarchies via typography/spacing.
+- Typographic navigation: no hover backgrounds, active state = font-semibold. Hide scrollbars.
+- Strict 1:1 Anki algorithmic parity for flashcards (SM-2, Note/Card separation). No UX simplifications.
+- Anonymous Supabase login (persistent userId). Hybrid persistence (Supabase for Chat/Flashcards, localStorage for Tasks).
+- Domain names must be stripped of http/https/www/paths (hostname only).
+
+## Memories
+- [Borderless UI architecture](mem://style/borderless-ui-architecture) — Eliminate rectangular borders, rely on whitespace
+- [Minimalist identity](mem://style/minimalist-monochromatic-identity) — Monochromatic, silent design, no decorative elements
+- [Sidebar interaction](mem://style/sidebar-minimalist-interaction) — Typographic navigation, no hover backgrounds
+- [Text box resize handles](mem://style/text-box-resize-handles) — Large, circular handles with shadow and hover effect
+- [Text box font scaling](mem://features/text-box/corner-resizing-font-scaling) — Corner resize scales font proportionally (8px-200px)
+- [Text box buttons](mem://features/text-box/delete-and-lock-buttons-visual-refinement) — Delete/lock icons h-5, no visual locked indicators
+- [Smart task titles](mem://features/text-box/smart-task-title-generation) — AI title generation for tasks via Gemini-2.5-flash
+- [Annotation to task](mem://features/text-box/convert-annotation-to-task) — Convert annotations to tasks with date/priority/destination
+- [Task multi-destination](mem://features/text-box/task-conversion-multi-destination) — Multi-select task destination (Hoje/Entrada)
+- [Notion-style task pages](mem://features/task-management/notion-style-task-pages) — Expandable tasks with subtasks and attachments
+- [Notion-style task blocks](mem://features/task-management/notion-style-task-blocks) — Blank canvas, reorderable blocks, invisible spacing
+- [Notion-style image resizing](mem://features/task-management/notion-style-image-resizing) — Resizable images (10-100%), maintain aspect ratio
+- [Notion-style image display](mem://features/task-management/notion-style-image-display) — Images w-full h-auto, no explicit max bounds
+- [Notion-style drag indicators](mem://features/task-management/notion-style-drag-indicators) — Pulsed blue line drop indicator
+- [Subtask attachments](mem://features/task-management/subtask-attachments) — File attachments inside subtasks with previews
+- [Subtask attachment download](mem://error-handling/subtask-attachment-download) — Fetch to Blob workaround for downloading PDFs
+- [Notebook page extraction](mem://features/task-management/notebook-page-extraction) — Extract pages to PNG, sanitize filenames
+- [Notebook attachments](mem://features/task-management/notebook-attachments) — Attach notebooks to tasks with metadata and open button
+- [Task persistence UUID](mem://features/task-management/task-persistence-uuid-canonical) — UUIDs for tasks, canonical version logic
+- [Contextual summaries](mem://features/chat-nomos/contextual-summaries-and-auth-sync) — Summaries via [PROPOSAL] create_summary, RLS synced
+- [Archived convos removal](mem://features/chat-nomos/archived-conversations-removal) — Single 'Conversas' list, no archive
+- [Anki parity constraint](mem://constraints/flashcards-anki-parity) — Strict structural and algorithmic Anki parity
+- [Anki parity engine](mem://features/flashcards/anki-parity-engine) — Advanced states, subdecks, Parent::Child syntax
+- [Notes templates cloze](mem://features/flashcards/notes-templates-cloze) — Note/Card separation, {{c1::content}} cloze syntax
+- [Card browser bulk actions](mem://features/flashcards/card-browser-bulk-actions) — Browser filtering, multi-select, suspend/bury
+- [Statistics portability](mem://features/flashcards/statistics-portability-parity) — Stats dashboard, CSV/JSON import/export
+- [Study interval previews](mem://features/flashcards/study-interval-previews) — Review time projected on classification buttons
+- [Deck sources](mem://features/flashcards/deck-sources) — Upload PDFs/images/PPTX, extract text, generate cards from source content only
+- [External tools sidebar](mem://features/external-tools/sidebar-integration) — Integration with internal/external tabs
+- [External tools presets](mem://features/external-tools/presets-and-visuals) — Lucide icons, GenAI removed from presets
+- [External tools logic](mem://features/external-tools/opening-logic-and-fallbacks) — isKnownBlockedSite forces new tab
+- [Provider HMR safety](mem://error-handling/external-tools-provider-hmr-safety) — GLOBAL_CONTEXT_KEY and delayed reload for ExternalToolsProvider
+- [Focus mode session](mem://features/focus-mode/session-management) — Timer, hostname blocklist/allowlist, localStorage sync
+- [Focus mode NLP](mem://features/chat-nomos/focus-mode-integration) — Chat activation via [PROPOSAL] focus_mode
+- [Focus mode extension](mem://features/focus-mode/extension-integration) — PostMessage events for future browser extension
+- [Focus mode visual catalog](mem://features/focus-mode/visual-selection-catalog) — Visual blocklist catalog, manual mode
+- [Focus mode domain logic](mem://features/focus-mode/domain-validation) — Strip http/https/www/paths for blocklist
+- [Focus mode relocation](mem://navigation/focus-mode-relocation) — Moved to /configuracoes/modo-foco
+- [Settings page structure](mem://navigation/settings-page-structure) — Nested routes, internal sidebar
+- [Charts context stability](mem://error-handling/charts-context-stability) — Standard Recharts Tooltip to avoid HMR errors
+- [Anonymous login](mem://auth/anonymous-login) — Supabase signInAnonymously with persistent userId
+- [Persistence hybrid model](mem://architecture/persistence-hybrid-model) — Supabase vs localStorage separation
+- [Technical debt](mem://project/technical-debt) — NomosHome, useChat, chat-nomos too large; duplicate /tarefa routes

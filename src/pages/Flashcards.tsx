@@ -3,10 +3,12 @@ import { motion } from 'framer-motion';
 import { Layers, Play, Brain, Search, BarChart3, Download, Upload, HardDrive } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useFlashcards } from '@/hooks/useFlashcards';
+import { useDeckSources } from '@/hooks/useDeckSources';
 import { useNotes } from '@/hooks/useNotes';
 import { useImportExport } from '@/hooks/useImportExport';
 import { DeckList } from '@/components/flashcards/DeckList';
 import { DeckDetail } from '@/components/flashcards/DeckDetail';
+import { DeckSourcesSection } from '@/components/flashcards/DeckSourcesSection';
 import { StudySession } from '@/components/flashcards/StudySession';
 import { CreateDeckDialog } from '@/components/flashcards/CreateDeckDialog';
 import { CreateFlashcardDialog } from '@/components/flashcards/CreateFlashcardDialog';
@@ -107,6 +109,9 @@ export default function Flashcards() {
   // Import/Export dialogs
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
+
+  // Deck sources
+  const deckSources = useDeckSources(selectedDeck?.id || null);
 
   // Verificar se há flashcards pendentes do Chat NOMOS
   useEffect(() => {
@@ -478,6 +483,22 @@ export default function Flashcards() {
           onDeleteCard={handleDeleteCard}
           onEditCard={handleEditCard}
           onEditDeck={() => setIsEditDeckOpen(true)}
+          sourcesSection={
+            <DeckSourcesSection
+              sources={deckSources.sources}
+              isUploading={deckSources.isUploading}
+              isGenerating={deckSources.isGenerating}
+              canUpload={deckSources.canUpload}
+              canGenerate={deckSources.canGenerate}
+              readyCount={deckSources.readyCount}
+              processingCount={deckSources.processingCount}
+              onUpload={deckSources.uploadSource}
+              onDelete={deckSources.deleteSource}
+              onRetry={deckSources.retrySource}
+              onGenerate={deckSources.generateFromSources}
+              onCardsGenerated={handleGenerateFlashcards}
+            />
+          }
         />
         <CreateFlashcardDialog
           open={isCreateCardOpen}
