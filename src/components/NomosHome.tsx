@@ -209,9 +209,12 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
 
       // Sincronizar com Supabase imediatamente (em background)
       try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const userId = session?.user?.id;
         await supabase.from('tasks').insert({
           id: taskId,
           device_id: deviceId,
+          user_id: userId,
           text: cleanText,
           due_date: finalDate ? new Date(finalDate).toISOString() : null,
           due_time: finalTime || null,
