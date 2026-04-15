@@ -6,6 +6,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+const TIMEOUT_MS = 15000;
+
 async function verifyUser(req: Request) {
   const authHeader = req.headers.get('Authorization');
   if (!authHeader) return { error: 'Authorization header missing', status: 401 };
@@ -27,7 +29,6 @@ serve(async (req) => {
   }
 
   try {
-    // Verify authentication
     const authResult = await verifyUser(req);
     if ('error' in authResult) {
       return new Response(JSON.stringify({ error: authResult.error }), {
@@ -45,7 +46,6 @@ serve(async (req) => {
       )
     }
 
-    // Validate URL format
     try {
       const parsed = new URL(url);
       if (!['http:', 'https:'].includes(parsed.protocol)) {
@@ -58,15 +58,34 @@ serve(async (req) => {
       )
     }
 
-    console.log('📅 Buscando calendário ICS para user:', authResult.userId)
+    console.log('📅 Buscando calendário ICS para user:', authResult.userId, 'URL:', url)
     
-    const response = await fetch(url)
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: 'follow',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'text/calendar, text/plain, */*',
+        'Accept-Language': 'pt-BR,pt;q=0.9,en;q=0.8',
+        'Cache-Control': 'no-cache',
+      },
+    })
+
+    clearTimeout(timeoutId);
     
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+      console.error(`❌ HTTP ${response.status} ao buscar: ${url}`)
+      return new Response(
+        JSON.stringify({ error: `HTTP ${response.status}`, url, status: response.status }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
     }
     
     const icsText = await response.text()
+    console.log('✅ ICS obtido com sucesso, tamanho:', icsText.length, 'bytes')
     
     return new Response(
       JSON.stringify({ icsText }),
@@ -78,12 +97,17 @@ serve(async (req) => {
     
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-    console.error('❌ Erro ao buscar calendário:', errorMessage)
+    const isTimeout = error instanceof Error && error.name === 'AbortError'
+    
+    console.error('❌ Erro ao buscar calendário:', errorMessage, 'isTimeout:', isTimeout)
     
     return new Response(
-      JSON.stringify({ error: 'Erro ao buscar calendário' }),
+      JSON.stringify({ 
+        error: isTimeout ? 'Timeout: servidor demorou mais de 15s' : `Erro: ${errorMessage}`,
+        status: isTimeout ? 408 : 500
+      }),
       { 
-        status: 500,
+        status: 200,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
