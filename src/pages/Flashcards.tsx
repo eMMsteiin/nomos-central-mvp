@@ -110,6 +110,9 @@ export default function Flashcards() {
   const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const [isBackupOpen, setIsBackupOpen] = useState(false);
 
+  // Deck sources
+  const deckSources = useDeckSources(selectedDeck?.id || null);
+
   // Verificar se há flashcards pendentes do Chat NOMOS
   useEffect(() => {
     const checkPendingFlashcards = () => {
