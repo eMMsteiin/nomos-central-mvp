@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent, NotebookContent } from '@/types/task';
+import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent, TextContent, NotebookContent } from '@/types/task';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 import { Notebook } from '@/types/notebook';
@@ -190,6 +190,41 @@ export function useTaskBlocks(taskId: string | undefined) {
     }
   }, [taskId, getNextPosition]);
 
+  const addTextBlock = useCallback(async (text: string = '', atPosition?: number) => {
+    if (!taskId || !isValidUUID(taskId)) return null;
+
+    const content: TextContent = { text };
+    const position = atPosition ?? getNextPosition();
+
+    try {
+      const { data, error } = await supabase
+        .from('task_blocks')
+        .insert([{
+          task_id: taskId,
+          type: 'text',
+          content: JSON.parse(JSON.stringify(content)),
+          position,
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const newBlock = blockRowToBlock(data as TaskBlockRow);
+      setBlocks(prev => {
+        const updated = [...prev, newBlock];
+        updated.sort((a, b) => a.position - b.position);
+        return updated;
+      });
+      return newBlock;
+    } catch (error) {
+      console.error('Error adding text block:', error);
+      return null;
+    }
+  }, [taskId, getNextPosition]);
+
+  
+
   const addNotebookPagesAsImages = useCallback(async (notebook: Notebook, pageIndexes: number[]) => {
     if (!taskId || !isValidUUID(taskId)) return;
     if (pageIndexes.length === 0) return;
@@ -289,6 +324,14 @@ export function useTaskBlocks(taskId: string | undefined) {
     }
   }, []);
 
+  const updateTextBlock = useCallback(async (blockId: string, text: string) => {
+    const block = blocks.find(b => b.id === blockId);
+    if (!block || block.type !== 'text') return;
+
+    const newContent: TextContent = { text };
+    await updateBlockContent(blockId, newContent);
+  }, [blocks, updateBlockContent]);
+
   const toggleSubtaskCompletion = useCallback(async (blockId: string) => {
     const block = blocks.find(b => b.id === blockId);
     if (!block || block.type !== 'subtask') return;
@@ -379,10 +422,12 @@ export function useTaskBlocks(taskId: string | undefined) {
     isLoading,
     isProcessingPages,
     addSubtaskBlock,
+    addTextBlock,
     addImageBlock,
     addNotebookBlock,
     addNotebookPagesAsImages,
     updateBlockContent,
+    updateTextBlock,
     toggleSubtaskCompletion,
     updateSubtaskText,
     deleteBlock,
