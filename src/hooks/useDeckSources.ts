@@ -192,11 +192,15 @@ export function useDeckSources(deckId: string | null) {
     }).then(() => loadSources());
   };
 
-  const generateFromSources = async (focus?: string): Promise<Array<{ front: string; back: string }> | null> => {
+  const generateFromSources = async (focus?: string, selectedSourceIds?: string[]): Promise<Array<{ front: string; back: string }> | null> => {
     if (!deckId) return null;
 
     const readySources = sources.filter(s => s.status === 'ready');
-    if (readySources.length === 0) {
+    const targetSources = selectedSourceIds
+      ? readySources.filter(s => selectedSourceIds.includes(s.id))
+      : readySources;
+
+    if (targetSources.length === 0) {
       toast.error('Nenhuma fonte pronta para gerar flashcards.');
       return null;
     }
@@ -206,7 +210,7 @@ export function useDeckSources(deckId: string | null) {
       const { data, error } = await supabase.functions.invoke('generate-flashcards-from-sources', {
         body: {
           deck_id: deckId,
-          source_ids: readySources.map(s => s.id),
+          source_ids: targetSources.map(s => s.id),
           max_cards: 15,
           focus: focus || undefined,
         },
