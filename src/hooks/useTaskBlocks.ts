@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent, NotebookContent } from '@/types/task';
+import { TaskBlock, TaskBlockRow, blockRowToBlock, SubtaskContent, ImageContent, TextContent, NotebookContent } from '@/types/task';
 import { toast } from 'sonner';
 import type { Json } from '@/integrations/supabase/types';
 import { Notebook } from '@/types/notebook';
