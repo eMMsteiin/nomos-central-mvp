@@ -49,6 +49,8 @@ export function StudySession({
     good: '',
     easy: '',
   });
+  const [swipeHint, setSwipeHint] = useState<FlashcardRating | null>(null);
+  const isMobile = useIsMobile();
 
   const currentCard = cards[currentIndex];
   const progress = cards.length > 0 ? ((currentIndex) / cards.length) * 100 : 0;
@@ -72,7 +74,45 @@ export function StudySession({
     setIsFlipped(true);
   }, []);
 
-  const handleRating = useCallback(async (rating: FlashcardRating) => {
+  const getSwipeRating = useCallback((info: PanInfo): FlashcardRating | null => {
+    const { offset } = info;
+    const threshold = 60;
+    const absX = Math.abs(offset.x);
+    const absY = Math.abs(offset.y);
+    
+    if (absX < threshold && absY < threshold) return null;
+    
+    // Determine quadrant based on drag direction
+    const isUp = offset.y < 0;
+    const isLeft = offset.x < 0;
+    
+    if (isUp && isLeft) return 'good';      // top-left
+    if (isUp && !isLeft) return 'easy';     // top-right
+    if (!isUp && isLeft) return 'hard';     // bottom-left
+    if (!isUp && !isLeft) return 'again';   // bottom-right
+    
+    return null;
+  }, []);
+
+  const handleDrag = useCallback((_: any, info: PanInfo) => {
+    if (!isFlipped) return;
+    const rating = getSwipeRating(info);
+    setSwipeHint(rating);
+  }, [isFlipped, getSwipeRating]);
+
+  const handleDragEnd = useCallback((_: any, info: PanInfo) => {
+    if (!isFlipped) {
+      setSwipeHint(null);
+      return;
+    }
+    const rating = getSwipeRating(info);
+    setSwipeHint(null);
+    if (rating) {
+      handleRatingAction(rating);
+    }
+  }, [isFlipped, getSwipeRating]);
+
+  const handleRatingAction = useCallback(async (rating: FlashcardRating) => {
     if (!currentCard) return;
 
     onReview(currentCard.id, rating);
