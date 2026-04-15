@@ -12,7 +12,7 @@ import {
   StickyNote,
   Book,
   MoreVertical,
-  MessageCircle,
+  
   Settings,
   PanelLeftClose,
   PanelLeft,
@@ -57,7 +57,7 @@ const menuItems = [
   { title: "Hoje", url: "/hoje", icon: Calendar, canHide: true },
   { title: "Em breve", url: "/em-breve", icon: CalendarClock, canHide: true },
   { title: "Lembretes", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
-  { title: "Chat", url: "/chat", icon: MessageCircle, canHide: false },
+  
   { title: "Caderno", url: "/caderno", icon: Book, canHide: true },
   { title: "Flashcards", url: "/flashcards", icon: Layers, canHide: true },
   { title: "Resumos", url: "/resumos", icon: FileText, canHide: true },

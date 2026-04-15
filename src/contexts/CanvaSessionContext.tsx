@@ -27,7 +27,7 @@ export function CanvaSessionProvider({ children }: { children: React.ReactNode }
   const [settings, setSettings] = useState<CanvaIntegrationSettings>(DEFAULT_CANVA_SETTINGS);
   const [isPopoutOpen, setIsPopoutOpen] = useState(false);
   const popoutRef = useRef<Window | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from localStorage on mount
   useEffect(() => {
