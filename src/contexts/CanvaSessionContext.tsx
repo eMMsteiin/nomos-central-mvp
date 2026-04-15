@@ -217,7 +217,18 @@ export function CanvaSessionProvider({ children }: { children: React.ReactNode }
 export function useCanvaSession() {
   const context = useContext(CanvaSessionContext);
   if (!context) {
-    throw new Error('useCanvaSession must be used within CanvaSessionProvider');
+    // Return a safe default during HMR or when provider is missing
+    return {
+      session: null,
+      settings: { enabled: false, position: 'bottom-right' as const, autoDetect: true },
+      isPopoutOpen: false,
+      startSession: () => {},
+      endSession: () => {},
+      updateTimeSpent: () => {},
+      updateSettings: () => {},
+      openPopout: () => {},
+      closePopout: () => {},
+    } as any;
   }
   return context;
 }
