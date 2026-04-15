@@ -124,11 +124,14 @@ export function useTaskDetail(taskId: string) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(localTask.id);
       const taskIdToUse = isUUID ? localTask.id : crypto.randomUUID();
 
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
       const { data, error } = await supabase
         .from('tasks')
         .insert({
           id: taskIdToUse,
           device_id: deviceId,
+          user_id: userId,
           text: localTask.text,
           description: localTask.description || null,
           due_date: localTask.dueDate ? new Date(localTask.dueDate).toISOString() : null,

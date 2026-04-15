@@ -115,9 +115,12 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     // Sincronizar com Supabase em background
     try {
       const { supabase } = await import('@/integrations/supabase/client');
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
       await supabase.from('tasks').insert({
         id: taskId,
         device_id: deviceId,
+        user_id: userId,
         text: cleanText,
         due_date: finalDate ? new Date(finalDate).toISOString() : null,
         due_time: finalTime || null,

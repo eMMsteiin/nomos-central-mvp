@@ -111,10 +111,13 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
 
     // Sincronizar com Supabase em background
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const userId = session?.user?.id;
       for (const newTask of newTasks) {
         await supabase.from('tasks').insert({
           id: newTask.id,
           device_id: deviceId,
+          user_id: userId,
           text: newTask.text,
           description: newTask.description,
           due_date: date ? new Date(date).toISOString() : null,
