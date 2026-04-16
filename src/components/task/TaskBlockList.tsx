@@ -377,15 +377,17 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
                 <DropIndicator isVisible={shouldShowIndicator(block.id, 'before')} />
 
                 <div className="flex items-start gap-1">
-                  {/* Inline "+" button on the left */}
-                  <div className="mt-1.5 shrink-0">
-                    <InlineAddMenu
-                      onAddText={() => handleInlineAddText(index)}
-                      onAddSubtask={() => handleInlineAddSubtask(index)}
-                      onAddImage={(file) => handleInlineAddImage(file, index)}
-                      onAddNotebook={() => handleInlineAddNotebook(index)}
-                    />
-                  </div>
+                  {/* Inline "+" button on the left — only for non-text blocks */}
+                  {block.type !== 'text' && (
+                    <div className="mt-1.5 shrink-0">
+                      <InlineAddMenu
+                        onAddText={() => handleInlineAddText(index)}
+                        onAddSubtask={() => handleInlineAddSubtask(index)}
+                        onAddImage={(file) => handleInlineAddImage(file, index)}
+                        onAddNotebook={() => handleInlineAddNotebook(index)}
+                      />
+                    </div>
+                  )}
 
                   {/* Block content */}
                   <div className="flex-1 min-w-0">
@@ -402,6 +404,16 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
                       onDelete={() => deleteBlock(block.id)}
                       onUpdateImageWidth={(width) => updateImageWidth(block.id, width)}
                       autoFocusText={block.id === newlyCreatedTextId}
+                      inlineMenu={
+                        block.type === 'text' ? (
+                          <InlineAddMenu
+                            onAddText={() => handleInlineAddText(index)}
+                            onAddSubtask={() => handleInlineAddSubtask(index)}
+                            onAddImage={(file) => handleInlineAddImage(file, index)}
+                            onAddNotebook={() => handleInlineAddNotebook(index)}
+                          />
+                        ) : undefined
+                      }
                     />
                   </div>
                 </div>
