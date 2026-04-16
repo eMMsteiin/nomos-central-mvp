@@ -1,11 +1,16 @@
 import { useState, useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { useNotebooks } from '@/hooks/notebook/useNotebooks';
+import { useNotebookFolders } from '@/hooks/notebook/useNotebookFolders';
 import type { NotebookListFilters } from '@/hooks/notebook/queryKeys';
 import { LibraryToolbar } from './LibraryToolbar';
 import { NotebookGrid } from './NotebookGrid';
 import { LibraryEmptyState } from './LibraryEmptyState';
 import { QuickCreateButton } from './QuickCreateButton';
+import { FolderSection } from './FolderSection';
+import { BreadcrumbNav } from './BreadcrumbNav';
+import { NewNotebookDialog } from './NewNotebookDialog';
+import { NewFolderDialog } from './NewFolderDialog';
 
 type Tab = 'all' | 'favorites' | 'recent';
 type SortBy = 'updated_at' | 'created_at' | 'title';
@@ -17,16 +22,25 @@ export function NotebookLibrary() {
   const [activeTab, setActiveTab] = useState<Tab>('all');
   const [sortBy, setSortBy] = useState<SortBy>('updated_at');
   const [sortDirection, setSortDirection] = useState<SortDir>('desc');
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+  const [newNotebookOpen, setNewNotebookOpen] = useState(false);
+  const [newFolderOpen, setNewFolderOpen] = useState(false);
 
   const filters = useMemo<NotebookListFilters>(() => ({
-    folderId: null,
+    folderId: currentFolderId,
     isFavorite: activeTab === 'favorites' ? true : undefined,
     searchQuery: searchQuery || undefined,
     sortBy,
     sortDirection,
-  }), [activeTab, searchQuery, sortBy, sortDirection]);
+  }), [currentFolderId, activeTab, searchQuery, sortBy, sortDirection]);
 
   const { data: notebooks, isLoading, error } = useNotebooks(filters);
+  const { data: rootFolders } = useNotebookFolders(null);
+
+  const currentFolder = useMemo(() => {
+    if (!currentFolderId) return null;
+    return rootFolders?.find((f) => f.id === currentFolderId) ?? null;
+  }, [currentFolderId, rootFolders]);
 
   const displayedNotebooks = useMemo(() => {
     if (!notebooks) return [];
@@ -37,6 +51,8 @@ export function NotebookLibrary() {
     }
     return notebooks;
   }, [notebooks, activeTab]);
+
+  const isInFolder = currentFolderId !== null;
 
   return (
     <div className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
@@ -52,9 +68,25 @@ export function NotebookLibrary() {
           onSortByChange={setSortBy}
           sortDirection={sortDirection}
           onSortDirectionChange={setSortDirection}
+          title={currentFolder?.name ?? 'Caderno'}
+          showNewFolderButton={!isInFolder}
+          onNewFolder={() => setNewFolderOpen(true)}
         />
 
         <div className="mt-6">
+          <BreadcrumbNav
+            currentFolder={currentFolder}
+            onNavigateToRoot={() => setCurrentFolderId(null)}
+          />
+
+          {!isInFolder && rootFolders && rootFolders.length > 0 && (
+            <FolderSection
+              folders={rootFolders}
+              onFolderClick={setCurrentFolderId}
+              onNewFolder={() => setNewFolderOpen(true)}
+            />
+          )}
+
           {isLoading ? (
             <div className="flex items-center justify-center py-24">
               <Loader2 className="w-6 h-6 animate-spin text-neutral-400" />
@@ -66,14 +98,29 @@ export function NotebookLibrary() {
               </p>
             </div>
           ) : displayedNotebooks.length === 0 ? (
-            <LibraryEmptyState hasSearch={!!searchQuery} activeTab={activeTab} />
+            <LibraryEmptyState
+              hasSearch={!!searchQuery}
+              activeTab={activeTab}
+              isInFolder={isInFolder}
+            />
           ) : (
-            <NotebookGrid notebooks={displayedNotebooks} viewMode={viewMode} />
+            <NotebookGrid
+              notebooks={displayedNotebooks}
+              viewMode={viewMode}
+              currentFolderId={currentFolderId}
+            />
           )}
         </div>
       </div>
 
-      <QuickCreateButton />
+      <QuickCreateButton onClick={() => setNewNotebookOpen(true)} />
+
+      <NewNotebookDialog
+        open={newNotebookOpen}
+        onOpenChange={setNewNotebookOpen}
+        defaultFolderId={currentFolderId}
+      />
+      <NewFolderDialog open={newFolderOpen} onOpenChange={setNewFolderOpen} />
     </div>
   );
 }

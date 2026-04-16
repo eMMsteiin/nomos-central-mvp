@@ -1,4 +1,4 @@
-import { Search, LayoutGrid, List, ArrowUpDown, SortAsc, SortDesc } from 'lucide-react';
+import { Search, LayoutGrid, List, ArrowUpDown, SortAsc, SortDesc, FolderPlus } from 'lucide-react';
 
 interface LibraryToolbarProps {
   searchQuery: string;
@@ -11,6 +11,9 @@ interface LibraryToolbarProps {
   onSortByChange: (s: 'updated_at' | 'created_at' | 'title') => void;
   sortDirection: 'asc' | 'desc';
   onSortDirectionChange: (d: 'asc' | 'desc') => void;
+  title?: string;
+  showNewFolderButton?: boolean;
+  onNewFolder?: () => void;
 }
 
 export function LibraryToolbar(props: LibraryToolbarProps) {
@@ -26,7 +29,20 @@ export function LibraryToolbar(props: LibraryToolbarProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="text-2xl font-semibold tracking-tight">Caderno</h1>
+      <div className="flex items-center justify-between gap-3">
+        <h1 className="text-2xl font-semibold tracking-tight truncate">
+          {props.title ?? 'Caderno'}
+        </h1>
+        {props.showNewFolderButton && props.onNewFolder && (
+          <button
+            onClick={props.onNewFolder}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-neutral-700 dark:text-neutral-300"
+          >
+            <FolderPlus className="w-4 h-4" />
+            <span className="hidden sm:inline">Nova pasta</span>
+          </button>
+        )}
+      </div>
 
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
         <div className="relative flex-1">
