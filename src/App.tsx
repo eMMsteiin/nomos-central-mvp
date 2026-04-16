@@ -70,6 +70,7 @@ function MainContent() {
             <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
             <Route path="/caderno" element={<Caderno />} />
             <Route path="/caderno-legacy" element={<CadernoLegacy />} />
+            <Route path="/caderno-dev-test" element={<CadernoDevTest />} />
             
             <Route path="/flashcards" element={<Flashcards />} />
             <Route path="/modo-foco" element={<ModoFoco />} />
