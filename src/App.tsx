@@ -22,6 +22,7 @@ import Resumos from "./pages/Resumos";
 import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
+import CadernoLegacy from "./pages/CadernoLegacy";
 
 import Flashcards from "./pages/Flashcards";
 import ModoFoco from "./pages/ModoFoco";
