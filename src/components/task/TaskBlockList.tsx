@@ -146,6 +146,7 @@ function SortableBlock({
   onDelete,
   onUpdateImageWidth,
   autoFocusText,
+  inlineMenu,
 }: {
   block: TaskBlock;
   onToggle: () => void;
@@ -153,6 +154,7 @@ function SortableBlock({
   onDelete: () => void;
   onUpdateImageWidth?: (width: number) => void;
   autoFocusText?: boolean;
+  inlineMenu?: React.ReactNode;
 }) {
   const {
     attributes,
