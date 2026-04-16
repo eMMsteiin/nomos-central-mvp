@@ -14,11 +14,11 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mb-6 rounded-lg border border-neutral-200 dark:border-neutral-800 p-4">
+    <div className="mb-6 rounded-lg border border-border p-4">
       <h2 className="text-lg font-semibold mb-2">{title}</h2>
       {state.isLoading && <p className="text-muted-foreground">⏳ Carregando...</p>}
       {state.error ? (
-        <p className="text-red-500">❌ {String(state.error)}</p>
+        <p className="text-destructive">❌ {String(state.error)}</p>
       ) : null}
       {!state.isLoading && !state.error && children}
     </div>
