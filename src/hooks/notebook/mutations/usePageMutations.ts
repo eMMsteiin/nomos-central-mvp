@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { invalidators } from '../utils/invalidation';
 import { notebookKeys } from '../queryKeys';
-import type { NotebookPage } from '../useNotebookPage';
+import type { NotebookPageFull } from '../useNotebookPage';
 
 interface CreatePageInput {
   notebook_id: string;
@@ -31,13 +31,13 @@ export function useCreateNotebookPage() {
 
       const { data, error } = await supabase
         .from('notebook_pages')
-        .insert({
+        .insert([{
           notebook_id: input.notebook_id,
           page_index: pageIndex,
           paper_template: input.paper_template ?? 'blank',
           paper_config: input.paper_config ?? {},
           background_image_url: input.background_image_url ?? null,
-        })
+        }])
         .select()
         .single();
 
@@ -53,7 +53,7 @@ export function useCreateNotebookPage() {
 interface UpdatePageContentInput {
   notebook_id: string;
   page_id: string;
-  patch: Partial<Pick<NotebookPage,
+  patch: Partial<Pick<NotebookPageFull,
     'strokes' | 'text_boxes' | 'shapes' | 'images' | 'elements'
     | 'highlights' | 'is_bookmarked' | 'outline_title' | 'paper_template'
     | 'paper_config' | 'background_image_url'
@@ -77,9 +77,9 @@ export function useUpdateNotebookPage() {
     },
     onMutate: async ({ notebook_id, page_id, patch }) => {
       await qc.cancelQueries({ queryKey: notebookKeys.page(notebook_id, page_id) });
-      const previous = qc.getQueryData<NotebookPage>(notebookKeys.page(notebook_id, page_id));
+      const previous = qc.getQueryData<NotebookPageFull>(notebookKeys.page(notebook_id, page_id));
       if (previous) {
-        qc.setQueryData<NotebookPage>(notebookKeys.page(notebook_id, page_id), { ...previous, ...patch });
+        qc.setQueryData<NotebookPageFull>(notebookKeys.page(notebook_id, page_id), { ...previous, ...patch });
       }
       return { previous };
     },
