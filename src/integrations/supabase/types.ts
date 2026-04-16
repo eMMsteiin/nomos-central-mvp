@@ -607,6 +607,347 @@ export type Database = {
         }
         Relationships: []
       }
+      notebook_element_collections: {
+        Row: {
+          created_at: string | null
+          icon: string | null
+          id: string
+          is_builtin: boolean | null
+          name: string
+          position: number | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_builtin?: boolean | null
+          name: string
+          position?: number | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          is_builtin?: boolean | null
+          name?: string
+          position?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notebook_elements: {
+        Row: {
+          collection_id: string | null
+          created_at: string | null
+          element_data: Json
+          id: string
+          name: string | null
+          position: number | null
+          thumbnail_url: string | null
+          user_id: string
+        }
+        Insert: {
+          collection_id?: string | null
+          created_at?: string | null
+          element_data: Json
+          id?: string
+          name?: string | null
+          position?: number | null
+          thumbnail_url?: string | null
+          user_id: string
+        }
+        Update: {
+          collection_id?: string | null
+          created_at?: string | null
+          element_data?: Json
+          id?: string
+          name?: string | null
+          position?: number | null
+          thumbnail_url?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebook_elements_collection_id_fkey"
+            columns: ["collection_id"]
+            isOneToOne: false
+            referencedRelation: "notebook_element_collections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notebook_folders: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          icon: string | null
+          id: string
+          name: string
+          parent_folder_id: string | null
+          position: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+          parent_folder_id?: string | null
+          position?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+          parent_folder_id?: string | null
+          position?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebook_folders_parent_folder_id_fkey"
+            columns: ["parent_folder_id"]
+            isOneToOne: false
+            referencedRelation: "notebook_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notebook_pages: {
+        Row: {
+          background_image_url: string | null
+          created_at: string | null
+          elements: Json | null
+          highlights: Json | null
+          id: string
+          images: Json | null
+          is_bookmarked: boolean | null
+          notebook_id: string
+          outline_title: string | null
+          page_index: number
+          paper_config: Json | null
+          paper_template: string | null
+          shapes: Json | null
+          strokes: Json | null
+          text_boxes: Json | null
+          updated_at: string | null
+        }
+        Insert: {
+          background_image_url?: string | null
+          created_at?: string | null
+          elements?: Json | null
+          highlights?: Json | null
+          id?: string
+          images?: Json | null
+          is_bookmarked?: boolean | null
+          notebook_id: string
+          outline_title?: string | null
+          page_index: number
+          paper_config?: Json | null
+          paper_template?: string | null
+          shapes?: Json | null
+          strokes?: Json | null
+          text_boxes?: Json | null
+          updated_at?: string | null
+        }
+        Update: {
+          background_image_url?: string | null
+          created_at?: string | null
+          elements?: Json | null
+          highlights?: Json | null
+          id?: string
+          images?: Json | null
+          is_bookmarked?: boolean | null
+          notebook_id?: string
+          outline_title?: string | null
+          page_index?: number
+          paper_config?: Json | null
+          paper_template?: string | null
+          shapes?: Json | null
+          strokes?: Json | null
+          text_boxes?: Json | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebook_pages_notebook_id_fkey"
+            columns: ["notebook_id"]
+            isOneToOne: false
+            referencedRelation: "notebooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notebook_paper_templates: {
+        Row: {
+          created_at: string | null
+          group_name: string | null
+          id: string
+          is_builtin: boolean | null
+          name: string
+          template_data: string
+          template_type: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          group_name?: string | null
+          id?: string
+          is_builtin?: boolean | null
+          name: string
+          template_data?: string
+          template_type: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          group_name?: string | null
+          id?: string
+          is_builtin?: boolean | null
+          name?: string
+          template_data?: string
+          template_type?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      notebook_user_preferences: {
+        Row: {
+          auto_advance_zoom: boolean | null
+          ball_pen_config: Json | null
+          brush_pen_config: Json | null
+          default_pen_color: string | null
+          default_pen_style: string | null
+          default_pen_width: number | null
+          eraser_mode: string | null
+          eraser_size: string | null
+          fountain_pen_config: Json | null
+          gesture_circle_to_select: boolean | null
+          gesture_scribble_to_erase: boolean | null
+          highlighter_config: Json | null
+          palm_rejection: boolean | null
+          show_zoom_window: boolean | null
+          stroke_stabilization: number | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          auto_advance_zoom?: boolean | null
+          ball_pen_config?: Json | null
+          brush_pen_config?: Json | null
+          default_pen_color?: string | null
+          default_pen_style?: string | null
+          default_pen_width?: number | null
+          eraser_mode?: string | null
+          eraser_size?: string | null
+          fountain_pen_config?: Json | null
+          gesture_circle_to_select?: boolean | null
+          gesture_scribble_to_erase?: boolean | null
+          highlighter_config?: Json | null
+          palm_rejection?: boolean | null
+          show_zoom_window?: boolean | null
+          stroke_stabilization?: number | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          auto_advance_zoom?: boolean | null
+          ball_pen_config?: Json | null
+          brush_pen_config?: Json | null
+          default_pen_color?: string | null
+          default_pen_style?: string | null
+          default_pen_width?: number | null
+          eraser_mode?: string | null
+          eraser_size?: string | null
+          fountain_pen_config?: Json | null
+          gesture_circle_to_select?: boolean | null
+          gesture_scribble_to_erase?: boolean | null
+          highlighter_config?: Json | null
+          palm_rejection?: boolean | null
+          show_zoom_window?: boolean | null
+          stroke_stabilization?: number | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notebooks: {
+        Row: {
+          cover_data: string | null
+          cover_type: string | null
+          created_at: string | null
+          default_paper_template: string | null
+          discipline: string | null
+          folder_id: string | null
+          id: string
+          is_favorite: boolean | null
+          is_pdf_import: boolean | null
+          page_order: string[] | null
+          scroll_direction: string | null
+          subject: string | null
+          summary: string | null
+          tags: string[] | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          cover_data?: string | null
+          cover_type?: string | null
+          created_at?: string | null
+          default_paper_template?: string | null
+          discipline?: string | null
+          folder_id?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          is_pdf_import?: boolean | null
+          page_order?: string[] | null
+          scroll_direction?: string | null
+          subject?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          cover_data?: string | null
+          cover_type?: string | null
+          created_at?: string | null
+          default_paper_template?: string | null
+          discipline?: string | null
+          folder_id?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          is_pdf_import?: boolean | null
+          page_order?: string[] | null
+          scroll_direction?: string | null
+          subject?: string | null
+          summary?: string | null
+          tags?: string[] | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notebooks_folder_id_fkey"
+            columns: ["folder_id"]
+            isOneToOne: false
+            referencedRelation: "notebook_folders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notes: {
         Row: {
           created_at: string | null
