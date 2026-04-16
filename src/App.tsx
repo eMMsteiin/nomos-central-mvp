@@ -22,6 +22,7 @@ import Resumos from "./pages/Resumos";
 import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
+import CadernoLegacy from "./pages/CadernoLegacy";
 
 import Flashcards from "./pages/Flashcards";
 import ModoFoco from "./pages/ModoFoco";
@@ -67,6 +68,7 @@ function MainContent() {
             <Route path="/concluido" element={<Concluido />} />
             <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
             <Route path="/caderno" element={<Caderno />} />
+            <Route path="/caderno-legacy" element={<CadernoLegacy />} />
             
             <Route path="/flashcards" element={<Flashcards />} />
             <Route path="/modo-foco" element={<ModoFoco />} />
