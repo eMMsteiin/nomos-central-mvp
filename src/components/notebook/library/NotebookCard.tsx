@@ -1,18 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, MoreHorizontal, Trash2, Edit3, FileText } from 'lucide-react';
+import { Star, MoreHorizontal, Trash2, Edit3, FileText, Copy, FolderInput } from 'lucide-react';
 import {
   useToggleNotebookFavorite,
   useUpdateNotebook,
   useDeleteNotebook,
+  useDuplicateNotebook,
 } from '@/hooks/notebook/mutations/useNotebookMutations';
 import { NotebookCover } from './NotebookCover';
+import { MoveToFolderDialog } from './MoveToFolderDialog';
 import type { NotebookRow } from '@/hooks/notebook/useNotebooks';
 
 interface NotebookCardProps {
   notebook: NotebookRow;
   viewMode: 'grid' | 'list';
+  currentFolderId?: string | null;
 }
 
 function getTimeAgo(dateStr: string | null): string {
@@ -31,17 +34,31 @@ function getTimeAgo(dateStr: string | null): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
-export function NotebookCard({ notebook, viewMode }: NotebookCardProps) {
+export function NotebookCard({ notebook, viewMode, currentFolderId = null }: NotebookCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(notebook.title);
+  const [moveOpen, setMoveOpen] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const toggleFavorite = useToggleNotebookFavorite();
   const updateNotebook = useUpdateNotebook();
   const deleteNotebook = useDeleteNotebook();
+  const duplicateNotebook = useDuplicateNotebook();
+
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    duplicateNotebook.mutate(notebook.id);
+  };
+
+  const handleMove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    setMoveOpen(true);
+  };
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -153,6 +170,18 @@ export function NotebookCard({ notebook, viewMode }: NotebookCardProps) {
                   className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
                 >
                   <Star className="w-4 h-4" /> {notebook.is_favorite ? 'Desfavoritar' : 'Favoritar'}
+                </button>
+                <button
+                  onClick={handleDuplicate}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+                >
+                  <Copy className="w-4 h-4" /> Duplicar
+                </button>
+                <button
+                  onClick={handleMove}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+                >
+                  <FolderInput className="w-4 h-4" /> Mover para...
                 </button>
                 <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
                 <button
@@ -268,6 +297,18 @@ export function NotebookCard({ notebook, viewMode }: NotebookCardProps) {
               >
                 <Edit3 className="w-4 h-4" /> Renomear
               </button>
+              <button
+                onClick={handleDuplicate}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+              >
+                <Copy className="w-4 h-4" /> Duplicar
+              </button>
+              <button
+                onClick={handleMove}
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+              >
+                <FolderInput className="w-4 h-4" /> Mover para...
+              </button>
               <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
               <button
                 onClick={handleDelete}
@@ -279,6 +320,14 @@ export function NotebookCard({ notebook, viewMode }: NotebookCardProps) {
           )}
         </div>
       </div>
+
+      <MoveToFolderDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        notebookId={notebook.id}
+        notebookTitle={notebook.title}
+        currentFolderId={currentFolderId}
+      />
     </div>
   );
 }
