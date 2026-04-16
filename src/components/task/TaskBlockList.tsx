@@ -226,6 +226,7 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
   const [isSelectNotebookOpen, setIsSelectNotebookOpen] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [newlyCreatedTextId, setNewlyCreatedTextId] = useState<string | null>(null);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const autoCreateInFlight = useRef(false);
 
   const {
@@ -373,12 +374,15 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
         >
           <div className="space-y-0.5">
             {blocks.map((block, index) => (
-              <div key={block.id} className="group/block relative">
+              <div key={block.id} className="group/block relative"
+                onFocus={() => setFocusedBlockId(block.id)}
+                onClick={() => setFocusedBlockId(block.id)}
+              >
                 <DropIndicator isVisible={shouldShowIndicator(block.id, 'before')} />
 
                 <div className="flex items-start gap-1">
-                  {/* Inline "+" button on the left — only for non-text blocks */}
-                  {block.type !== 'text' && (
+                  {/* Inline "+" button — only for focused non-text blocks */}
+                  {block.type !== 'text' && focusedBlockId === block.id && (
                     <div className="mt-1.5 shrink-0">
                       <InlineAddMenu
                         onAddText={() => handleInlineAddText(index)}
@@ -405,7 +409,7 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
                       onUpdateImageWidth={(width) => updateImageWidth(block.id, width)}
                       autoFocusText={block.id === newlyCreatedTextId}
                       inlineMenu={
-                        block.type === 'text' ? (
+                        block.type === 'text' && focusedBlockId === block.id ? (
                           <InlineAddMenu
                             onAddText={() => handleInlineAddText(index)}
                             onAddSubtask={() => handleInlineAddSubtask(index)}
