@@ -14,7 +14,7 @@ export function useUpsertNotebookPreferences() {
       const { data, error } = await supabase
         .from('notebook_user_preferences')
         .upsert(
-          { user_id: user.id, ...patch, updated_at: new Date().toISOString() },
+          { user_id: user.id, ...(patch as any), updated_at: new Date().toISOString() } as any,
           { onConflict: 'user_id' }
         )
         .select()

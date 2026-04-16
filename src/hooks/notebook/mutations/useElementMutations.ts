@@ -65,8 +65,8 @@ export function useAddElementToCollection() {
           collection_id: input.collection_id,
           name: input.name ?? null,
           thumbnail_url: input.thumbnail_url ?? null,
-          element_data: input.element_data,
-        })
+          element_data: input.element_data as any,
+        } as any)
         .select()
         .single();
 

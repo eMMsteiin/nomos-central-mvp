@@ -31,13 +31,13 @@ export function useCreateNotebookPage() {
 
       const { data, error } = await supabase
         .from('notebook_pages')
-        .insert([{
+        .insert({
           notebook_id: input.notebook_id,
           page_index: pageIndex,
           paper_template: input.paper_template ?? 'blank',
-          paper_config: input.paper_config ?? {},
+          paper_config: (input.paper_config ?? {}) as any,
           background_image_url: input.background_image_url ?? null,
-        }])
+        } as any)
         .select()
         .single();
 
@@ -67,7 +67,7 @@ export function useUpdateNotebookPage() {
     mutationFn: async ({ page_id, patch }: UpdatePageContentInput) => {
       const { data, error } = await supabase
         .from('notebook_pages')
-        .update({ ...patch, updated_at: new Date().toISOString() })
+        .update({ ...(patch as any), updated_at: new Date().toISOString() })
         .eq('id', page_id)
         .select()
         .single();
