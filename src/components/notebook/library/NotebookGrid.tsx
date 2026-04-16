@@ -5,9 +5,10 @@ import type { NotebookRow } from '@/hooks/notebook/useNotebooks';
 interface NotebookGridProps {
   notebooks: NotebookRow[];
   viewMode: 'grid' | 'list';
+  currentFolderId?: string | null;
 }
 
-export function NotebookGrid({ notebooks, viewMode }: NotebookGridProps) {
+export function NotebookGrid({ notebooks, viewMode, currentFolderId = null }: NotebookGridProps) {
   return (
     <div
       className={
@@ -23,7 +24,11 @@ export function NotebookGrid({ notebooks, viewMode }: NotebookGridProps) {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: Math.min(index * 0.03, 0.3), duration: 0.25 }}
         >
-          <NotebookCard notebook={notebook} viewMode={viewMode} />
+          <NotebookCard
+            notebook={notebook}
+            viewMode={viewMode}
+            currentFolderId={currentFolderId}
+          />
         </motion.div>
       ))}
     </div>

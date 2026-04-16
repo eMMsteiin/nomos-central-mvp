@@ -1,18 +1,21 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, MoreHorizontal, Trash2, Edit3, FileText } from 'lucide-react';
+import { Star, MoreHorizontal, Trash2, Edit3, FileText, Copy, FolderInput } from 'lucide-react';
 import {
   useToggleNotebookFavorite,
   useUpdateNotebook,
   useDeleteNotebook,
+  useDuplicateNotebook,
 } from '@/hooks/notebook/mutations/useNotebookMutations';
 import { NotebookCover } from './NotebookCover';
+import { MoveToFolderDialog } from './MoveToFolderDialog';
 import type { NotebookRow } from '@/hooks/notebook/useNotebooks';
 
 interface NotebookCardProps {
   notebook: NotebookRow;
   viewMode: 'grid' | 'list';
+  currentFolderId?: string | null;
 }
 
 function getTimeAgo(dateStr: string | null): string {
@@ -31,17 +34,31 @@ function getTimeAgo(dateStr: string | null): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
-export function NotebookCard({ notebook, viewMode }: NotebookCardProps) {
+export function NotebookCard({ notebook, viewMode, currentFolderId = null }: NotebookCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [renameValue, setRenameValue] = useState(notebook.title);
+  const [moveOpen, setMoveOpen] = useState(false);
   const renameInputRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   const toggleFavorite = useToggleNotebookFavorite();
   const updateNotebook = useUpdateNotebook();
   const deleteNotebook = useDeleteNotebook();
+  const duplicateNotebook = useDuplicateNotebook();
+
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    duplicateNotebook.mutate(notebook.id);
+  };
+
+  const handleMove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    setMoveOpen(true);
+  };
 
   // Fechar menu ao clicar fora
   useEffect(() => {
