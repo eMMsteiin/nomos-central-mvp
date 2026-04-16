@@ -226,6 +226,7 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
   const [isSelectNotebookOpen, setIsSelectNotebookOpen] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [newlyCreatedTextId, setNewlyCreatedTextId] = useState<string | null>(null);
+  const [focusedBlockId, setFocusedBlockId] = useState<string | null>(null);
   const autoCreateInFlight = useRef(false);
 
   const {
