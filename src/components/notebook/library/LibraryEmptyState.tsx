@@ -1,8 +1,9 @@
-import { BookOpen, Search, Star } from 'lucide-react';
+import { BookOpen, Search, Star, FolderOpen } from 'lucide-react';
 
 interface LibraryEmptyStateProps {
   hasSearch: boolean;
   activeTab: 'all' | 'favorites' | 'recent';
+  isInFolder?: boolean;
 }
 
 function EmptyLayout({
@@ -27,7 +28,7 @@ function EmptyLayout({
   );
 }
 
-export function LibraryEmptyState({ hasSearch, activeTab }: LibraryEmptyStateProps) {
+export function LibraryEmptyState({ hasSearch, activeTab, isInFolder }: LibraryEmptyStateProps) {
   if (hasSearch) {
     return (
       <EmptyLayout
@@ -44,6 +45,16 @@ export function LibraryEmptyState({ hasSearch, activeTab }: LibraryEmptyStatePro
         icon={<Star className="w-12 h-12" strokeWidth={1.5} />}
         title="Sem favoritos"
         subtitle="Marque cadernos com a estrela para acesso rápido."
+      />
+    );
+  }
+
+  if (isInFolder) {
+    return (
+      <EmptyLayout
+        icon={<FolderOpen className="w-12 h-12" strokeWidth={1.5} />}
+        title="Pasta vazia"
+        subtitle="Nenhum caderno nesta pasta ainda."
       />
     );
   }
