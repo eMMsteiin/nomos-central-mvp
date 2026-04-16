@@ -112,8 +112,8 @@ export function TextBlock({
       {/* Inline "+" menu that follows the cursor line */}
       {inlineMenu && (
         <div
-          className="absolute left-0 transition-all duration-100 shrink-0 z-10"
-          style={{ top: cursorLineTop }}
+          className="absolute transition-all duration-100 shrink-0 z-10"
+          style={{ left: -28, top: cursorLineTop + 2 }}
         >
           {inlineMenu}
         </div>
