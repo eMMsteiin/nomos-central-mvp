@@ -211,6 +211,7 @@ function SortableBlock({
           isDragging={isDragging}
           dragHandleProps={dragHandleProps}
           autoFocus={autoFocusText}
+          inlineMenu={inlineMenu}
         />
       )}
     </div>
