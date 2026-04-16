@@ -27,7 +27,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, CheckSquare, Image, Book, Plus } from 'lucide-react';
+import { GripVertical, CheckSquare, Image, Book, Plus, Type } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -42,12 +42,13 @@ interface TaskBlockListProps {
 // ── Inline Add Menu (the "+" that follows each block) ──────────────────────
 
 interface InlineAddMenuProps {
+  onAddText: () => void;
   onAddSubtask: () => void;
   onAddImage: (file: File) => void;
   onAddNotebook: () => void;
 }
 
-function InlineAddMenu({ onAddSubtask, onAddImage, onAddNotebook }: InlineAddMenuProps) {
+function InlineAddMenu({ onAddText, onAddSubtask, onAddImage, onAddNotebook }: InlineAddMenuProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
@@ -72,6 +73,10 @@ function InlineAddMenu({ onAddSubtask, onAddImage, onAddNotebook }: InlineAddMen
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuItem onClick={onAddText} className="gap-2">
+            <Type className="h-4 w-4" />
+            <span>Texto</span>
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={onAddSubtask} className="gap-2">
             <CheckSquare className="h-4 w-4" />
             <span>Subtarefa</span>
@@ -272,6 +277,18 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
     }
   };
 
+  const handleInlineAddText = async (afterIndex: number) => {
+    const position = afterIndex + 1;
+    const result = await addTextBlock('');
+    if (result) {
+      const currentIdx = blocks.length;
+      if (currentIdx !== position && position < blocks.length) {
+        reorderBlocks(currentIdx, position);
+      }
+      setNewlyCreatedTextId(result.id);
+    }
+  };
+
   const handleInlineAddImage = async (file: File, _afterIndex: number) => {
     await addImageBlock(file);
   };
@@ -358,8 +375,9 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
 
                 <div className="flex items-start gap-1">
                   {/* Inline "+" button on the left */}
-                  <div className="mt-1.5 opacity-0 group-hover/block:opacity-100 transition-opacity shrink-0">
+                  <div className="mt-1.5 shrink-0">
                     <InlineAddMenu
+                      onAddText={() => handleInlineAddText(index)}
                       onAddSubtask={() => handleInlineAddSubtask(index)}
                       onAddImage={(file) => handleInlineAddImage(file, index)}
                       onAddNotebook={() => handleInlineAddNotebook(index)}
@@ -397,26 +415,6 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
           {activeBlock ? <DragPreview block={activeBlock} /> : null}
         </DragOverlay>
       </DndContext>
-
-      {/* Bottom "+" to add more blocks when there are already blocks */}
-      {blocks.length > 0 && (
-        <div className="flex items-center gap-2 mt-2 pl-7">
-          <InlineAddMenu
-            onAddSubtask={() => addSubtaskBlock('')}
-            onAddImage={addImageBlock}
-            onAddNotebook={() => {
-              setInsertAtIndex(null);
-              setIsSelectNotebookOpen(true);
-            }}
-          />
-          <button
-            onClick={() => addTextBlock('')}
-            className="text-sm text-muted-foreground/50 hover:text-muted-foreground transition-colors"
-          >
-            Escreva ou use + para adicionar
-          </button>
-        </div>
-      )}
 
       <SelectNotebookDialog
         open={isSelectNotebookOpen}
