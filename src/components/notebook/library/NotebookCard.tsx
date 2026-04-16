@@ -171,6 +171,18 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
                 >
                   <Star className="w-4 h-4" /> {notebook.is_favorite ? 'Desfavoritar' : 'Favoritar'}
                 </button>
+                <button
+                  onClick={handleDuplicate}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+                >
+                  <Copy className="w-4 h-4" /> Duplicar
+                </button>
+                <button
+                  onClick={handleMove}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+                >
+                  <FolderInput className="w-4 h-4" /> Mover para...
+                </button>
                 <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
                 <button
                   onClick={handleDelete}
