@@ -218,7 +218,7 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
   const [isSelectNotebookOpen, setIsSelectNotebookOpen] = useState(false);
   const [insertAtIndex, setInsertAtIndex] = useState<number | null>(null);
   const [newlyCreatedTextId, setNewlyCreatedTextId] = useState<string | null>(null);
-  const hasAutoCreated = useRef(false);
+  const autoCreateInFlight = useRef(false);
 
   const {
     blocks,
@@ -246,10 +246,13 @@ export function TaskBlockList({ taskId }: TaskBlockListProps) {
 
   // Auto-create a text block if the task has no blocks
   useEffect(() => {
-    if (!isLoading && blocks.length === 0 && !hasAutoCreated.current) {
-      hasAutoCreated.current = true;
+    if (!isLoading && blocks.length === 0 && !autoCreateInFlight.current) {
+      autoCreateInFlight.current = true;
       addTextBlock('').then((block) => {
         if (block) setNewlyCreatedTextId(block.id);
+        autoCreateInFlight.current = false;
+      }).catch(() => {
+        autoCreateInFlight.current = false;
       });
     }
   }, [isLoading, blocks.length, addTextBlock]);
