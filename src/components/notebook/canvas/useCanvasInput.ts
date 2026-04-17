@@ -41,13 +41,17 @@ export function useCanvasInput({
 
   const estimatePressure = useCallback((x: number, y: number, t: number): number => {
     const points = currentPointsRef.current;
-    if (points.length === 0) return 0.5;
+    if (points.length === 0) return 0.7;
     const last = points[points.length - 1];
     const dx = x - last.x;
     const dy = y - last.y;
     const dt = Math.max(t - last.t, 1);
     const velocity = Math.sqrt(dx * dx + dy * dy) / dt;
-    return Math.max(0.25, Math.min(1, 1 - velocity * 0.012));
+    const rawPressure = 1 - velocity * 0.005;
+    const previousPressure = last.pressure ?? 0.7;
+    const targetPressure = Math.max(0.55, Math.min(1.0, rawPressure));
+    const smoothed = previousPressure * 0.6 + targetPressure * 0.4;
+    return smoothed;
   }, []);
 
   const handlePointerDown = useCallback(
