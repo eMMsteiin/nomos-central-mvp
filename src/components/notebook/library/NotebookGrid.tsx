@@ -19,6 +19,7 @@ export function NotebookGrid({
   selectedIds,
   onToggleSelect,
 }: NotebookGridProps) {
+  const safeSelectedIds = selectedIds ?? new Set<string>();
   return (
     <div
       className={
@@ -42,7 +43,7 @@ export function NotebookGrid({
               viewMode={viewMode}
               currentFolderId={currentFolderId}
               isSelectionMode={isSelectionMode}
-              isSelected={selectedIds.has(notebook.id)}
+              isSelected={safeSelectedIds.has(notebook.id)}
               onToggleSelect={onToggleSelect}
             />
           </motion.div>
