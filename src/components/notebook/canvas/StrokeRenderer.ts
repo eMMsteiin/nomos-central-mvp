@@ -8,21 +8,21 @@ function getFountainConfig(config: PenConfig) {
 
   return {
     size: config.width * 2,
-    thinning: 0.5 * pressureMultiplier,
-    smoothing: 0.5,
-    streamline: 0.5,
+    thinning: 0.35 * pressureMultiplier,
+    smoothing: 0.65,
+    streamline: 0.72,
     easing: (t: number) => t,
     simulatePressure: false,
     last: true,
     start: {
       cap: true,
-      taper: sharpnessMultiplier * 15,
-      easing: (t: number) => t,
+      taper: sharpnessMultiplier * 25 + 5,
+      easing: (t: number) => t * t,
     },
     end: {
       cap: true,
-      taper: sharpnessMultiplier * 15,
-      easing: (t: number) => t,
+      taper: sharpnessMultiplier * 25 + 5,
+      easing: (t: number) => t * t,
     },
   };
 }
