@@ -22,6 +22,7 @@ import Resumos from "./pages/Resumos";
 import Concluido from "./pages/Concluido";
 import LembretesRapidos from "./pages/LembretesRapidos";
 import Caderno from "./pages/Caderno";
+import NotebookView from "./pages/NotebookView";
 import CadernoDevTest from "./pages/CadernoDevTest";
 
 import Flashcards from "./pages/Flashcards";
@@ -68,6 +69,7 @@ function MainContent() {
             <Route path="/concluido" element={<Concluido />} />
             <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
             <Route path="/caderno" element={<Caderno />} />
+            <Route path="/caderno/:notebookId" element={<NotebookView />} />
             
             <Route path="/caderno-dev-test" element={<CadernoDevTest />} />
             
