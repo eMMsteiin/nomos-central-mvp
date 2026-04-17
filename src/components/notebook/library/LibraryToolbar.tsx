@@ -12,6 +12,7 @@ interface LibraryToolbarProps {
   sortDirection: 'asc' | 'desc';
   onSortDirectionChange: (d: 'asc' | 'desc') => void;
   title?: string;
+  titleCount?: number;
   showNewFolderButton?: boolean;
   onNewFolder?: () => void;
 }
@@ -32,6 +33,9 @@ export function LibraryToolbar(props: LibraryToolbarProps) {
       <div className="flex items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold tracking-tight truncate">
           {props.title ?? 'Caderno'}
+          {typeof props.titleCount === 'number' && props.titleCount > 0 && (
+            <span className="ml-2 text-base font-normal text-neutral-400">({props.titleCount})</span>
+          )}
         </h1>
         {props.showNewFolderButton && props.onNewFolder && (
           <button
