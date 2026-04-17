@@ -1,7 +1,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Star, MoreHorizontal, Trash2, Edit3, FileText, Copy, FolderInput } from 'lucide-react';
+import { useDraggable } from '@dnd-kit/core';
+import { Star, MoreHorizontal, Trash2, Edit3, FileText, Copy, FolderInput, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   useToggleNotebookFavorite,
   useUpdateNotebook,
@@ -16,6 +18,10 @@ interface NotebookCardProps {
   notebook: NotebookRow;
   viewMode: 'grid' | 'list';
   currentFolderId?: string | null;
+  isDragOverlay?: boolean;
+  isSelectionMode?: boolean;
+  isSelected?: boolean;
+  onToggleSelect?: (id: string) => void;
 }
 
 function getTimeAgo(dateStr: string | null): string {
@@ -34,7 +40,14 @@ function getTimeAgo(dateStr: string | null): string {
   return date.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
 }
 
-export function NotebookCard({ notebook, viewMode, currentFolderId = null }: NotebookCardProps) {
+export function NotebookCard({
+  notebook,
+  viewMode,
+  isDragOverlay = false,
+  isSelectionMode = false,
+  isSelected = false,
+  onToggleSelect,
+}: NotebookCardProps) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -48,17 +61,11 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
   const deleteNotebook = useDeleteNotebook();
   const duplicateNotebook = useDuplicateNotebook();
 
-  const handleDuplicate = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(false);
-    duplicateNotebook.mutate(notebook.id);
-  };
-
-  const handleMove = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setMenuOpen(false);
-    setMoveOpen(true);
-  };
+  const draggable = useDraggable({
+    id: notebook.id,
+    disabled: isDragOverlay || isSelectionMode || isRenaming,
+  });
+  const { attributes, listeners, setNodeRef, isDragging } = draggable;
 
   // Fechar menu ao clicar fora
   useEffect(() => {
@@ -72,8 +79,17 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [menuOpen]);
 
-  const handleOpen = () => {
-    if (isRenaming) return;
+  const handleCardClick = (e: React.MouseEvent) => {
+    if (isDragOverlay || isRenaming) return;
+    if (e.metaKey || e.ctrlKey) {
+      e.preventDefault();
+      onToggleSelect?.(notebook.id);
+      return;
+    }
+    if (isSelectionMode) {
+      onToggleSelect?.(notebook.id);
+      return;
+    }
     navigate(`/caderno/${notebook.id}`);
   };
 
@@ -84,7 +100,10 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
 
   const handleRenameSubmit = () => {
     if (renameValue.trim() && renameValue.trim() !== notebook.title) {
-      updateNotebook.mutate({ id: notebook.id, patch: { title: renameValue.trim() } });
+      updateNotebook.mutate(
+        { id: notebook.id, patch: { title: renameValue.trim() } },
+        { onSuccess: () => toast.success('Caderno renomeado') }
+      );
     }
     setIsRenaming(false);
   };
@@ -93,7 +112,10 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
     e.stopPropagation();
     setMenuOpen(false);
     if (confirm(`Excluir "${notebook.title}"? Esta ação não pode ser desfeita.`)) {
-      deleteNotebook.mutate(notebook.id);
+      deleteNotebook.mutate(notebook.id, {
+        onSuccess: () => toast.success('Caderno excluído'),
+        onError: () => toast.error('Falha ao excluir'),
+      });
     }
   };
 
@@ -105,6 +127,21 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
     setTimeout(() => renameInputRef.current?.focus(), 50);
   };
 
+  const handleDuplicate = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    duplicateNotebook.mutate(notebook.id, {
+      onSuccess: () => toast.success('Caderno duplicado'),
+      onError: () => toast.error('Falha ao duplicar'),
+    });
+  };
+
+  const handleMove = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setMenuOpen(false);
+    setMoveOpen(true);
+  };
+
   const timeAgo = getTimeAgo(notebook.updated_at);
   const subtitle = notebook.discipline || notebook.subject || timeAgo;
 
@@ -112,17 +149,41 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
   if (viewMode === 'grid') {
     return (
       <motion.div
-        whileHover={{ y: -2 }}
+        whileHover={isDragOverlay ? undefined : { y: -2 }}
         transition={{ duration: 0.2 }}
-        onClick={handleOpen}
-        className="group cursor-pointer"
+        onClick={handleCardClick}
+        ref={isDragOverlay ? undefined : setNodeRef}
+        {...(isDragOverlay ? {} : listeners)}
+        {...(isDragOverlay ? {} : attributes)}
+        className={`group cursor-pointer ${isDragging ? 'opacity-30' : ''}`}
       >
-        <div className="relative aspect-[3/4] rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-neutral-100 dark:bg-neutral-900 hover:shadow-sm transition-shadow">
+        <div
+          className={`relative aspect-[3/4] rounded-lg overflow-hidden border bg-neutral-100 dark:bg-neutral-900 hover:shadow-sm transition-all ${
+            isSelected
+              ? 'ring-2 ring-neutral-900 dark:ring-neutral-100 border-transparent'
+              : 'border-neutral-200 dark:border-neutral-800'
+          }`}
+        >
           <NotebookCover
             coverType={notebook.cover_type}
             coverData={notebook.cover_data}
             title={notebook.title}
           />
+
+          {/* Selection checkbox */}
+          {(isSelectionMode || isSelected) && !isDragOverlay && (
+            <div className="absolute top-2 left-2 z-10">
+              <div
+                className={`w-6 h-6 rounded-full flex items-center justify-center border-2 transition ${
+                  isSelected
+                    ? 'bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100 text-white dark:text-neutral-900'
+                    : 'bg-white/80 dark:bg-black/60 border-neutral-300 dark:border-neutral-600'
+                }`}
+              >
+                {isSelected && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+              </div>
+            </div>
+          )}
 
           <button
             onClick={handleFavorite}
@@ -138,61 +199,51 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
             />
           </button>
 
-          <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition" ref={menuRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setMenuOpen(!menuOpen);
-              }}
-              className="p-1.5 rounded-full bg-white/80 dark:bg-black/60 hover:bg-white dark:hover:bg-black transition"
-              aria-label="Mais opções"
-            >
-              <MoreHorizontal className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
-            </button>
-
-            {menuOpen && (
-              <div
-                className="absolute top-full left-0 mt-1 w-44 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-lg py-1 z-20"
-                onClick={(e) => e.stopPropagation()}
+          {!isSelectionMode && !isDragOverlay && (
+            <div className="absolute top-2 left-2 opacity-0 group-hover:opacity-100 transition" ref={menuRef}>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setMenuOpen(!menuOpen);
+                }}
+                className="p-1.5 rounded-full bg-white/80 dark:bg-black/60 hover:bg-white dark:hover:bg-black transition"
+                aria-label="Mais opções"
               >
-                <button
-                  onClick={handleStartRename}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+                <MoreHorizontal className="w-4 h-4 text-neutral-700 dark:text-neutral-300" />
+              </button>
+
+              {menuOpen && (
+                <div
+                  className="absolute top-full left-0 mt-1 w-44 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-lg py-1 z-20"
+                  onClick={(e) => e.stopPropagation()}
                 >
-                  <Edit3 className="w-4 h-4" /> Renomear
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpen(false);
-                    toggleFavorite.mutate({ id: notebook.id, is_favorite: !notebook.is_favorite });
-                  }}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
-                >
-                  <Star className="w-4 h-4" /> {notebook.is_favorite ? 'Desfavoritar' : 'Favoritar'}
-                </button>
-                <button
-                  onClick={handleDuplicate}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
-                >
-                  <Copy className="w-4 h-4" /> Duplicar
-                </button>
-                <button
-                  onClick={handleMove}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
-                >
-                  <FolderInput className="w-4 h-4" /> Mover para...
-                </button>
-                <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
-                <button
-                  onClick={handleDelete}
-                  className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 transition text-left"
-                >
-                  <Trash2 className="w-4 h-4" /> Excluir
-                </button>
-              </div>
-            )}
-          </div>
+                  <button onClick={handleStartRename} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
+                    <Edit3 className="w-4 h-4" /> Renomear
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setMenuOpen(false);
+                      toggleFavorite.mutate({ id: notebook.id, is_favorite: !notebook.is_favorite });
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+                  >
+                    <Star className="w-4 h-4" /> {notebook.is_favorite ? 'Desfavoritar' : 'Favoritar'}
+                  </button>
+                  <button onClick={handleDuplicate} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
+                    <Copy className="w-4 h-4" /> Duplicar
+                  </button>
+                  <button onClick={handleMove} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
+                    <FolderInput className="w-4 h-4" /> Mover para...
+                  </button>
+                  <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+                  <button onClick={handleDelete} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 transition text-left">
+                    <Trash2 className="w-4 h-4" /> Excluir
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="absolute bottom-2 right-2 flex items-center gap-1 px-2 py-0.5 rounded-md bg-white/80 dark:bg-black/60 text-xs text-neutral-700 dark:text-neutral-300">
             <FileText className="w-3 h-3" />
@@ -217,10 +268,16 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
           ) : (
             <h3 className="text-sm font-semibold truncate">{notebook.title}</h3>
           )}
-          <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">
-            {subtitle}
-          </p>
+          <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate mt-0.5">{subtitle}</p>
         </div>
+
+        <MoveToFolderDialog
+          open={moveOpen}
+          onOpenChange={setMoveOpen}
+          notebookId={notebook.id}
+          notebookTitle={notebook.title}
+          currentFolderId={notebook.folder_id}
+        />
       </motion.div>
     );
   }
@@ -228,9 +285,28 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
   // ─── MODO LIST ───
   return (
     <div
-      onClick={handleOpen}
-      className="group flex items-center gap-4 p-3 rounded-lg border border-neutral-200 dark:border-neutral-800 hover:bg-neutral-50 dark:hover:bg-neutral-900 transition cursor-pointer"
+      onClick={handleCardClick}
+      ref={isDragOverlay ? undefined : setNodeRef}
+      {...(isDragOverlay ? {} : listeners)}
+      {...(isDragOverlay ? {} : attributes)}
+      className={`group flex items-center gap-4 p-3 rounded-lg border hover:bg-neutral-50 dark:hover:bg-neutral-900 transition cursor-pointer ${
+        isSelected
+          ? 'ring-2 ring-neutral-900 dark:ring-neutral-100 border-transparent'
+          : 'border-neutral-200 dark:border-neutral-800'
+      } ${isDragging ? 'opacity-30' : ''}`}
     >
+      {(isSelectionMode || isSelected) && !isDragOverlay && (
+        <div
+          className={`w-5 h-5 rounded-full flex items-center justify-center border-2 transition flex-shrink-0 ${
+            isSelected
+              ? 'bg-neutral-900 dark:bg-neutral-100 border-neutral-900 dark:border-neutral-100 text-white dark:text-neutral-900'
+              : 'border-neutral-300 dark:border-neutral-600'
+          }`}
+        >
+          {isSelected && <Check className="w-3 h-3" strokeWidth={3} />}
+        </div>
+      )}
+
       <div className="w-12 h-16 rounded overflow-hidden border border-neutral-200 dark:border-neutral-800 flex-shrink-0">
         <NotebookCover
           coverType={notebook.cover_type}
@@ -263,70 +339,60 @@ export function NotebookCard({ notebook, viewMode, currentFolderId = null }: Not
         </p>
       </div>
 
-      <div className="flex items-center gap-1 flex-shrink-0">
-        <button
-          onClick={handleFavorite}
-          className="p-1.5 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
-          aria-label={notebook.is_favorite ? 'Desfavoritar' : 'Favoritar'}
-        >
-          <Star
-            className={`w-4 h-4 ${
-              notebook.is_favorite ? 'fill-amber-400 text-amber-400' : 'text-neutral-400'
-            }`}
-          />
-        </button>
-        <div className="relative" ref={menuRef}>
+      {!isSelectionMode && !isDragOverlay && (
+        <div className="flex items-center gap-1 flex-shrink-0">
           <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setMenuOpen(!menuOpen);
-            }}
+            onClick={handleFavorite}
             className="p-1.5 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
-            aria-label="Mais opções"
+            aria-label={notebook.is_favorite ? 'Desfavoritar' : 'Favoritar'}
           >
-            <MoreHorizontal className="w-4 h-4" />
+            <Star
+              className={`w-4 h-4 ${
+                notebook.is_favorite ? 'fill-amber-400 text-amber-400' : 'text-neutral-400'
+              }`}
+            />
           </button>
-          {menuOpen && (
-            <div
-              className="absolute top-full right-0 mt-1 w-44 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-lg py-1 z-20"
-              onClick={(e) => e.stopPropagation()}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setMenuOpen(!menuOpen);
+              }}
+              className="p-1.5 rounded-md hover:bg-neutral-200 dark:hover:bg-neutral-700 transition"
+              aria-label="Mais opções"
             >
-              <button
-                onClick={handleStartRename}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
+              <MoreHorizontal className="w-4 h-4" />
+            </button>
+            {menuOpen && (
+              <div
+                className="absolute top-full right-0 mt-1 w-44 bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-md shadow-lg py-1 z-20"
+                onClick={(e) => e.stopPropagation()}
               >
-                <Edit3 className="w-4 h-4" /> Renomear
-              </button>
-              <button
-                onClick={handleDuplicate}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
-              >
-                <Copy className="w-4 h-4" /> Duplicar
-              </button>
-              <button
-                onClick={handleMove}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left"
-              >
-                <FolderInput className="w-4 h-4" /> Mover para...
-              </button>
-              <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
-              <button
-                onClick={handleDelete}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 transition text-left"
-              >
-                <Trash2 className="w-4 h-4" /> Excluir
-              </button>
-            </div>
-          )}
+                <button onClick={handleStartRename} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
+                  <Edit3 className="w-4 h-4" /> Renomear
+                </button>
+                <button onClick={handleDuplicate} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
+                  <Copy className="w-4 h-4" /> Duplicar
+                </button>
+                <button onClick={handleMove} className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-800 transition text-left">
+                  <FolderInput className="w-4 h-4" /> Mover para...
+                </button>
+                <div className="my-1 h-px bg-neutral-200 dark:bg-neutral-800" />
+                <button onClick={handleDelete} className="w-full flex items-center gap-2 px-3 py-2 text-sm text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-950/40 hover:text-red-600 dark:hover:text-red-400 transition text-left">
+                  <Trash2 className="w-4 h-4" /> Excluir
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       <MoveToFolderDialog
         open={moveOpen}
         onOpenChange={setMoveOpen}
         notebookId={notebook.id}
         notebookTitle={notebook.title}
-        currentFolderId={currentFolderId}
+        currentFolderId={notebook.folder_id}
       />
     </div>
   );
