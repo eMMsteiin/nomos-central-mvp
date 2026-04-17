@@ -1,9 +1,11 @@
-import { useState, useRef, useEffect } from 'react';
+import { useDroppable } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
+import { useState, useRef, useEffect } from 'react';
 import {
   Folder, BookOpen, Scale, Lightbulb, FlaskConical, GraduationCap,
   Ruler, Globe, Calculator, Code, MoreHorizontal, Edit3, Palette, Trash2,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useUpdateFolder, useDeleteFolder } from '@/hooks/notebook/mutations/useFolderMutations';
 import type { NotebookFolder } from '@/hooks/notebook/useNotebookFolders';
 
@@ -32,6 +34,8 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
 
   const updateFolder = useUpdateFolder();
   const deleteFolder = useDeleteFolder();
+
+  const { setNodeRef, isOver } = useDroppable({ id: `folder-${folder.id}` });
 
   useEffect(() => {
     if (!menuOpen && !colorOpen) return;
@@ -77,10 +81,16 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
         `A pasta "${folder.name}" contém ${count} caderno(s).\n\nOK = Mover cadernos para a raiz e excluir pasta\nCancelar = Não fazer nada`
       );
       if (!choice) return;
-      deleteFolder.mutate({ folderId: folder.id, notebookAction: 'move_to_root' });
+      deleteFolder.mutate(
+        { folderId: folder.id, notebookAction: 'move_to_root' },
+        { onSuccess: () => toast.success('Pasta excluída') }
+      );
     } else {
       if (!confirm(`Excluir pasta "${folder.name}"?`)) return;
-      deleteFolder.mutate({ folderId: folder.id, notebookAction: 'move_to_root' });
+      deleteFolder.mutate(
+        { folderId: folder.id, notebookAction: 'move_to_root' },
+        { onSuccess: () => toast.success('Pasta excluída') }
+      );
     }
   };
 
@@ -92,15 +102,18 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
 
   return (
     <motion.div
+      ref={setNodeRef}
       whileHover={{ y: -2 }}
       transition={{ duration: 0.2 }}
       onClick={handleClick}
-      className="group relative w-28 h-32 flex-shrink-0 rounded-lg overflow-hidden border border-neutral-200 dark:border-neutral-800 bg-white dark:bg-neutral-900 hover:shadow-sm transition-shadow cursor-pointer"
+      className={`group relative w-28 h-32 flex-shrink-0 rounded-lg overflow-hidden border bg-white dark:bg-neutral-900 hover:shadow-sm transition-all cursor-pointer ${
+        isOver
+          ? 'ring-2 ring-neutral-900 dark:ring-neutral-100 border-transparent bg-neutral-100 dark:bg-neutral-800 scale-105'
+          : 'border-neutral-200 dark:border-neutral-800'
+      }`}
     >
-      {/* Color bar */}
       <div className="absolute top-0 left-0 right-0 h-1" style={{ backgroundColor: color }} />
 
-      {/* Menu */}
       <div className="absolute top-2 right-1 opacity-0 group-hover:opacity-100 transition" ref={menuRef}>
         <button
           onClick={(e) => { e.stopPropagation(); setMenuOpen(!menuOpen); setColorOpen(false); }}
@@ -147,7 +160,6 @@ export function FolderCard({ folder, onClick }: FolderCardProps) {
         )}
       </div>
 
-      {/* Content */}
       <div className="h-full flex flex-col items-center justify-center px-2 pt-3">
         <Icon className="w-6 h-6 mb-1.5" style={{ color }} />
         {isRenaming ? (
