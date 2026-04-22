@@ -40,7 +40,7 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
 
   const { viewport, handleWheel, handlePan, resetViewport } = useCanvasViewport();
 
-  const { currentStroke, bindPointerHandlers, cancelStroke } = useCanvasInput({
+  const { currentStroke, bindPointerHandlers, cancelStroke, isPinchGestureAllowed } = useCanvasInput({
     canvasRef,
     viewport,
     activeTool,
@@ -70,13 +70,13 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
   };
 
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
+    if (e.touches.length === 2 && isPinchGestureAllowed()) {
       e.preventDefault();
       cancelStroke();
       const { dist, center } = getTouchData(e.touches);
       pinchStateRef.current = { active: true, lastDist: dist, lastCenter: center };
     }
-  }, [cancelStroke]);
+  }, [cancelStroke, isPinchGestureAllowed]);
 
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
     if (e.touches.length === 2 && pinchStateRef.current.active) {
