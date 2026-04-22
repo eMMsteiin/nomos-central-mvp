@@ -31,9 +31,10 @@ canvas {
   -webkit-tap-highlight-color: transparent;
 }
 
-/* Caderno: desabilitar seleção/callout/long-press dentro de toda a área do canvas */
-.notebook-canvas-root,
-.notebook-canvas-root * {
+/* App inteira: desabilitar seleção acidental e callout do iOS (long-press) */
+/* Isso evita que tocar em "Emmanuel", títulos, labels etc. mostre o menu */
+/* Copiar/Pesquisar/Traduzir nativo do Safari iOS no iPad. */
+html, body, #root {
   -webkit-user-select: none;
   user-select: none;
   -webkit-touch-callout: none;
@@ -41,12 +42,24 @@ canvas {
   -webkit-user-drag: none;
 }
 
-.notebook-canvas-root input,
-.notebook-canvas-root textarea,
-.notebook-canvas-root [contenteditable="true"] {
+/* Exceções: campos editáveis precisam permitir seleção */
+input,
+textarea,
+[contenteditable="true"],
+[contenteditable=""] {
   -webkit-user-select: text;
   user-select: text;
   -webkit-touch-callout: default;
+}
+
+/* Em desktop, permitir seleção em conteúdo de leitura (artigos, resumos) */
+@media (hover: hover) and (pointer: fine) {
+  .selectable-text,
+  .prose,
+  .prose * {
+    -webkit-user-select: text;
+    user-select: text;
+  }
 }
 
 .notebook-canvas-root {
