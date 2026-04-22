@@ -211,6 +211,77 @@ function decodeXmlEntities(s: string): string {
     .replace(/&amp;/g, '&');
 }
 
+/**
+ * Extracts text from a .docx file (OOXML zip).
+ * Main content lives in `word/document.xml`; text runs are <w:t>...</w:t>,
+ * paragraphs are <w:p>, line breaks are <w:br/>, tabs are <w:tab/>.
+ * Headers/footers (word/header*.xml, word/footer*.xml) are also pulled.
+ */
+async function extractTextFromDocx(docxBytes: Uint8Array): Promise<string> {
+  const zip = await JSZip.loadAsync(docxBytes);
+
+  const parseDocxXml = (xml: string): string => {
+    // Split by paragraph boundaries to preserve structure.
+    const paragraphs = xml.split(/<\/w:p>/);
+    const lines: string[] = [];
+    for (const para of paragraphs) {
+      // Replace breaks/tabs with whitespace BEFORE pulling <w:t> runs.
+      const normalized = para
+        .replace(/<w:br\s*\/?>/g, '\n')
+        .replace(/<w:tab\s*\/?>/g, '\t');
+      const runs = [...normalized.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)]
+        .map((m) => decodeXmlEntities(m[1]));
+      const line = runs.join('').trim();
+      if (line) lines.push(line);
+    }
+    return lines.join('\n');
+  };
+
+  const parts: string[] = [];
+
+  // Main document body
+  const mainFile = zip.file('word/document.xml');
+  if (!mainFile) {
+    throw new Error('Arquivo .docx inválido: word/document.xml não encontrado');
+  }
+  const mainXml = await mainFile.async('string');
+  const mainText = parseDocxXml(mainXml);
+  if (mainText) parts.push(mainText);
+
+  // Headers (word/header1.xml, header2.xml, ...)
+  const headerPaths: string[] = [];
+  const footerPaths: string[] = [];
+  zip.forEach((relativePath) => {
+    if (/^word\/header\d+\.xml$/.test(relativePath)) headerPaths.push(relativePath);
+    if (/^word\/footer\d+\.xml$/.test(relativePath)) footerPaths.push(relativePath);
+  });
+
+  for (const path of headerPaths.sort()) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const text = parseDocxXml(await file.async('string'));
+    if (text) parts.push(`--- Cabeçalho ---\n${text}`);
+  }
+  for (const path of footerPaths.sort()) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const text = parseDocxXml(await file.async('string'));
+    if (text) parts.push(`--- Rodapé ---\n${text}`);
+  }
+
+  // Footnotes / endnotes if present
+  for (const path of ['word/footnotes.xml', 'word/endnotes.xml']) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const text = parseDocxXml(await file.async('string'));
+    if (text) parts.push(`--- ${path.includes('foot') ? 'Notas de Rodapé' : 'Notas Finais'} ---\n${text}`);
+  }
+
+  const result = parts.join('\n\n');
+  console.log(`[process-deck-source] DOCX extraction returned ${result.length} chars`);
+  return result;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
