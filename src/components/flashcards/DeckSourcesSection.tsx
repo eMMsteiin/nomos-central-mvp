@@ -122,7 +122,7 @@ export function DeckSourcesSection({
           ref={fileInputRef}
           type="file"
           className="hidden"
-          accept=".pdf,.png,.jpg,.jpeg,.heic,.webp,.pptx"
+          accept=".pdf,.png,.jpg,.jpeg,.heic,.webp,.pptx,.docx"
           onChange={handleFileSelect}
         />
       </div>
@@ -138,7 +138,7 @@ export function DeckSourcesSection({
               Anexe PDFs, slides ou fotos de anotações para gerar flashcards baseados no conteúdo
             </p>
             <p className="text-xs text-muted-foreground mt-1">
-              PDF, PNG, JPG, HEIC, PPTX · Máx 10MB · Até 5 arquivos
+              PDF, PNG, JPG, HEIC, PPTX, DOCX · Máx 10MB · Até 5 arquivos
             </p>
           </CardContent>
         </Card>
