@@ -96,7 +96,9 @@ export function useCanvasInput({
       currentPointsRef.current = [startPoint];
       setCurrentStroke([startPoint]);
 
-      stabilizerRef.current = new StrokeStabilizer(12);
+      // Stabilizer mínimo: só remove o jitter mais grosseiro,
+      // sem atrasar a ponta da Pencil.
+      stabilizerRef.current = new StrokeStabilizer(3);
       stabilizerRef.current.process(startPoint);
     },
     [activeTool, screenToCanvas, penConfig.pressureEnabled, shouldProcessPointer]
@@ -155,12 +157,23 @@ export function useCanvasInput({
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
 
-    const points = currentPointsRef.current;
-    if (points.length < 2) {
+    let points = currentPointsRef.current;
+    if (points.length === 0) {
       currentPointsRef.current = [];
       setCurrentStroke(null);
       stabilizerRef.current = null;
       return;
+    }
+
+    // Toque rápido (ponto): duplica o único ponto com leve offset
+    // para que perfect-freehand gere um disco visível.
+    if (points.length === 1) {
+      const p = points[0];
+      points = [
+        p,
+        { x: p.x + 0.01, y: p.y + 0.01, pressure: p.pressure, t: p.t + 1 },
+      ];
+      currentPointsRef.current = points;
     }
 
     const stroke: Stroke = {
