@@ -9,7 +9,7 @@ function getFountainConfig(config: PenConfig) {
   return {
     size: config.width * 2,
     thinning: config.pressureEnabled ? 0.35 * pressureMultiplier : 0,
-    smoothing: 0.45,
+    smoothing: 0.30,
     streamline: 0.40,
     easing: (t: number) => t,
     simulatePressure: false,
@@ -25,6 +25,41 @@ function getFountainConfig(config: PenConfig) {
       easing: (t: number) => t * t,
     },
   };
+}
+
+/**
+ * Desenha um polígono usando curvas quadráticas entre os pontos.
+ * Técnica oficial recomendada pela documentação do perfect-freehand.
+ * Cada ponto vira control point e o ponto médio até o próximo é o endpoint,
+ * gerando curvas matematicamente contínuas em vez de facetas retas.
+ */
+function drawSmoothPolygon(ctx: CanvasRenderingContext2D, points: number[][]) {
+  if (points.length < 2) return;
+
+  if (points.length < 4) {
+    ctx.moveTo(points[0][0], points[0][1]);
+    for (let i = 1; i < points.length; i++) {
+      ctx.lineTo(points[i][0], points[i][1]);
+    }
+    ctx.closePath();
+    return;
+  }
+
+  const first = points[0];
+  const second = points[1];
+  ctx.moveTo((first[0] + second[0]) / 2, (first[1] + second[1]) / 2);
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const current = points[i];
+    const next = points[i + 1];
+    const midX = (current[0] + next[0]) / 2;
+    const midY = (current[1] + next[1]) / 2;
+    ctx.quadraticCurveTo(current[0], current[1], midX, midY);
+  }
+
+  const last = points[points.length - 1];
+  ctx.quadraticCurveTo(last[0], last[1], first[0], first[1]);
+  ctx.closePath();
 }
 
 export function renderStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
@@ -52,11 +87,7 @@ export function renderStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
 
   ctx.fillStyle = stroke.color;
   ctx.beginPath();
-  ctx.moveTo(outline[0][0], outline[0][1]);
-  for (let i = 1; i < outline.length; i++) {
-    ctx.lineTo(outline[i][0], outline[i][1]);
-  }
-  ctx.closePath();
+  drawSmoothPolygon(ctx, outline);
   ctx.fill();
 }
 
@@ -77,10 +108,6 @@ export function renderLiveStroke(
 
   ctx.fillStyle = config.color;
   ctx.beginPath();
-  ctx.moveTo(outline[0][0], outline[0][1]);
-  for (let i = 1; i < outline.length; i++) {
-    ctx.lineTo(outline[i][0], outline[i][1]);
-  }
-  ctx.closePath();
+  drawSmoothPolygon(ctx, outline);
   ctx.fill();
 }
