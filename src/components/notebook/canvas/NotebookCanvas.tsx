@@ -25,6 +25,7 @@ export function NotebookCanvas({ notebook, pageId }: NotebookCanvasProps) {
     width: 2,
     pressureSensitivity: 50,
     tipSharpness: 50,
+    pressureEnabled: false,
   });
 
   const canvasRef = useRef<CanvasAreaHandle>(null);

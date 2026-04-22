@@ -65,7 +65,9 @@ export function useCanvasInput({
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       const t = performance.now();
 
-      const pressure = e.pressure > 0 && e.pointerType === 'pen' ? e.pressure : 0.5;
+      const pressure = penConfig.pressureEnabled
+        ? (e.pressure > 0 && e.pointerType === 'pen' ? e.pressure : 0.5)
+        : 0.5;
       const startPoint: Point = { x, y, pressure, t };
       currentPointsRef.current = [startPoint];
       setCurrentStroke([startPoint]);
@@ -73,7 +75,7 @@ export function useCanvasInput({
       stabilizerRef.current = new StrokeStabilizer(12);
       stabilizerRef.current.process(startPoint);
     },
-    [activeTool, screenToCanvas]
+    [activeTool, screenToCanvas, penConfig.pressureEnabled]
   );
 
   const handlePointerMove = useCallback(
@@ -90,10 +92,11 @@ export function useCanvasInput({
       for (const ev of events) {
         const { x, y } = screenToCanvas(ev.clientX, ev.clientY);
         const t = ev.timeStamp;
-        const pressure =
-          ev.pressure > 0 && ev.pointerType === 'pen'
-            ? ev.pressure
-            : estimatePressure(x, y, t);
+        const pressure = penConfig.pressureEnabled
+          ? (ev.pressure > 0 && ev.pointerType === 'pen'
+              ? ev.pressure
+              : estimatePressure(x, y, t))
+          : 0.5;
 
         const rawPoint: Point = { x, y, pressure, t };
         const stabilized = stabilizerRef.current?.process(rawPoint);
@@ -104,7 +107,7 @@ export function useCanvasInput({
 
       setCurrentStroke([...currentPointsRef.current]);
     },
-    [activeTool, screenToCanvas, estimatePressure]
+    [activeTool, screenToCanvas, estimatePressure, penConfig.pressureEnabled]
   );
 
   const handlePointerUp = useCallback(() => {
