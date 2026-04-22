@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { RefObject } from 'react';
 import type { Stroke } from '@/hooks/notebook/useNotebookPage';
 import type { Point, ToolType, PenConfig, ViewportState } from './types';
@@ -23,11 +23,29 @@ export function useCanvasInput({
   const stabilizerRef = useRef<StrokeStabilizer | null>(null);
   const currentPointsRef = useRef<Point[]>([]);
   const isDrawingRef = useRef(false);
+  const frameRef = useRef<number | null>(null);
   // Palm rejection: assim que o Pencil/stylus é detectado, ignoramos toques de
   // dedo/palma por uma janela curta. Mouse passa sempre.
   const lastPencilUseRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
   const PENCIL_PRIORITY_WINDOW_MS = 10000;
+
+  const commitPreviewFrame = useCallback(() => {
+    if (frameRef.current !== null) return;
+
+    frameRef.current = window.requestAnimationFrame(() => {
+      frameRef.current = null;
+      setCurrentStroke([...currentPointsRef.current]);
+    });
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (frameRef.current !== null) {
+        window.cancelAnimationFrame(frameRef.current);
+      }
+    };
+  }, []);
 
   const shouldProcessPointer = useCallback(
     (e: React.PointerEvent | PointerEvent): boolean => {
@@ -76,6 +94,30 @@ export function useCanvasInput({
     return smoothed;
   }, []);
 
+  const appendPoint = useCallback(
+    (point: Point, fallbackToRaw = false) => {
+      const points = currentPointsRef.current;
+      const last = points[points.length - 1];
+
+      if (last) {
+        const distance = Math.hypot(point.x - last.x, point.y - last.y);
+        if (distance < 0.01) return;
+      }
+
+      const stabilized = stabilizerRef.current?.process(point) ?? point;
+
+      if (stabilized) {
+        points.push(stabilized);
+        return;
+      }
+
+      if (fallbackToRaw) {
+        points.push(point);
+      }
+    },
+    []
+  );
+
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
       if (activeTool !== 'pen') return;
@@ -96,9 +138,8 @@ export function useCanvasInput({
       currentPointsRef.current = [startPoint];
       setCurrentStroke([startPoint]);
 
-      // Stabilizer mínimo: só remove o jitter mais grosseiro,
-      // sem atrasar a ponta da Pencil.
-      stabilizerRef.current = new StrokeStabilizer(3);
+      // Estabilização mínima para preservar a ponta da Pencil.
+      stabilizerRef.current = new StrokeStabilizer(1);
       stabilizerRef.current.process(startPoint);
     },
     [activeTool, screenToCanvas, penConfig.pressureEnabled, shouldProcessPointer]
@@ -134,15 +175,20 @@ export function useCanvasInput({
           : 0.5;
 
         const rawPoint: Point = { x, y, pressure, t };
-        const stabilized = stabilizerRef.current?.process(rawPoint);
-        if (stabilized) {
-          currentPointsRef.current.push(stabilized);
-        }
+        appendPoint(rawPoint);
       }
 
-      setCurrentStroke([...currentPointsRef.current]);
+      commitPreviewFrame();
     },
-    [activeTool, screenToCanvas, estimatePressure, penConfig.pressureEnabled, shouldProcessPointer]
+    [
+      activeTool,
+      screenToCanvas,
+      estimatePressure,
+      penConfig.pressureEnabled,
+      shouldProcessPointer,
+      appendPoint,
+      commitPreviewFrame,
+    ]
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent) => {
@@ -154,6 +200,14 @@ export function useCanvasInput({
     ) {
       return;
     }
+
+    const { x, y } = screenToCanvas(e.clientX, e.clientY);
+    const t = typeof e.timeStamp === 'number' ? e.timeStamp : performance.now();
+    const pressure = penConfig.pressureEnabled
+      ? (e.pressure > 0 && e.pointerType === 'pen' ? e.pressure : estimatePressure(x, y, t))
+      : 0.5;
+    appendPoint({ x, y, pressure, t }, true);
+
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
 
@@ -187,10 +241,15 @@ export function useCanvasInput({
 
     onStrokeComplete(stroke);
 
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
-  }, [penConfig, onStrokeComplete, shouldProcessPointer]);
+  }, [appendPoint, estimatePressure, onStrokeComplete, penConfig, screenToCanvas, shouldProcessPointer]);
 
   const handlePointerCancel = useCallback(() => {
     isDrawingRef.current = false;
@@ -198,6 +257,10 @@ export function useCanvasInput({
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
   }, []);
 
   const bindPointerHandlers = useCallback(

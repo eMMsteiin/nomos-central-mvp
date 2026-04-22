@@ -2,6 +2,13 @@ import { getStroke } from 'perfect-freehand';
 import type { Stroke } from '@/hooks/notebook/useNotebookPage';
 import type { Point, PenConfig } from './types';
 
+const outlineCache = new Map<string, number[][]>();
+
+function getCacheKey(stroke: Stroke) {
+  const lastPoint = stroke.points[stroke.points.length - 1];
+  return `${stroke.id}:${stroke.color}:${stroke.width}:${stroke.points.length}:${lastPoint?.x ?? 0}:${lastPoint?.y ?? 0}:${lastPoint?.pressure ?? 0}`;
+}
+
 function getFountainConfig(config: PenConfig) {
   const pressureMultiplier = config.pressureSensitivity / 100;
   const sharpnessMultiplier = config.tipSharpness / 100;
@@ -67,24 +74,34 @@ function drawSmoothPolygon(ctx: CanvasRenderingContext2D, points: number[][]) {
 export function renderStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
   if (!stroke.points || stroke.points.length === 0) return;
 
-  const inputPoints = stroke.points.map(
-    (p) => [p.x, p.y, p.pressure ?? 0.5] as [number, number, number]
-  );
+  const cacheKey = getCacheKey(stroke);
+  let outline = outlineCache.get(cacheKey);
 
-  // Detect if stroke was drawn with pressure enabled by checking variation in saved pressure values
-  const hasPressureVariation = stroke.points.some(
-    (p) => p.pressure !== undefined && Math.abs((p.pressure ?? 0.5) - 0.5) > 0.01
-  );
+  if (!outline) {
+    const inputPoints = stroke.points.map(
+      (p) => [p.x, p.y, p.pressure ?? 0.5] as [number, number, number]
+    );
 
-  const config = getFountainConfig({
-    color: stroke.color,
-    width: stroke.width,
-    pressureSensitivity: 50,
-    tipSharpness: 50,
-    pressureEnabled: hasPressureVariation,
-  });
+    const hasPressureVariation = stroke.points.some(
+      (p) => p.pressure !== undefined && Math.abs((p.pressure ?? 0.5) - 0.5) > 0.01
+    );
 
-  const outline = getStroke(inputPoints, config);
+    const config = getFountainConfig({
+      color: stroke.color,
+      width: stroke.width,
+      pressureSensitivity: 50,
+      tipSharpness: 50,
+      pressureEnabled: hasPressureVariation,
+    });
+
+    outline = getStroke(inputPoints, config);
+    if (outlineCache.size > 500) {
+      const firstKey = outlineCache.keys().next().value;
+      if (firstKey) outlineCache.delete(firstKey);
+    }
+    outlineCache.set(cacheKey, outline);
+  }
+
   if (outline.length < 2) return;
 
   ctx.fillStyle = stroke.color;
