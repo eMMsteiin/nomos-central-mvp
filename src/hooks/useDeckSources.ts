@@ -99,22 +99,40 @@ export function useDeckSources(deckId: string | null) {
 
     setIsUploading(true);
     try {
-      const ext = file.name.split('.').pop() || 'bin';
-      const storagePath = `${userId}/${deckId}/${crypto.randomUUID()}.${ext}`;
+      // CRITICAL: get auth.uid() fresh from current session.
+      // RLS policy on storage.objects requires (storage.foldername(name))[1] = auth.uid().
+      // Using a stale userId from context can mismatch if the session was rotated.
+      const { data: { user: currentUser } } = await supabase.auth.getUser();
+      if (!currentUser) {
+        toast.error('Sessão expirada. Recarregue a página.');
+        return;
+      }
+      const authUid = currentUser.id;
 
-      // Upload to storage
+      const ext = (file.name.split('.').pop() || 'bin').toLowerCase();
+      const safeExt = ext.replace(/[^a-z0-9]/g, '') || 'bin';
+      const storagePath = `${authUid}/${deckId}/${crypto.randomUUID()}.${safeExt}`;
+
+      // Upload to storage. Pass contentType explicitly because some browsers
+      // send empty type for .pptx/.heic and storage rejects with generic errors.
       const { error: uploadError } = await supabase.storage
         .from('deck-sources')
-        .upload(storagePath, file);
+        .upload(storagePath, file, {
+          contentType: file.type || 'application/octet-stream',
+          upsert: false,
+        });
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        console.error('Storage upload error:', uploadError, { storagePath, authUid, contextUserId: userId });
+        throw uploadError;
+      }
 
       // Create record
       const { data: source, error: insertError } = await supabase
         .from('deck_sources')
         .insert({
           deck_id: deckId,
-          user_id: userId,
+          user_id: authUid,
           file_name: file.name,
           file_type: fileType,
           storage_path: storagePath,
