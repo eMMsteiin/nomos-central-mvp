@@ -342,6 +342,8 @@ serve(async (req) => {
         extractedText = await extractTextFromImage(fileBytes, mimeType, LOVABLE_API_KEY);
       } else if (file_type === 'pptx') {
         extractedText = await extractTextFromPptx(fileBytes);
+      } else if (file_type === 'docx') {
+        extractedText = await extractTextFromDocx(fileBytes);
       } else {
         throw new Error(`Unsupported file type: ${file_type}`);
       }
