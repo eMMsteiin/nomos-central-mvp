@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { useCanvasInput } from './useCanvasInput';
 import { useCanvasViewport } from './useCanvasViewport';
 import { CanvasBackground } from './CanvasBackground';
@@ -40,7 +40,7 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
 
   const { viewport, handleWheel, handlePan, resetViewport } = useCanvasViewport();
 
-  const { currentStroke, bindPointerHandlers } = useCanvasInput({
+  const { currentStroke, bindPointerHandlers, cancelStroke } = useCanvasInput({
     canvasRef,
     viewport,
     activeTool,
@@ -51,6 +51,51 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
       onStrokesChange(updated);
     },
   });
+
+  // Pinch-zoom & pan com 2 dedos (não desenha)
+  const pinchStateRef = useRef<{
+    active: boolean;
+    lastDist: number;
+    lastCenter: { x: number; y: number };
+  }>({ active: false, lastDist: 0, lastCenter: { x: 0, y: 0 } });
+
+  const getTouchData = (touches: React.TouchList | TouchList) => {
+    const t1 = touches[0];
+    const t2 = touches[1];
+    const dx = t2.clientX - t1.clientX;
+    const dy = t2.clientY - t1.clientY;
+    const dist = Math.hypot(dx, dy);
+    const center = { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
+    return { dist, center };
+  };
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      e.preventDefault();
+      cancelStroke();
+      const { dist, center } = getTouchData(e.touches);
+      pinchStateRef.current = { active: true, lastDist: dist, lastCenter: center };
+    }
+  }, [cancelStroke]);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length === 2 && pinchStateRef.current.active) {
+      e.preventDefault();
+      const { dist, center } = getTouchData(e.touches);
+      const prev = pinchStateRef.current;
+      const scaleDelta = (dist / prev.lastDist) - 1;
+      const dx = center.x - prev.lastCenter.x;
+      const dy = center.y - prev.lastCenter.y;
+      handlePan({ dx, dy, dScale: scaleDelta });
+      pinchStateRef.current = { active: true, lastDist: dist, lastCenter: center };
+    }
+  }, [handlePan]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (e.touches.length < 2) {
+      pinchStateRef.current.active = false;
+    }
+  }, []);
 
   // Render loop
   useEffect(() => {
@@ -115,6 +160,10 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
       ref={containerRef}
       className="relative w-full h-full overflow-hidden bg-neutral-100 dark:bg-neutral-950"
       onWheel={handleWheel}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
     >
       <CanvasBackground
         paperTemplate={page.paper_template ?? 'blank'}

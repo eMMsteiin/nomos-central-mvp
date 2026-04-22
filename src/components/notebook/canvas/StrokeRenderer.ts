@@ -9,8 +9,10 @@ function getFountainConfig(config: PenConfig) {
   return {
     size: config.width * 2,
     thinning: config.pressureEnabled ? 0.35 * pressureMultiplier : 0,
-    smoothing: 0.30,
-    streamline: 0.40,
+    // Mais responsivo: streamline baixo = ponta segue a Pencil de perto.
+    // smoothing alto = curva final lisa sem facetas.
+    smoothing: 0.55,
+    streamline: 0.18,
     easing: (t: number) => t,
     simulatePressure: false,
     last: true,
