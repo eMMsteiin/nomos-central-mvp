@@ -23,6 +23,28 @@ export function useCanvasInput({
   const stabilizerRef = useRef<StrokeStabilizer | null>(null);
   const currentPointsRef = useRef<Point[]>([]);
   const isDrawingRef = useRef(false);
+  // Palm rejection: assim que o Pencil/stylus é detectado, ignoramos toques de
+  // dedo/palma por uma janela curta. Mouse passa sempre.
+  const lastPencilUseRef = useRef<number>(0);
+  const activePointerIdRef = useRef<number | null>(null);
+  const PENCIL_PRIORITY_WINDOW_MS = 10000;
+
+  const shouldProcessPointer = useCallback(
+    (e: React.PointerEvent | PointerEvent): boolean => {
+      const pointerType = e.pointerType;
+      if (pointerType === 'pen') {
+        lastPencilUseRef.current = performance.now();
+        return true;
+      }
+      if (pointerType === 'mouse') return true;
+      if (pointerType === 'touch') {
+        const elapsed = performance.now() - lastPencilUseRef.current;
+        return elapsed > PENCIL_PRIORITY_WINDOW_MS;
+      }
+      return false;
+    },
+    []
+  );
 
   const screenToCanvas = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } => {
@@ -58,9 +80,11 @@ export function useCanvasInput({
     (e: React.PointerEvent) => {
       if (activeTool !== 'pen') return;
       if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (!shouldProcessPointer(e)) return;
 
       e.currentTarget.setPointerCapture(e.pointerId);
       isDrawingRef.current = true;
+      activePointerIdRef.current = e.pointerId;
 
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       const t = performance.now();
@@ -75,13 +99,22 @@ export function useCanvasInput({
       stabilizerRef.current = new StrokeStabilizer(12);
       stabilizerRef.current.process(startPoint);
     },
-    [activeTool, screenToCanvas, penConfig.pressureEnabled]
+    [activeTool, screenToCanvas, penConfig.pressureEnabled, shouldProcessPointer]
   );
 
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!isDrawingRef.current) return;
       if (activeTool !== 'pen') return;
+      if (!shouldProcessPointer(e)) return;
+      // Ignora ponteiros diferentes do que iniciou o stroke (ex: dedo da palma
+      // tocando enquanto Pencil desenha).
+      if (
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
 
       const native = e.nativeEvent as PointerEvent;
       const events =
@@ -107,12 +140,20 @@ export function useCanvasInput({
 
       setCurrentStroke([...currentPointsRef.current]);
     },
-    [activeTool, screenToCanvas, estimatePressure, penConfig.pressureEnabled]
+    [activeTool, screenToCanvas, estimatePressure, penConfig.pressureEnabled, shouldProcessPointer]
   );
 
-  const handlePointerUp = useCallback(() => {
+  const handlePointerUp = useCallback((e: React.PointerEvent) => {
     if (!isDrawingRef.current) return;
+    if (!shouldProcessPointer(e)) return;
+    if (
+      activePointerIdRef.current !== null &&
+      e.pointerId !== activePointerIdRef.current
+    ) {
+      return;
+    }
     isDrawingRef.current = false;
+    activePointerIdRef.current = null;
 
     const points = currentPointsRef.current;
     if (points.length < 2) {
@@ -136,10 +177,11 @@ export function useCanvasInput({
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
-  }, [penConfig, onStrokeComplete]);
+  }, [penConfig, onStrokeComplete, shouldProcessPointer]);
 
   const handlePointerCancel = useCallback(() => {
     isDrawingRef.current = false;
+    activePointerIdRef.current = null;
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
