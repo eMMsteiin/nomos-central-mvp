@@ -96,6 +96,42 @@ export function CanvasToolbar(props: CanvasToolbarProps) {
               </button>
             ))}
           </div>
+
+          <div className="w-px h-5 bg-neutral-200 dark:bg-neutral-800" />
+
+          <button
+            onClick={() =>
+              props.onPenConfigChange({
+                ...props.penConfig,
+                pressureEnabled: !props.penConfig.pressureEnabled,
+              })
+            }
+            className={`flex items-center gap-1.5 px-2 py-1 rounded text-xs transition ${
+              props.penConfig.pressureEnabled
+                ? 'bg-neutral-900 text-white dark:bg-neutral-100 dark:text-neutral-900'
+                : 'bg-neutral-100 dark:bg-neutral-800 text-neutral-600 dark:text-neutral-400 hover:bg-neutral-200 dark:hover:bg-neutral-700'
+            }`}
+            title={
+              props.penConfig.pressureEnabled
+                ? 'Pressão ativa (linha varia)'
+                : 'Pressão desativada (linha uniforme)'
+            }
+            aria-pressed={props.penConfig.pressureEnabled}
+          >
+            <span className="relative w-3 h-3 flex items-center justify-center">
+              <span
+                className="rounded-full"
+                style={{
+                  width: props.penConfig.pressureEnabled ? 12 : 8,
+                  height: props.penConfig.pressureEnabled ? 12 : 8,
+                  background: props.penConfig.pressureEnabled
+                    ? 'linear-gradient(135deg, currentColor 40%, transparent 100%)'
+                    : 'currentColor',
+                }}
+              />
+            </span>
+            <span>Pressão</span>
+          </button>
         </div>
       )}
     </div>
