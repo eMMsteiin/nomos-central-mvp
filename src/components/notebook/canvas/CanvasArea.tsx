@@ -124,7 +124,13 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
       <canvas
         ref={canvasRef}
         className="absolute inset-0 w-full h-full"
-        style={{ touchAction: 'none' }}
+        style={{
+          touchAction: 'none',
+          WebkitUserSelect: 'none',
+          userSelect: 'none',
+          WebkitTouchCallout: 'none',
+          WebkitTapHighlightColor: 'transparent',
+        }}
         {...bindPointerHandlers()}
       />
 
