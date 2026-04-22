@@ -28,6 +28,7 @@ export function useCanvasInput({
   // dedo/palma por uma janela curta. Mouse passa sempre.
   const lastPencilUseRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
+  const activePointerTypeRef = useRef<'pen' | 'touch' | 'mouse' | null>(null);
   const PENCIL_PRIORITY_WINDOW_MS = 10000;
 
   const commitPreviewFrame = useCallback(() => {
@@ -63,6 +64,11 @@ export function useCanvasInput({
     },
     []
   );
+
+  const isPinchGestureAllowed = useCallback(() => {
+    const elapsedSincePencil = performance.now() - lastPencilUseRef.current;
+    return !isDrawingRef.current && activePointerTypeRef.current !== 'pen' && elapsedSincePencil > 180;
+  }, []);
 
   const screenToCanvas = useCallback(
     (clientX: number, clientY: number): { x: number; y: number } => {
@@ -127,6 +133,10 @@ export function useCanvasInput({
       e.currentTarget.setPointerCapture(e.pointerId);
       isDrawingRef.current = true;
       activePointerIdRef.current = e.pointerId;
+      activePointerTypeRef.current =
+        e.pointerType === 'pen' || e.pointerType === 'mouse' || e.pointerType === 'touch'
+          ? e.pointerType
+          : null;
 
       const { x, y } = screenToCanvas(e.clientX, e.clientY);
       const t = performance.now();
@@ -210,6 +220,7 @@ export function useCanvasInput({
 
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
 
     let points = currentPointsRef.current;
     if (points.length === 0) {
@@ -254,6 +265,7 @@ export function useCanvasInput({
   const handlePointerCancel = useCallback(() => {
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
+    activePointerTypeRef.current = null;
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
@@ -273,5 +285,10 @@ export function useCanvasInput({
     [handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel]
   );
 
-  return { currentStroke, bindPointerHandlers, cancelStroke: handlePointerCancel };
+  return {
+    currentStroke,
+    bindPointerHandlers,
+    cancelStroke: handlePointerCancel,
+    isPinchGestureAllowed,
+  };
 }
