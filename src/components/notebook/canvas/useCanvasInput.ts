@@ -210,5 +210,5 @@ export function useCanvasInput({
     [handlePointerDown, handlePointerMove, handlePointerUp, handlePointerCancel]
   );
 
-  return { currentStroke, bindPointerHandlers };
+  return { currentStroke, bindPointerHandlers, cancelStroke: handlePointerCancel };
 }
