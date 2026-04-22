@@ -31,6 +31,38 @@ canvas {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Caderno: desabilitar seleção/callout/long-press dentro de toda a área do canvas */
+.notebook-canvas-root,
+.notebook-canvas-root * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-user-drag: none;
+}
+
+.notebook-canvas-root input,
+.notebook-canvas-root textarea,
+.notebook-canvas-root [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+
+.notebook-canvas-root {
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+
+.notebook-canvas-root canvas {
+  -webkit-touch-callout: none !important;
+  pointer-events: auto;
+}
+
+.notebook-canvas-root ::selection {
+  background: transparent;
+}
+
 /* NOMOS Design System - Ultra Minimalist
    Paleta: Preto, Branco, 3 tons de cinza
    Tipografia: system-ui (Inter-like)
