@@ -46,7 +46,7 @@ export function NotebookCanvas({ notebook, pageId }: NotebookCanvasProps) {
       }
       deferredSyncTimersRef.current = [];
     };
-  }, []);
+  }, [pageId]);
 
   const handleStrokesChange = useCallback(
     (newStrokes: Stroke[]) => {
