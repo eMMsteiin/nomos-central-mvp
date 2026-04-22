@@ -14,7 +14,7 @@ export function useStrokePersistence(notebookId: string, pageId: string) {
 
   const getSignature = useCallback((strokes: Stroke[]) => {
     const lastStroke = strokes[strokes.length - 1];
-    const lastPoint = lastStroke?.points[lastStroke.points.length - 1];
+    const lastPoint = lastStroke ? lastStroke.points[lastStroke.points.length - 1] : undefined;
     return `${strokes.length}:${lastStroke?.id ?? 'none'}:${lastPoint?.x ?? 0}:${lastPoint?.y ?? 0}:${lastPoint?.t ?? 0}`;
   }, []);
 

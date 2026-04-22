@@ -241,6 +241,11 @@ export function useCanvasInput({
 
     onStrokeComplete(stroke);
 
+    if (frameRef.current !== null) {
+      window.cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+    }
+
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
