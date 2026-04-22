@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.78.0";
+import JSZip from "https://esm.sh/jszip@3.10.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -121,6 +122,95 @@ async function extractTextFromPdf(pdfBytes: Uint8Array, apiKey: string): Promise
   return text;
 }
 
+/**
+ * Extracts text from a .pptx file by unzipping it and parsing the slide XMLs.
+ * A .pptx is an Office Open XML zip; slides live in `ppt/slides/slideN.xml`
+ * and the text we want is inside <a:t> elements.
+ * The presentation order is defined by ppt/_rels/presentation.xml.rels referenced
+ * by ppt/presentation.xml, but ordering by the numeric suffix of slideN.xml
+ * matches the canonical order in 99% of decks (PowerPoint, Keynote, Google Slides).
+ */
+async function extractTextFromPptx(pptxBytes: Uint8Array): Promise<string> {
+  const zip = await JSZip.loadAsync(pptxBytes);
+
+  // Collect slide files: ppt/slides/slide1.xml, slide2.xml, ...
+  const slideEntries: Array<{ index: number; path: string }> = [];
+  zip.forEach((relativePath) => {
+    const m = relativePath.match(/^ppt\/slides\/slide(\d+)\.xml$/);
+    if (m) slideEntries.push({ index: parseInt(m[1], 10), path: relativePath });
+  });
+
+  if (slideEntries.length === 0) {
+    throw new Error('Nenhum slide encontrado no arquivo .pptx');
+  }
+
+  slideEntries.sort((a, b) => a.index - b.index);
+  console.log(`[process-deck-source] PPTX has ${slideEntries.length} slides`);
+
+  const parts: string[] = [];
+  for (const { index, path } of slideEntries) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async('string');
+
+    // Extract text from <a:t>...</a:t> runs. Also handle self-closed and namespaces variants.
+    // Use a non-greedy match across the run.
+    const matches = [...xml.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)];
+    const texts = matches.map((m) => decodeXmlEntities(m[1])).filter((t) => t.length > 0);
+
+    // Group runs into lines using paragraph boundaries (<a:p>) for readability.
+    // Simple approach: split the XML by </a:p>, extract <a:t> per paragraph, join with newline.
+    const paragraphs = xml.split(/<\/a:p>/);
+    const lines: string[] = [];
+    for (const para of paragraphs) {
+      const runs = [...para.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)]
+        .map((m) => decodeXmlEntities(m[1]));
+      const line = runs.join('').trim();
+      if (line) lines.push(line);
+    }
+
+    const slideText = lines.length > 0 ? lines.join('\n') : texts.join(' ').trim();
+    if (slideText) {
+      parts.push(`--- Slide ${index} ---\n${slideText}`);
+    }
+  }
+
+  // Also pull notes if present (ppt/notesSlides/notesSlideN.xml)
+  const noteEntries: Array<{ index: number; path: string }> = [];
+  zip.forEach((relativePath) => {
+    const m = relativePath.match(/^ppt\/notesSlides\/notesSlide(\d+)\.xml$/);
+    if (m) noteEntries.push({ index: parseInt(m[1], 10), path: relativePath });
+  });
+  noteEntries.sort((a, b) => a.index - b.index);
+
+  for (const { index, path } of noteEntries) {
+    const file = zip.file(path);
+    if (!file) continue;
+    const xml = await file.async('string');
+    const runs = [...xml.matchAll(/<a:t(?:\s[^>]*)?>([\s\S]*?)<\/a:t>/g)]
+      .map((m) => decodeXmlEntities(m[1]).trim())
+      .filter((t) => t.length > 0);
+    if (runs.length > 0) {
+      parts.push(`--- Notas do Slide ${index} ---\n${runs.join('\n')}`);
+    }
+  }
+
+  const result = parts.join('\n\n');
+  console.log(`[process-deck-source] PPTX extraction returned ${result.length} chars from ${slideEntries.length} slides`);
+  return result;
+}
+
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(parseInt(d, 10)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, '&');
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -180,32 +270,7 @@ serve(async (req) => {
         const mimeType = mimeMap[ext] || 'image/png';
         extractedText = await extractTextFromImage(fileBytes, mimeType, LOVABLE_API_KEY);
       } else if (file_type === 'pptx') {
-        const base64 = uint8ArrayToBase64(fileBytes);
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'text', text: 'Extraia TODO o texto desta apresentação. Para cada slide, extraia título, subtítulo, bullets e qualquer texto visível. Retorne no formato:\n\n--- Slide 1 ---\n[conteúdo]\n\n--- Slide 2 ---\n[conteúdo]\n\nRetorne apenas o texto extraído.' },
-                { type: 'image_url', image_url: { url: `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${base64}` } }
-              ]
-            }],
-            max_tokens: 16000,
-          }),
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[process-deck-source] PPTX extraction error:', response.status, errorText);
-          throw new Error(`PPTX extraction error: ${response.status} - ${errorText}`);
-        }
-        const data = await response.json();
-        extractedText = data.choices?.[0]?.message?.content || '';
+        extractedText = await extractTextFromPptx(fileBytes);
       } else {
         throw new Error(`Unsupported file type: ${file_type}`);
       }
