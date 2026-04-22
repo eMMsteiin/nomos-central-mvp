@@ -181,32 +181,7 @@ serve(async (req) => {
         const mimeType = mimeMap[ext] || 'image/png';
         extractedText = await extractTextFromImage(fileBytes, mimeType, LOVABLE_API_KEY);
       } else if (file_type === 'pptx') {
-        const base64 = uint8ArrayToBase64(fileBytes);
-        const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            model: 'google/gemini-2.5-flash',
-            messages: [{
-              role: 'user',
-              content: [
-                { type: 'text', text: 'Extraia TODO o texto desta apresentação. Para cada slide, extraia título, subtítulo, bullets e qualquer texto visível. Retorne no formato:\n\n--- Slide 1 ---\n[conteúdo]\n\n--- Slide 2 ---\n[conteúdo]\n\nRetorne apenas o texto extraído.' },
-                { type: 'image_url', image_url: { url: `data:application/vnd.openxmlformats-officedocument.presentationml.presentation;base64,${base64}` } }
-              ]
-            }],
-            max_tokens: 16000,
-          }),
-        });
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error('[process-deck-source] PPTX extraction error:', response.status, errorText);
-          throw new Error(`PPTX extraction error: ${response.status} - ${errorText}`);
-        }
-        const data = await response.json();
-        extractedText = data.choices?.[0]?.message?.content || '';
+        extractedText = await extractTextFromPptx(fileBytes);
       } else {
         throw new Error(`Unsupported file type: ${file_type}`);
       }
