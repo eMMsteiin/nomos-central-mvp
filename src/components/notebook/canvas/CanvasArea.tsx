@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useImperativeHandle, forwardRef } from 'react';
+import { useRef, useEffect, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { useCanvasInput } from './useCanvasInput';
 import { useCanvasViewport } from './useCanvasViewport';
 import { CanvasBackground } from './CanvasBackground';
