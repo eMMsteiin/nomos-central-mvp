@@ -23,17 +23,21 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
 ) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const strokesRef = useRef<Stroke[]>(page.strokes ?? []);
 
   const [strokes, setStrokes] = useState<Stroke[]>(page.strokes ?? []);
 
   // Sync quando muda de página
   useEffect(() => {
-    setStrokes(page.strokes ?? []);
+    const nextStrokes = page.strokes ?? [];
+    strokesRef.current = nextStrokes;
+    setStrokes(nextStrokes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page.id]);
 
   useImperativeHandle(ref, () => ({
     applyStrokes: (newStrokes: Stroke[]) => {
+      strokesRef.current = newStrokes;
       setStrokes(newStrokes);
     },
   }));
@@ -46,7 +50,8 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
     activeTool,
     penConfig,
     onStrokeComplete: (newStroke) => {
-      const updated = [...strokes, newStroke];
+      const updated = [...strokesRef.current, newStroke];
+      strokesRef.current = updated;
       setStrokes(updated);
       onStrokesChange(updated);
     },
@@ -138,7 +143,7 @@ export const CanvasArea = forwardRef<CanvasAreaHandle, CanvasAreaProps>(function
     if (!el) return;
     const ro = new ResizeObserver(() => {
       // Force a re-render by toggling a dummy state via setStrokes (cheap)
-      setStrokes((s) => [...s]);
+      setStrokes([...strokesRef.current]);
     });
     ro.observe(el);
     return () => ro.disconnect();
