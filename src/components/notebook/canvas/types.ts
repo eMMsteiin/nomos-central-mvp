@@ -5,6 +5,7 @@ export interface PenConfig {
   width: number;
   pressureSensitivity: number;
   tipSharpness: number;
+  pressureEnabled: boolean;
 }
 
 export interface Point {

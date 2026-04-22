@@ -8,7 +8,7 @@ function getFountainConfig(config: PenConfig) {
 
   return {
     size: config.width * 2,
-    thinning: 0.35 * pressureMultiplier,
+    thinning: config.pressureEnabled ? 0.35 * pressureMultiplier : 0,
     smoothing: 0.45,
     streamline: 0.40,
     easing: (t: number) => t,
@@ -16,12 +16,12 @@ function getFountainConfig(config: PenConfig) {
     last: true,
     start: {
       cap: true,
-      taper: sharpnessMultiplier * 25 + 5,
+      taper: config.pressureEnabled ? sharpnessMultiplier * 25 + 5 : 0,
       easing: (t: number) => t * t,
     },
     end: {
       cap: true,
-      taper: sharpnessMultiplier * 25 + 5,
+      taper: config.pressureEnabled ? sharpnessMultiplier * 25 + 5 : 0,
       easing: (t: number) => t * t,
     },
   };
@@ -34,11 +34,17 @@ export function renderStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
     (p) => [p.x, p.y, p.pressure ?? 0.5] as [number, number, number]
   );
 
+  // Detect if stroke was drawn with pressure enabled by checking variation in saved pressure values
+  const hasPressureVariation = stroke.points.some(
+    (p) => p.pressure !== undefined && Math.abs((p.pressure ?? 0.5) - 0.5) > 0.01
+  );
+
   const config = getFountainConfig({
     color: stroke.color,
     width: stroke.width,
     pressureSensitivity: 50,
     tipSharpness: 50,
+    pressureEnabled: hasPressureVariation,
   });
 
   const outline = getStroke(inputPoints, config);
