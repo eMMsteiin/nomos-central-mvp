@@ -18,6 +18,7 @@ interface NotebookCanvasProps {
 export function NotebookCanvas({ notebook, pageId }: NotebookCanvasProps) {
   const navigate = useNavigate();
   const { data: page, isLoading } = useNotebookPage(notebook.id, pageId);
+  const deferredSyncTimersRef = useRef<number[]>([]);
 
   const [activeTool, setActiveTool] = useState<ToolType>('pen');
   const [penConfig, setPenConfig] = useState<PenConfig>({
@@ -38,10 +39,24 @@ export function NotebookCanvas({ notebook, pageId }: NotebookCanvasProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page?.id]);
 
+  useEffect(() => {
+    return () => {
+      for (const timer of deferredSyncTimersRef.current) {
+        window.clearTimeout(timer);
+      }
+      deferredSyncTimersRef.current = [];
+    };
+  }, []);
+
   const handleStrokesChange = useCallback(
     (newStrokes: Stroke[]) => {
-      pushSnapshot(newStrokes);
-      saveStrokes(newStrokes);
+      const timer = window.setTimeout(() => {
+        deferredSyncTimersRef.current = deferredSyncTimersRef.current.filter((id) => id !== timer);
+        pushSnapshot(newStrokes);
+        saveStrokes(newStrokes);
+      }, 0);
+
+      deferredSyncTimersRef.current.push(timer);
     },
     [pushSnapshot, saveStrokes]
   );
