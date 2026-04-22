@@ -24,6 +24,7 @@ const ACCEPTED_TYPES: Record<string, string> = {
   'image/heic': 'image',
   'image/webp': 'image',
   'application/vnd.openxmlformats-officedocument.presentationml.presentation': 'pptx',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': 'docx',
 };
 
 export function useDeckSources(deckId: string | null) {
