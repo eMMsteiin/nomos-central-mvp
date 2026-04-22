@@ -87,9 +87,15 @@ export function useDeckSources(deckId: string | null) {
       return;
     }
 
-    const fileType = ACCEPTED_TYPES[file.type];
+    // Some browsers send empty file.type for .pptx/.docx/.heic — fall back to extension.
+    const extFallback: Record<string, string> = {
+      pdf: 'pdf', png: 'image', jpg: 'image', jpeg: 'image', heic: 'image', webp: 'image',
+      pptx: 'pptx', docx: 'docx',
+    };
+    const ext = (file.name.split('.').pop() || '').toLowerCase();
+    const fileType = ACCEPTED_TYPES[file.type] || extFallback[ext];
     if (!fileType) {
-      toast.error('Formato não suportado. Use PDF, imagem ou PPTX.');
+      toast.error('Formato não suportado. Use PDF, imagem, PPTX ou DOCX.');
       return;
     }
 
