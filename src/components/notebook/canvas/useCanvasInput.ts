@@ -3,6 +3,7 @@ import type { RefObject } from 'react';
 import type { Stroke } from '@/hooks/notebook/useNotebookPage';
 import type { Point, ToolType, PenConfig, ViewportState } from './types';
 import { StrokeStabilizer } from './StrokeStabilizer';
+import { OneEuroPointFilter } from './OneEuroFilter';
 
 interface UseCanvasInputArgs {
   canvasRef: RefObject<HTMLCanvasElement>;
@@ -21,6 +22,8 @@ export function useCanvasInput({
 }: UseCanvasInputArgs) {
   const [currentStroke, setCurrentStroke] = useState<Point[] | null>(null);
   const stabilizerRef = useRef<StrokeStabilizer | null>(null);
+  const jitterFilterRef = useRef<OneEuroPointFilter | null>(null);
+  const predictedPointsRef = useRef<Point[]>([]);
   const currentPointsRef = useRef<Point[]>([]);
   const isDrawingRef = useRef(false);
   const frameRef = useRef<number | null>(null);
@@ -29,7 +32,8 @@ export function useCanvasInput({
   const lastPencilUseRef = useRef<number>(0);
   const activePointerIdRef = useRef<number | null>(null);
   const activePointerTypeRef = useRef<'pen' | 'touch' | 'mouse' | null>(null);
-  const PENCIL_PRIORITY_WINDOW_MS = 10000;
+  // 400ms = janela natural pós-pencil (antes: 10000ms bloqueava dedo demais)
+  const PENCIL_PRIORITY_WINDOW_MS = 400;
 
   const commitPreviewFrame = useCallback(() => {
     if (frameRef.current !== null) return;
@@ -148,11 +152,31 @@ export function useCanvasInput({
       currentPointsRef.current = [startPoint];
       setCurrentStroke([startPoint]);
 
-      // Estabilização mínima para preservar a ponta da Pencil.
-      stabilizerRef.current = new StrokeStabilizer(1);
+      // Stabilizer com força configurável (8-15 = sweet spot)
+      const stabilizerStrength = penConfig.stabilizerStrength ?? 10;
+      stabilizerRef.current = new StrokeStabilizer(stabilizerStrength);
+
+      // 1€ filter — mapeia jitterStrength (0-100) para mincutoff (4.0 → 1.0 Hz)
+      if (penConfig.jitterFilterEnabled) {
+        const strength = penConfig.jitterStrength ?? 50;
+        const minCutoff = Math.max(1.0, 4.0 - (strength / 100) * 3.0);
+        const beta = 0.005 + (strength / 100) * 0.015;
+        jitterFilterRef.current = new OneEuroPointFilter(minCutoff, beta);
+      } else {
+        jitterFilterRef.current = null;
+      }
+
       stabilizerRef.current.process(startPoint);
     },
-    [activeTool, screenToCanvas, penConfig.pressureEnabled, shouldProcessPointer]
+    [
+      activeTool,
+      screenToCanvas,
+      penConfig.pressureEnabled,
+      penConfig.jitterFilterEnabled,
+      penConfig.jitterStrength,
+      penConfig.stabilizerStrength,
+      shouldProcessPointer,
+    ]
   );
 
   const handlePointerMove = useCallback(
@@ -176,8 +200,16 @@ export function useCanvasInput({
           : [native];
 
       for (const ev of events) {
-        const { x, y } = screenToCanvas(ev.clientX, ev.clientY);
+        let { x, y } = screenToCanvas(ev.clientX, ev.clientY);
         const t = ev.timeStamp;
+
+        // [1] 1€ FILTER — aplica primeiro nas coordenadas brutas
+        if (jitterFilterRef.current) {
+          const filtered = jitterFilterRef.current.filter(x, y, t);
+          x = filtered.x;
+          y = filtered.y;
+        }
+
         const pressure = penConfig.pressureEnabled
           ? (ev.pressure > 0 && ev.pointerType === 'pen'
               ? ev.pressure
@@ -186,6 +218,28 @@ export function useCanvasInput({
 
         const rawPoint: Point = { x, y, pressure, t };
         appendPoint(rawPoint);
+      }
+
+      // PREDICTED EVENTS — reduz latência percebida em ~16ms
+      // Pontos preditos NÃO são adicionados a currentPointsRef (são descartáveis)
+      const nativeWithPredicted = native as PointerEvent & {
+        getPredictedEvents?: () => PointerEvent[];
+      };
+      if (typeof nativeWithPredicted.getPredictedEvents === 'function') {
+        const predicted = nativeWithPredicted.getPredictedEvents().slice(0, 4);
+        const predictedPoints: Point[] = [];
+        for (const pred of predicted) {
+          const { x: px, y: py } = screenToCanvas(pred.clientX, pred.clientY);
+          predictedPoints.push({
+            x: px,
+            y: py,
+            pressure: pred.pressure || 0.5,
+            t: pred.timeStamp,
+          });
+        }
+        predictedPointsRef.current = predictedPoints;
+      } else {
+        predictedPointsRef.current = [];
       }
 
       commitPreviewFrame();
@@ -260,6 +314,9 @@ export function useCanvasInput({
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
+    jitterFilterRef.current?.reset();
+    jitterFilterRef.current = null;
+    predictedPointsRef.current = [];
   }, [appendPoint, estimatePressure, onStrokeComplete, penConfig, screenToCanvas, shouldProcessPointer]);
 
   const handlePointerCancel = useCallback(() => {
@@ -269,6 +326,9 @@ export function useCanvasInput({
     currentPointsRef.current = [];
     setCurrentStroke(null);
     stabilizerRef.current = null;
+    jitterFilterRef.current?.reset();
+    jitterFilterRef.current = null;
+    predictedPointsRef.current = [];
     if (frameRef.current !== null) {
       window.cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
@@ -290,5 +350,6 @@ export function useCanvasInput({
     bindPointerHandlers,
     cancelStroke: handlePointerCancel,
     isPinchGestureAllowed,
+    predictedPoints: predictedPointsRef.current,
   };
 }
