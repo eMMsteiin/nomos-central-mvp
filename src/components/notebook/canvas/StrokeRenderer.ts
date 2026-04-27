@@ -92,6 +92,9 @@ export function renderStroke(ctx: CanvasRenderingContext2D, stroke: Stroke) {
       pressureSensitivity: 50,
       tipSharpness: 50,
       pressureEnabled: hasPressureVariation,
+      jitterFilterEnabled: true,
+      jitterStrength: 50,
+      stabilizerStrength: 10,
     });
 
     outline = getStroke(inputPoints, config);
