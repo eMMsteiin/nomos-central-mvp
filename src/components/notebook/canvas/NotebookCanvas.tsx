@@ -2,13 +2,14 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { useNotebookPage } from '@/hooks/notebook/useNotebookPage';
+import { useNotebookPreferences } from '@/hooks/notebook/useNotebookPreferences';
 import { CanvasArea, type CanvasAreaHandle } from './CanvasArea';
 import { CanvasToolbar } from './CanvasToolbar';
 import { useCanvasHistory } from './useCanvasHistory';
 import { useStrokePersistence } from './useStrokePersistence';
 import type { Stroke } from '@/hooks/notebook/useNotebookPage';
 import type { NotebookRow } from '@/hooks/notebook/useNotebooks';
-import type { ToolType, PenConfig } from './types';
+import { DEFAULT_PEN_CONFIG, type ToolType, type PenConfig } from './types';
 
 interface NotebookCanvasProps {
   notebook: NotebookRow;
@@ -18,16 +19,21 @@ interface NotebookCanvasProps {
 export function NotebookCanvas({ notebook, pageId }: NotebookCanvasProps) {
   const navigate = useNavigate();
   const { data: page, isLoading } = useNotebookPage(notebook.id, pageId);
+  const { data: prefs } = useNotebookPreferences();
   const deferredSyncTimersRef = useRef<number[]>([]);
 
   const [activeTool, setActiveTool] = useState<ToolType>('pen');
-  const [penConfig, setPenConfig] = useState<PenConfig>({
-    color: '#000000',
-    width: 2,
-    pressureSensitivity: 50,
-    tipSharpness: 50,
-    pressureEnabled: false,
-  });
+  const [penConfig, setPenConfig] = useState<PenConfig>(() => ({
+    ...DEFAULT_PEN_CONFIG,
+  }));
+
+  // Re-sincroniza com preferências do banco quando carregam
+  useEffect(() => {
+    const userFountainConfig = prefs?.fountain_pen_config as Partial<PenConfig> | null | undefined;
+    if (userFountainConfig) {
+      setPenConfig((prev) => ({ ...prev, ...userFountainConfig }));
+    }
+  }, [prefs?.fountain_pen_config]);
 
   const canvasRef = useRef<CanvasAreaHandle>(null);
   const { undo, redo, canUndo, canRedo, pushSnapshot, reset } = useCanvasHistory(page?.strokes ?? []);
