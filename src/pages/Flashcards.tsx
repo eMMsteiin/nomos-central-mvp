@@ -236,11 +236,16 @@ export default function Flashcards() {
     }
   };
 
-  const handleCreateFlashcard = async (front: string, back: string) => {
+  const handleCreateCards = async (cardsData: Array<{ front: string; back: string }>) => {
     if (!selectedDeck) return;
     try {
-      await createFlashcard(selectedDeck.id, front, back);
-      toast.success('Card criado!');
+      if (cardsData.length === 1) {
+        await createFlashcard(selectedDeck.id, cardsData[0].front, cardsData[0].back);
+        toast.success('Card criado!');
+      } else {
+        await createMultipleFlashcards(selectedDeck.id, cardsData);
+        toast.success(`${cardsData.length} cards criados!`);
+      }
     } catch (error) {
       toast.error('Erro ao criar card');
     }
@@ -514,7 +519,7 @@ export default function Flashcards() {
           open={isCreateCardOpen}
           onOpenChange={setIsCreateCardOpen}
           deckTitle={selectedDeck.title}
-          onCreateFlashcard={handleCreateFlashcard}
+          onCreateCards={handleCreateCards}
         />
         <GenerateFlashcardsDialog
           open={isGenerateDialogOpen}
