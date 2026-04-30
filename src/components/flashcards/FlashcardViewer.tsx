@@ -12,6 +12,29 @@ interface FlashcardViewerProps {
   className?: string;
 }
 
+// Detect cloze HTML produced by renderClozeForCard — the only HTML we embed in cards.
+// Any other card content is rendered as plain text.
+function hasClozeHtml(text: string): boolean {
+  return text.includes('<span class="cloze');
+}
+
+function CardContent({ text, className }: { text: string; className: string }) {
+  if (hasClozeHtml(text)) {
+    return (
+      <div
+        className={cn(className, 'leading-relaxed')}
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: text }}
+      />
+    );
+  }
+  return (
+    <p className={cn(className, 'break-words whitespace-pre-wrap overflow-hidden')}>
+      {text}
+    </p>
+  );
+}
+
 export function FlashcardViewer({
   front,
   back,
@@ -21,9 +44,9 @@ export function FlashcardViewer({
   className,
 }: FlashcardViewerProps) {
   const [internalIsFlipped, setInternalIsFlipped] = useState(false);
-  
+
   const isFlipped = controlledIsFlipped ?? internalIsFlipped;
-  
+
   const handleFlip = () => {
     if (onFlip) {
       onFlip();
@@ -34,14 +57,9 @@ export function FlashcardViewer({
 
   return (
     <div
-      className={cn(
-        'relative w-full cursor-pointer perspective-1000',
-        className
-      )}
+      className={cn('relative w-full cursor-pointer perspective-1000', className)}
       onClick={handleFlip}
     >
-      {/* We render front/back separately and toggle visibility instead of using
-           absolute positioning, so both sides can grow with their content */}
       {!isFlipped && (
         <motion.div
           className="w-full"
@@ -53,9 +71,10 @@ export function FlashcardViewer({
             className="w-full rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center justify-center min-h-[200px]"
             style={{ backgroundColor: color }}
           >
-            <p className="text-white text-base sm:text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full overflow-hidden">
-              {front}
-            </p>
+            <CardContent
+              text={front}
+              className="text-white text-base sm:text-lg md:text-xl font-medium text-center w-full"
+            />
             <div className="mt-4 flex items-center gap-2 text-white/70 text-sm shrink-0">
               <RotateCcw className="w-4 h-4" />
               <span>Toque para ver resposta</span>
@@ -75,9 +94,10 @@ export function FlashcardViewer({
             className="w-full rounded-2xl shadow-lg p-4 sm:p-6 flex flex-col items-center justify-center min-h-[200px] bg-card border-2"
             style={{ borderColor: color }}
           >
-            <p className="text-foreground text-base sm:text-lg md:text-xl font-medium text-center leading-relaxed break-words whitespace-pre-wrap w-full overflow-hidden">
-              {back}
-            </p>
+            <CardContent
+              text={back}
+              className="text-foreground text-base sm:text-lg md:text-xl font-medium text-center w-full"
+            />
             <div className="mt-4 flex items-center gap-2 text-muted-foreground text-sm shrink-0">
               <RotateCcw className="w-4 h-4" />
               <span>Toque para voltar</span>

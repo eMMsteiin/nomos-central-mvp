@@ -1,5 +1,5 @@
 export type FlashcardRating = 'again' | 'hard' | 'good' | 'easy';
-export type FlashcardSourceType = 'manual' | 'ai' | 'notebook';
+export type FlashcardSourceType = 'manual' | 'ai' | 'notebook' | 'cloze';
 
 // Anki-compatible card states
 export type CardState = 'new' | 'learning' | 'review' | 'relearning' | 'suspended' | 'buried';

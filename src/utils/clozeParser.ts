@@ -19,7 +19,9 @@ export interface ParsedCloze {
 }
 
 // Regex to match cloze deletions: {{c1::text}} or {{c1::text::hint}}
-const CLOZE_REGEX = /\{\{c(\d+)::([^}:]+)(?:::([^}]+))?\}\}/g;
+// Group 2 uses lazy [^}]+? so colons inside the text (e.g. "key: value") are allowed;
+// the optional hint group (:::hint) is resolved before the closing }}.
+const CLOZE_REGEX = /\{\{c(\d+)::([^}]+?)(?:::([^}]*))?\}\}/g;
 
 /**
  * Parse all cloze deletions from a text
