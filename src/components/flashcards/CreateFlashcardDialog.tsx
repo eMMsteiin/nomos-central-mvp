@@ -9,10 +9,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, ArrowLeftRight } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Plus, ArrowLeftRight, Shuffle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-type CardType = 'basic' | 'basic-reversed';
+type CardType = 'basic' | 'basic-reversed' | 'basic-optional-reversed';
 
 const CARD_TYPES: { value: CardType; label: string; hint: string; icon: React.ReactNode }[] = [
   {
@@ -24,8 +25,14 @@ const CARD_TYPES: { value: CardType; label: string; hint: string; icon: React.Re
   {
     value: 'basic-reversed',
     label: 'Basic Reversed',
-    hint: '2 cards: Frente → Verso e Verso → Frente',
+    hint: '2 cards: Frente ↔ Verso',
     icon: <ArrowLeftRight className="w-3.5 h-3.5" />,
+  },
+  {
+    value: 'basic-optional-reversed',
+    label: 'Optional Reversed',
+    hint: '1 ou 2 cards (você decide)',
+    icon: <Shuffle className="w-3.5 h-3.5" />,
   },
 ];
 
@@ -45,21 +52,27 @@ export function CreateFlashcardDialog({
   const [cardType, setCardType] = useState<CardType>('basic');
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
+  const [includeReverse, setIncludeReverse] = useState(true);
   const [isCreatingAnother, setIsCreatingAnother] = useState(false);
   const [lastCreatedCount, setLastCreatedCount] = useState(1);
+
+  const willCreateTwo =
+    cardType === 'basic-reversed' ||
+    (cardType === 'basic-optional-reversed' && includeReverse);
+
+  const buildCards = (): Array<{ front: string; back: string }> => {
+    const base = { front: front.trim(), back: back.trim() };
+    const reversed = { front: back.trim(), back: front.trim() };
+    if (cardType === 'basic-reversed') return [base, reversed];
+    if (cardType === 'basic-optional-reversed' && includeReverse) return [base, reversed];
+    return [base];
+  };
 
   const handleSubmit = (e: React.FormEvent, createAnother: boolean = false) => {
     e.preventDefault();
     if (!front.trim() || !back.trim()) return;
 
-    const cards =
-      cardType === 'basic-reversed'
-        ? [
-            { front: front.trim(), back: back.trim() },
-            { front: back.trim(), back: front.trim() },
-          ]
-        : [{ front: front.trim(), back: back.trim() }];
-
+    const cards = buildCards();
     onCreateCards(cards);
     setLastCreatedCount(cards.length);
 
@@ -146,6 +159,23 @@ export function CreateFlashcardDialog({
             />
           </div>
 
+          {/* Optional reverse toggle — only shown for the Optional Reversed type */}
+          {cardType === 'basic-optional-reversed' && (
+            <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 bg-muted/30">
+              <Checkbox
+                id="include-reverse"
+                checked={includeReverse}
+                onCheckedChange={(v) => setIncludeReverse(!!v)}
+              />
+              <label
+                htmlFor="include-reverse"
+                className="text-sm cursor-pointer select-none"
+              >
+                Criar também o card reverso (Verso → Frente)
+              </label>
+            </div>
+          )}
+
           {isCreatingAnother && (
             <p className="text-sm text-green-600 dark:text-green-400">
               {lastCreatedCount === 2
@@ -168,7 +198,7 @@ export function CreateFlashcardDialog({
               Criar e adicionar outro
             </Button>
             <Button type="submit" disabled={!front.trim() || !back.trim()}>
-              {cardType === 'basic-reversed' ? 'Criar 2 cards' : 'Criar card'}
+              {willCreateTwo ? 'Criar 2 cards' : 'Criar card'}
             </Button>
           </DialogFooter>
         </form>
