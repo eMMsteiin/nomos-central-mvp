@@ -53,6 +53,7 @@ export default function Flashcards() {
     reviewFlashcard,
     getDueCards,
     getCardsByDeck,
+    getStudyQueue,
     getDeckDueCount,
     getTotalDueCount,
     startSession,
@@ -142,18 +143,34 @@ export default function Flashcards() {
     setViewMode('detail');
   };
 
-  const handleStudyDeck = (deck: Deck) => {
-    let cardsToStudy = getDueCards(deck.id);
-    if (cardsToStudy.length === 0) {
+  const handleStudyDeck = async (deck: Deck) => {
+    const queue = await getStudyQueue(deck.id);
+    let cardsToStudy: Flashcard[] = [];
+
+    if (queue && queue.totalDue > 0) {
+      cardsToStudy = [...queue.learningCards, ...queue.newCards, ...queue.reviewCards];
+    } else {
       cardsToStudy = getCardsByDeck(deck.id);
     }
+
     setSessionCards(cardsToStudy);
     setSelectedDeck(deck);
     setViewMode('study');
   };
 
-  const handleStudyAll = () => {
-    const cardsToStudy = getDueCards();
+  const handleStudyAll = async () => {
+    const queues = await Promise.all(decks.map(deck => getStudyQueue(deck.id)));
+
+    const limitedCards: Flashcard[] = [];
+    queues.forEach(queue => {
+      if (queue && queue.totalDue > 0) {
+        limitedCards.push(...queue.learningCards, ...queue.newCards, ...queue.reviewCards);
+      }
+    });
+
+    const cardsToStudy = limitedCards.length > 0 ? limitedCards : getDueCards();
+    if (cardsToStudy.length === 0) return;
+
     setSessionCards(cardsToStudy);
     setSelectedDeck({
       id: 'all',
@@ -442,13 +459,13 @@ export default function Flashcards() {
     );
   }
 
-  // Study mode - usar sessionCards congelados
   if (viewMode === 'study' && selectedDeck) {
     return (
       <div className="p-4 md:p-6 max-w-3xl mx-auto min-h-[calc(100vh-4rem)]">
         <StudySession
           deck={selectedDeck}
           cards={sessionCards}
+          getLiveCard={(id) => cards.find(c => c.id === id)}
           onReview={reviewFlashcard}
           onClose={handleBackToList}
           onSessionStart={handleSessionStart}
@@ -470,14 +487,7 @@ export default function Flashcards() {
           cards={deckCards}
           dueCount={dueCount}
           onBack={handleBackToList}
-          onStudy={() => {
-            let cardsToStudy = getDueCards(selectedDeck.id);
-            if (cardsToStudy.length === 0) {
-              cardsToStudy = getCardsByDeck(selectedDeck.id);
-            }
-            setSessionCards(cardsToStudy);
-            setViewMode('study');
-          }}
+          onStudy={() => handleStudyDeck(selectedDeck)}
           onAddCard={() => setIsCreateCardOpen(true)}
           onGenerateWithAI={() => setIsGenerateDialogOpen(true)}
           onDeleteCard={handleDeleteCard}

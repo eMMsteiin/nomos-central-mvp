@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 interface StudySessionProps {
   deck: Deck;
   cards: Flashcard[];
+  getLiveCard?: (id: string) => Flashcard | undefined;
   onReview: (cardId: string, rating: FlashcardRating) => void;
   onClose: () => void;
   onSessionStart?: () => Promise<string | null>;
@@ -29,10 +30,11 @@ const RATING_BUTTONS: { rating: FlashcardRating; label: string; icon: React.Reac
   { rating: 'easy', label: 'Fácil', icon: <Zap className="w-4 h-4" />, color: 'bg-blue-500 hover:bg-blue-600' },
 ];
 
-export function StudySession({ 
-  deck, 
-  cards, 
-  onReview, 
+export function StudySession({
+  deck,
+  cards,
+  getLiveCard,
+  onReview,
   onClose,
   onSessionStart,
   onSessionEnd,
@@ -63,13 +65,15 @@ export function StudySession({
     }
   }, []);
 
-  // Calculate interval previews when card is flipped
+  // Calculate interval previews when card is flipped.
+  // Use the live card state from the parent (updated after each review) so previews
+  // are accurate for cards that were re-queued after an "again" rating.
   useEffect(() => {
-    if (currentCard && isFlipped && deck.config) {
-      const previews = getNextIntervalPreview(currentCard, deck.config);
-      setIntervalPreviews(previews);
-    }
-  }, [currentCard, isFlipped, deck.config]);
+    if (!currentCard || !isFlipped || !deck.config) return;
+    const cardForPreview = getLiveCard?.(currentCard.id) ?? currentCard;
+    const previews = getNextIntervalPreview(cardForPreview, deck.config);
+    setIntervalPreviews(previews);
+  }, [currentCard, isFlipped, deck.config, getLiveCard]);
 
   const handleFlip = useCallback(() => {
     setIsFlipped(true);
