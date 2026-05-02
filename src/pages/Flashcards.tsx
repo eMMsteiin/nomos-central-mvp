@@ -283,6 +283,17 @@ export default function Flashcards() {
     }
   };
 
+  const handleConvertCard = async (id: string, newCards: Array<{ front: string; back: string }>) => {
+    if (!selectedDeck) return;
+    try {
+      await deleteFlashcard(id);
+      await createMultipleFlashcards(selectedDeck.id, newCards);
+      toast.success(`${newCards.length} card${newCards.length !== 1 ? 's' : ''} criados!`);
+    } catch (error) {
+      toast.error('Erro ao converter card');
+    }
+  };
+
   const handleSaveDeck = async (id: string, updates: Partial<Deck>) => {
     try {
       await updateDeck(id, updates);
@@ -532,6 +543,7 @@ export default function Flashcards() {
           onOpenChange={setIsEditCardOpen}
           flashcard={cardToEdit}
           onSave={handleSaveCard}
+          onConvert={handleConvertCard}
         />
         <EditDeckDialog
           open={isEditDeckOpen}

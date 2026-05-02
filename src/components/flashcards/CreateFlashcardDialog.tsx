@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, ArrowLeftRight, Brackets, Image } from 'lucide-react';
+import { Plus, ArrowLeftRight, Brackets, Image, Scissors } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseClozeText, getClozeFront, getClozeBack } from '@/utils/clozeParser';
 import { ImageOcclusionEditor } from './ImageOcclusionEditor';
@@ -63,6 +63,7 @@ export function CreateFlashcardDialog({
   const [back, setBack] = useState('');
   // Cloze state
   const [clozeText, setClozeText] = useState('');
+  const [hasSelection, setHasSelection] = useState(false);
   const clozeRef = useRef<HTMLTextAreaElement>(null);
 
   const [isCreatingAnother, setIsCreatingAnother] = useState(false);
@@ -72,27 +73,39 @@ export function CreateFlashcardDialog({
 
   const parsedCloze = parseClozeText(clozeText);
 
-  const insertClozeMarker = useCallback((num: number) => {
-    const el = clozeRef.current;
-    if (!el) return;
-
-    const start = el.selectionStart ?? clozeText.length;
-    const end = el.selectionEnd ?? clozeText.length;
-    const selected = clozeText.substring(start, end);
-    const marker = selected ? `{{c${num}::${selected}}}` : `{{c${num}::}}`;
-    const next = clozeText.substring(0, start) + marker + clozeText.substring(end);
-    setClozeText(next);
-
-    requestAnimationFrame(() => {
-      el.focus();
-      const pos = selected ? start + marker.length : start + `{{c${num}::`.length;
-      el.setSelectionRange(pos, pos);
-    });
-  }, [clozeText]);
-
   const nextClozeNumber = parsedCloze.uniqueNumbers.length > 0
     ? Math.max(...parsedCloze.uniqueNumbers) + 1
     : 1;
+
+  const trackSelection = useCallback(() => {
+    const el = clozeRef.current;
+    if (!el) return;
+    setHasSelection((el.selectionEnd ?? 0) > (el.selectionStart ?? 0));
+  }, []);
+
+  const handleOcultarSelecao = useCallback(() => {
+    const el = clozeRef.current;
+    if (!el) return;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
+    if (start >= end) return;
+
+    const selected = clozeText.substring(start, end);
+    const marker = `{{c${nextClozeNumber}::${selected}}}`;
+    const next = clozeText.substring(0, start) + marker + clozeText.substring(end);
+    setClozeText(next);
+    setHasSelection(false);
+
+    requestAnimationFrame(() => {
+      el.focus();
+      el.setSelectionRange(start + marker.length, start + marker.length);
+    });
+  }, [clozeText, nextClozeNumber]);
+
+  // Reset selection when switching card type
+  useEffect(() => {
+    setHasSelection(false);
+  }, [cardType]);
 
   // ── Card builder ───────────────────────────────────────────────────────────
 
@@ -155,6 +168,7 @@ export function CreateFlashcardDialog({
     setFront('');
     setBack('');
     setClozeText('');
+    setHasSelection(false);
     setIsCreatingAnother(false);
   };
 
@@ -240,50 +254,36 @@ export function CreateFlashcardDialog({
           {cardType === 'cloze' && (
             <div className="space-y-3">
               <div className="space-y-1.5">
-                <Label htmlFor="cloze-text">Texto com lacunas</Label>
-
-                <div className="flex flex-wrap gap-1.5">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <button
-                      key={n}
-                      type="button"
-                      onClick={() => insertClozeMarker(n)}
-                      className={cn(
-                        'rounded border px-2 py-0.5 text-xs font-mono transition-colors',
-                        parsedCloze.uniqueNumbers.includes(n)
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
-                      )}
-                    >
-                      c{n}
-                    </button>
-                  ))}
-                  {nextClozeNumber > 5 && (
-                    <button
-                      type="button"
-                      onClick={() => insertClozeMarker(nextClozeNumber)}
-                      className="rounded border border-border px-2 py-0.5 text-xs font-mono text-muted-foreground hover:border-primary/50 hover:text-foreground transition-colors"
-                    >
-                      c{nextClozeNumber}
-                    </button>
-                  )}
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="cloze-text">Texto com lacunas</Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={hasSelection ? 'default' : 'outline'}
+                    disabled={!hasSelection}
+                    onClick={handleOcultarSelecao}
+                    className="h-7 text-xs gap-1"
+                  >
+                    <Scissors className="w-3 h-3" />
+                    Ocultar seleção
+                  </Button>
                 </div>
 
                 <Textarea
                   id="cloze-text"
                   ref={clozeRef}
-                  placeholder={`Ex: A capital do Brasil é {{c1::Brasília}} e foi inaugurada em {{c2::1960}}.`}
+                  placeholder="Digite o texto e selecione palavras para ocultar. Ex: A capital do Brasil é Brasília."
                   value={clozeText}
-                  onChange={(e) => setClozeText(e.target.value)}
+                  onChange={(e) => { setClozeText(e.target.value); setHasSelection(false); }}
+                  onSelect={trackSelection}
+                  onMouseUp={trackSelection}
+                  onKeyUp={trackSelection}
                   rows={4}
                   autoFocus
-                  className="resize-none font-mono text-sm"
+                  className="resize-none"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Selecione texto e clique em{' '}
-                  <span className="font-mono">c1</span>,{' '}
-                  <span className="font-mono">c2</span>… para criar lacunas. Ou escreva{' '}
-                  <span className="font-mono">{'{{c1::resposta}}'}</span> manualmente.
+                  Selecione uma palavra ou frase e clique em "Ocultar seleção" para criar uma lacuna.
                 </p>
               </div>
 
@@ -298,10 +298,8 @@ export function CreateFlashcardDialog({
                       <div
                         key={num}
                         className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
-                      >
-                        <span className="text-xs font-mono text-muted-foreground mr-2">c{num}</span>
-                        <span dangerouslySetInnerHTML={{ __html: getClozeFront(clozeText, num) }} />
-                      </div>
+                        dangerouslySetInnerHTML={{ __html: getClozeFront(clozeText, num) }}
+                      />
                     ))}
                   </div>
                 </div>
@@ -309,8 +307,7 @@ export function CreateFlashcardDialog({
 
               {clozeText.trim().length > 0 && !parsedCloze.hasValidCloze && (
                 <p className="text-xs text-destructive">
-                  Nenhuma lacuna encontrada. Use a sintaxe{' '}
-                  <span className="font-mono">{'{{c1::texto}}'}</span>.
+                  Nenhuma lacuna encontrada. Selecione texto e clique em "Ocultar seleção".
                 </p>
               )}
             </div>
