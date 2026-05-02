@@ -9,13 +9,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, ArrowLeftRight, Shuffle, Brackets, Image } from 'lucide-react';
+import { Plus, ArrowLeftRight, Brackets, Image } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseClozeText, getClozeFront, getClozeBack } from '@/utils/clozeParser';
 import { ImageOcclusionEditor } from './ImageOcclusionEditor';
 
-type CardType = 'basic' | 'basic-reversed' | 'basic-optional-reversed' | 'cloze' | 'image-occlusion';
+type CardType = 'basic' | 'basic-reversed' | 'cloze' | 'image-occlusion';
 
 const CARD_TYPES: { value: CardType; label: string; hint: string; icon: React.ReactNode }[] = [
   {
@@ -29,12 +28,6 @@ const CARD_TYPES: { value: CardType; label: string; hint: string; icon: React.Re
     label: 'Reversed',
     hint: '2 cards F↔V',
     icon: <ArrowLeftRight className="w-3.5 h-3.5" />,
-  },
-  {
-    value: 'basic-optional-reversed',
-    label: 'Opt. Rev.',
-    hint: '1 ou 2 cards',
-    icon: <Shuffle className="w-3.5 h-3.5" />,
   },
   {
     value: 'cloze',
@@ -68,8 +61,6 @@ export function CreateFlashcardDialog({
   // Basic / Reversed state
   const [front, setFront] = useState('');
   const [back, setBack] = useState('');
-  const [includeReverse, setIncludeReverse] = useState(true);
-
   // Cloze state
   const [clozeText, setClozeText] = useState('');
   const clozeRef = useRef<HTMLTextAreaElement>(null);
@@ -115,20 +106,18 @@ export function CreateFlashcardDialog({
     const base = { front: front.trim(), back: back.trim() };
     const reversed = { front: back.trim(), back: front.trim() };
     if (cardType === 'basic-reversed') return [base, reversed];
-    if (cardType === 'basic-optional-reversed' && includeReverse) return [base, reversed];
     return [base];
   };
 
   const isValid = () => {
     if (cardType === 'cloze') return clozeText.trim().length > 0 && parsedCloze.hasValidCloze;
-    if (cardType === 'image-occlusion') return false; // handled by ImageOcclusionEditor's own button
+    if (cardType === 'image-occlusion') return false;
     return front.trim().length > 0 && back.trim().length > 0;
   };
 
   const willCreateCount = (): number => {
     if (cardType === 'cloze') return parsedCloze.uniqueNumbers.length;
     if (cardType === 'basic-reversed') return 2;
-    if (cardType === 'basic-optional-reversed') return includeReverse ? 2 : 1;
     return 1;
   };
 
@@ -194,7 +183,7 @@ export function CreateFlashcardDialog({
           {/* ── Type selector ── */}
           <div className="space-y-1.5">
             <Label>Tipo de card</Label>
-            <div className="grid grid-cols-5 gap-1">
+            <div className="grid grid-cols-4 gap-1">
               {CARD_TYPES.map((type) => (
                 <button
                   key={type.value}
@@ -218,7 +207,7 @@ export function CreateFlashcardDialog({
           </div>
 
           {/* ── Basic / Reversed fields ── */}
-          {(cardType === 'basic' || cardType === 'basic-reversed' || cardType === 'basic-optional-reversed') && (
+          {(cardType === 'basic' || cardType === 'basic-reversed') && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="front">Frente (Pergunta)</Label>
@@ -244,19 +233,6 @@ export function CreateFlashcardDialog({
                   className="resize-none"
                 />
               </div>
-
-              {cardType === 'basic-optional-reversed' && (
-                <div className="flex items-center gap-2 rounded-lg border border-border px-3 py-2.5 bg-muted/30">
-                  <Checkbox
-                    id="include-reverse"
-                    checked={includeReverse}
-                    onCheckedChange={(v) => setIncludeReverse(!!v)}
-                  />
-                  <label htmlFor="include-reverse" className="text-sm cursor-pointer select-none">
-                    Criar também o card reverso (Verso → Frente)
-                  </label>
-                </div>
-              )}
             </>
           )}
 

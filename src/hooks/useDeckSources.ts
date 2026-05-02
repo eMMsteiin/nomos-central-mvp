@@ -217,7 +217,7 @@ export function useDeckSources(deckId: string | null) {
     }).then(() => loadSources());
   };
 
-  const generateFromSources = async (focus?: string, selectedSourceIds?: string[]): Promise<Array<{ front: string; back: string }> | null> => {
+  const generateFromSources = async (focus?: string, selectedSourceIds?: string[], cardType: string = 'basic'): Promise<Array<{ front: string; back: string }> | null> => {
     if (!deckId) return null;
 
     const readySources = sources.filter(s => s.status === 'ready');
@@ -238,6 +238,7 @@ export function useDeckSources(deckId: string | null) {
           source_ids: targetSources.map(s => s.id),
           max_cards: 15,
           focus: focus || undefined,
+          card_type: cardType,
         },
       });
 

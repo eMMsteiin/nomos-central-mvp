@@ -21,71 +21,37 @@ async function verifyUser(req: Request) {
   return { userId: user.id, supabase };
 }
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+function buildSystemPrompt(cardType: string, validMaxCards: number, focus?: string): string {
+  if (cardType === 'cloze') {
+    return `Você é um especialista em criar flashcards do tipo Cloze para estudo eficiente.
+
+Sua tarefa é analisar o material fornecido e criar flashcards cloze baseados EXCLUSIVAMENTE neste conteúdo.
+
+TIPO CLOZE: cada card é uma sentença completa com lacunas marcadas.
+
+REGRAS CRÍTICAS:
+- Use APENAS informações presentes no material fornecido
+- NÃO adicione informações externas ou do seu conhecimento geral
+- Crie entre 5 e ${validMaxCards} cards dependendo do conteúdo
+- Cada card deve ser uma frase ou parágrafo curto e autocontido
+- Identifique os termos mais importantes (nomes, definições, datas, fórmulas) e substitua-os por {{c1::termo}}, {{c2::termo}}, etc.
+- Use entre 1 e 3 lacunas por card
+- O campo "front" deve conter o texto COMPLETO com os marcadores {{c1::...}}, {{c2::...}}, etc.
+- O campo "back" deve ser o mesmo texto SEM os marcadores (texto puro completo)
+
+EXEMPLOS de bons cards cloze:
+- front: "A {{c1::fotossíntese}} é o processo pelo qual as plantas produzem {{c2::glicose}} usando luz solar."
+  back: "A fotossíntese é o processo pelo qual as plantas produzem glicose usando luz solar."
+- front: "A Proclamação da República no Brasil ocorreu em {{c1::15 de novembro de 1889}}."
+  back: "A Proclamação da República no Brasil ocorreu em 15 de novembro de 1889."
+
+${focus ? 'FOCO ESPECIAL: ' + focus : ''}
+
+Use a função generate_flashcards para retornar os flashcards.`;
   }
 
-  try {
-    const authResult = await verifyUser(req);
-    if ('error' in authResult) {
-      return new Response(JSON.stringify({ error: authResult.error }), {
-        status: authResult.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const { userId, supabase } = authResult;
-    const { deck_id, source_ids, max_cards = 15, focus } = await req.json();
-
-    if (!deck_id || !source_ids || !Array.isArray(source_ids) || source_ids.length === 0) {
-      return new Response(JSON.stringify({ error: 'deck_id and source_ids are required' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const validMaxCards = Math.min(Math.max(1, max_cards), 30);
-
-    // Fetch sources
-    const { data: sources, error: fetchError } = await supabase
-      .from('deck_sources')
-      .select('id, file_name, extracted_text, status')
-      .in('id', source_ids)
-      .eq('user_id', userId)
-      .eq('status', 'ready');
-
-    if (fetchError) {
-      console.error('[generate-from-sources] Fetch error:', fetchError);
-      throw fetchError;
-    }
-
-    if (!sources || sources.length === 0) {
-      return new Response(JSON.stringify({ error: 'Nenhuma fonte pronta encontrada.' }), {
-        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    // Concatenate source texts
-    let combinedText = '';
-    for (let i = 0; i < sources.length; i++) {
-      const src = sources[i];
-      combinedText += `=== FONTE ${i + 1}: ${src.file_name} ===\n${src.extracted_text || ''}\n\n`;
-    }
-
-    // Truncate if too long
-    const MAX_CHARS = 50000;
-    let truncated = false;
-    if (combinedText.length > MAX_CHARS) {
-      combinedText = combinedText.substring(0, MAX_CHARS);
-      truncated = true;
-    }
-
-    console.log(`[generate-from-sources] Combined text: ${combinedText.length} chars from ${sources.length} sources, truncated: ${truncated}`);
-
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
-
-    const systemPrompt = `Você é um especialista em criar flashcards para estudo eficiente.
+  // Basic / Basic-Reversed
+  return `Você é um especialista em criar flashcards para estudo eficiente.
 
 Sua tarefa é analisar o material fornecido pelo estudante e criar flashcards baseados EXCLUSIVAMENTE neste conteúdo.
 
@@ -105,6 +71,70 @@ QUALIDADE DOS CARDS:
 ${focus ? 'FOCO ESPECIAL: ' + focus : ''}
 
 Use a função generate_flashcards para retornar os flashcards.`;
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const authResult = await verifyUser(req);
+    if ('error' in authResult) {
+      return new Response(JSON.stringify({ error: authResult.error }), {
+        status: authResult.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const { userId, supabase } = authResult;
+    const { deck_id, source_ids, max_cards = 15, focus, card_type = 'basic' } = await req.json();
+
+    if (!deck_id || !source_ids || !Array.isArray(source_ids) || source_ids.length === 0) {
+      return new Response(JSON.stringify({ error: 'deck_id and source_ids are required' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const validMaxCards = Math.min(Math.max(1, max_cards), 30);
+
+    const { data: sources, error: fetchError } = await supabase
+      .from('deck_sources')
+      .select('id, file_name, extracted_text, status')
+      .in('id', source_ids)
+      .eq('user_id', userId)
+      .eq('status', 'ready');
+
+    if (fetchError) {
+      console.error('[generate-from-sources] Fetch error:', fetchError);
+      throw fetchError;
+    }
+
+    if (!sources || sources.length === 0) {
+      return new Response(JSON.stringify({ error: 'Nenhuma fonte pronta encontrada.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    let combinedText = '';
+    for (let i = 0; i < sources.length; i++) {
+      const src = sources[i];
+      combinedText += `=== FONTE ${i + 1}: ${src.file_name} ===\n${src.extracted_text || ''}\n\n`;
+    }
+
+    const MAX_CHARS = 50000;
+    let truncated = false;
+    if (combinedText.length > MAX_CHARS) {
+      combinedText = combinedText.substring(0, MAX_CHARS);
+      truncated = true;
+    }
+
+    console.log(`[generate-from-sources] ${combinedText.length} chars, ${sources.length} sources, card_type: ${card_type}, truncated: ${truncated}`);
+
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+
+    const systemPrompt = buildSystemPrompt(card_type, validMaxCards, focus);
 
     const userMessage = `Analise o seguinte material e gere flashcards baseados EXCLUSIVAMENTE neste conteúdo:\n\n${combinedText}${truncated ? '\n\n[AVISO: Material foi truncado por ser muito extenso. Foque nos conceitos já presentes.]' : ''}`;
 
@@ -133,8 +163,18 @@ Use a função generate_flashcards para retornar os flashcards.`;
                   items: {
                     type: 'object',
                     properties: {
-                      front: { type: 'string', description: 'Pergunta ou conceito (frente do card)' },
-                      back: { type: 'string', description: 'Resposta ou explicação (verso do card)' },
+                      front: {
+                        type: 'string',
+                        description: card_type === 'cloze'
+                          ? 'Texto completo com lacunas marcadas usando {{c1::resposta}}, {{c2::resposta}}, etc.'
+                          : 'Pergunta ou conceito (frente do card)'
+                      },
+                      back: {
+                        type: 'string',
+                        description: card_type === 'cloze'
+                          ? 'Mesmo texto sem os marcadores de lacuna (texto puro completo)'
+                          : 'Resposta ou explicação (verso do card)'
+                      },
                     },
                     required: ['front', 'back'],
                   },
@@ -184,7 +224,7 @@ Use a função generate_flashcards para retornar os flashcards.`;
       });
     }
 
-    console.log(`[generate-from-sources] Generated ${flashcards.length} flashcards from ${sources.length} sources`);
+    console.log(`[generate-from-sources] Generated ${flashcards.length} flashcards (type: ${card_type}) from ${sources.length} sources`);
 
     return new Response(JSON.stringify({ flashcards, truncated }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

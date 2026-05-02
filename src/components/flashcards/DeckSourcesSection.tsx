@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { FileUp, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle, Sparkles, FileText, Image, Presentation } from 'lucide-react';
+import { FileUp, Trash2, RefreshCw, Loader2, CheckCircle2, AlertCircle, Sparkles, FileText, Image, Presentation, Plus, ArrowLeftRight, Brackets } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -8,6 +8,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { DeckSource } from '@/hooks/useDeckSources';
+import { parseClozeText, getClozeFront, getClozeBack, stripClozeFormatting } from '@/utils/clozeParser';
+
+type AICardType = 'basic' | 'basic-reversed' | 'cloze';
 
 interface DeckSourcesSectionProps {
   sources: DeckSource[];
@@ -20,7 +23,7 @@ interface DeckSourcesSectionProps {
   onUpload: (file: File) => void;
   onDelete: (sourceId: string) => void;
   onRetry: (sourceId: string) => void;
-  onGenerate: (focus?: string, selectedSourceIds?: string[]) => Promise<Array<{ front: string; back: string }> | null>;
+  onGenerate: (focus?: string, selectedSourceIds?: string[], cardType?: string) => Promise<Array<{ front: string; back: string }> | null>;
   onCardsGenerated: (cards: Array<{ front: string; back: string }>) => void;
 }
 
@@ -30,9 +33,38 @@ const FILE_TYPE_ICONS: Record<string, typeof FileText> = {
   pptx: Presentation,
 };
 
+const AI_CARD_TYPES: { value: AICardType; label: string; hint: string; icon: React.ReactNode }[] = [
+  { value: 'basic', label: 'Basic', hint: '1 card', icon: <Plus className="w-3.5 h-3.5" /> },
+  { value: 'basic-reversed', label: 'Reversed', hint: '2 cards F↔V', icon: <ArrowLeftRight className="w-3.5 h-3.5" /> },
+  { value: 'cloze', label: 'Cloze', hint: 'N por lacuna', icon: <Brackets className="w-3.5 h-3.5" /> },
+];
+
 function getWordCount(text: string | null): number {
   if (!text) return 0;
   return text.trim().split(/\s+/).filter(w => w.length > 0).length;
+}
+
+function expandCards(
+  cards: Array<{ front: string; back: string }>,
+  cardType: AICardType,
+): Array<{ front: string; back: string }> {
+  if (cardType === 'basic-reversed') {
+    return cards.flatMap(({ front, back }) => [
+      { front, back },
+      { front: back, back: front },
+    ]);
+  }
+  if (cardType === 'cloze') {
+    return cards.flatMap(({ front }) => {
+      const parsed = parseClozeText(front);
+      if (!parsed.hasValidCloze) return [{ front, back: stripClozeFormatting(front) }];
+      return parsed.uniqueNumbers.map(num => ({
+        front: getClozeFront(front, num),
+        back: getClozeBack(front, num),
+      }));
+    });
+  }
+  return cards;
 }
 
 export function DeckSourcesSection({
@@ -52,6 +84,7 @@ export function DeckSourcesSection({
   const [focus, setFocus] = useState('');
   const [showSelectDialog, setShowSelectDialog] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [cardType, setCardType] = useState<AICardType>('basic');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const readySources = sources.filter(s => s.status === 'ready');
@@ -65,7 +98,6 @@ export function DeckSourcesSection({
   };
 
   const handleGenerateClick = () => {
-    // Pre-select all ready sources
     setSelectedIds(new Set(readySources.map(s => s.id)));
     setShowSelectDialog(true);
   };
@@ -73,9 +105,10 @@ export function DeckSourcesSection({
   const handleConfirmGenerate = async () => {
     setShowSelectDialog(false);
     const ids = Array.from(selectedIds);
-    const cards = await onGenerate(focus || undefined, ids);
-    if (cards && cards.length > 0) {
-      onCardsGenerated(cards);
+    const rawCards = await onGenerate(focus || undefined, ids, cardType);
+    if (rawCards && rawCards.length > 0) {
+      const expanded = expandCards(rawCards, cardType);
+      onCardsGenerated(expanded);
     }
   };
 
@@ -128,7 +161,7 @@ export function DeckSourcesSection({
       </div>
 
       {sources.length === 0 ? (
-        <Card 
+        <Card
           className="border-dashed cursor-pointer hover:bg-accent/30 transition-colors"
           onClick={() => fileInputRef.current?.click()}
         >
@@ -204,7 +237,6 @@ export function DeckSourcesSection({
         </div>
       )}
 
-      {/* Generation controls */}
       {sources.length > 0 && (
         <div className="space-y-3 pt-2">
           <Input
@@ -242,16 +274,42 @@ export function DeckSourcesSection({
         </div>
       )}
 
-      {/* Source selection dialog */}
       <Dialog open={showSelectDialog} onOpenChange={setShowSelectDialog}>
         <DialogContent className="sm:max-w-md max-w-[calc(100vw-2rem)] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Selecione as fontes</DialogTitle>
+            <DialogTitle>Configurar geração</DialogTitle>
           </DialogHeader>
+
+          {/* Card type selector */}
+          <div className="space-y-1.5">
+            <p className="text-sm font-medium">Tipo de card</p>
+            <div className="grid grid-cols-3 gap-1">
+              {AI_CARD_TYPES.map((type) => (
+                <button
+                  key={type.value}
+                  type="button"
+                  onClick={() => setCardType(type.value)}
+                  className={cn(
+                    'flex flex-col items-start gap-0.5 rounded-lg border px-2 py-2 text-left transition-colors',
+                    cardType === type.value
+                      ? 'border-primary bg-primary/5 text-primary'
+                      : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
+                  )}
+                >
+                  <span className="flex items-center gap-1 text-xs font-semibold">
+                    {type.icon}
+                    {type.label}
+                  </span>
+                  <span className="text-[10px] opacity-60 leading-tight">{type.hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
           <p className="text-sm text-muted-foreground">
-            Escolha quais arquivos serão usados para gerar os flashcards. Os cards serão distribuídos igualmente entre as fontes selecionadas.
+            Escolha quais arquivos serão usados para gerar os flashcards.
           </p>
-          <div className="space-y-2 py-2 max-h-[50vh] overflow-y-auto">
+          <div className="space-y-2 py-2 max-h-[40vh] overflow-y-auto">
             <button
               type="button"
               className="text-xs text-muted-foreground hover:text-foreground transition-colors mb-1"
