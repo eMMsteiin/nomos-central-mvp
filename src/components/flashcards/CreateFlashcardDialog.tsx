@@ -10,11 +10,12 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Plus, ArrowLeftRight, Shuffle, Brackets } from 'lucide-react';
+import { Plus, ArrowLeftRight, Shuffle, Brackets, Image } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { parseClozeText, getClozeFront, getClozeBack } from '@/utils/clozeParser';
+import { ImageOcclusionEditor } from './ImageOcclusionEditor';
 
-type CardType = 'basic' | 'basic-reversed' | 'basic-optional-reversed' | 'cloze';
+type CardType = 'basic' | 'basic-reversed' | 'basic-optional-reversed' | 'cloze' | 'image-occlusion';
 
 const CARD_TYPES: { value: CardType; label: string; hint: string; icon: React.ReactNode }[] = [
   {
@@ -31,15 +32,21 @@ const CARD_TYPES: { value: CardType; label: string; hint: string; icon: React.Re
   },
   {
     value: 'basic-optional-reversed',
-    label: 'Opt. Reversed',
+    label: 'Opt. Rev.',
     hint: '1 ou 2 cards',
     icon: <Shuffle className="w-3.5 h-3.5" />,
   },
   {
     value: 'cloze',
     label: 'Cloze',
-    hint: 'N cards por lacuna',
+    hint: 'N por lacuna',
     icon: <Brackets className="w-3.5 h-3.5" />,
+  },
+  {
+    value: 'image-occlusion',
+    label: 'Oclusão',
+    hint: 'N por área',
+    icon: <Image className="w-3.5 h-3.5" />,
   },
 ];
 
@@ -85,12 +92,9 @@ export function CreateFlashcardDialog({
     const next = clozeText.substring(0, start) + marker + clozeText.substring(end);
     setClozeText(next);
 
-    // Place cursor inside the braces when nothing was selected
     requestAnimationFrame(() => {
       el.focus();
-      const pos = selected
-        ? start + marker.length
-        : start + `{{c${num}::`.length;
+      const pos = selected ? start + marker.length : start + `{{c${num}::`.length;
       el.setSelectionRange(pos, pos);
     });
   }, [clozeText]);
@@ -99,7 +103,7 @@ export function CreateFlashcardDialog({
     ? Math.max(...parsedCloze.uniqueNumbers) + 1
     : 1;
 
-  // ── Build card list ────────────────────────────────────────────────────────
+  // ── Card builder ───────────────────────────────────────────────────────────
 
   const buildCards = (): Array<{ front: string; back: string }> => {
     if (cardType === 'cloze') {
@@ -117,6 +121,7 @@ export function CreateFlashcardDialog({
 
   const isValid = () => {
     if (cardType === 'cloze') return clozeText.trim().length > 0 && parsedCloze.hasValidCloze;
+    if (cardType === 'image-occlusion') return false; // handled by ImageOcclusionEditor's own button
     return front.trim().length > 0 && back.trim().length > 0;
   };
 
@@ -137,13 +142,6 @@ export function CreateFlashcardDialog({
     onCreateCards(cards);
     setLastCreatedCount(cards.length);
 
-    const reset = () => {
-      setFront('');
-      setBack('');
-      setClozeText('');
-      setIsCreatingAnother(false);
-    };
-
     if (createAnother) {
       setFront('');
       setBack('');
@@ -156,13 +154,23 @@ export function CreateFlashcardDialog({
     }
   };
 
+  // Called by ImageOcclusionEditor when user clicks "Gerar cards"
+  const handleOcclusionComplete = (cards: Array<{ front: string; back: string }>) => {
+    onCreateCards(cards);
+    setLastCreatedCount(cards.length);
+    reset();
+    onOpenChange(false);
+  };
+
+  const reset = () => {
+    setFront('');
+    setBack('');
+    setClozeText('');
+    setIsCreatingAnother(false);
+  };
+
   const handleOpenChange = (open: boolean) => {
-    if (!open) {
-      setFront('');
-      setBack('');
-      setClozeText('');
-      setIsCreatingAnother(false);
-    }
+    if (!open) reset();
     onOpenChange(open);
   };
 
@@ -186,14 +194,14 @@ export function CreateFlashcardDialog({
           {/* ── Type selector ── */}
           <div className="space-y-1.5">
             <Label>Tipo de card</Label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="grid grid-cols-5 gap-1">
               {CARD_TYPES.map((type) => (
                 <button
                   key={type.value}
                   type="button"
                   onClick={() => setCardType(type.value)}
                   className={cn(
-                    'flex flex-col items-start gap-0.5 rounded-lg border px-2.5 py-2 text-left transition-colors',
+                    'flex flex-col items-start gap-0.5 rounded-lg border px-2 py-2 text-left transition-colors',
                     cardType === type.value
                       ? 'border-primary bg-primary/5 text-primary'
                       : 'border-border bg-background text-muted-foreground hover:border-primary/50 hover:text-foreground'
@@ -210,7 +218,7 @@ export function CreateFlashcardDialog({
           </div>
 
           {/* ── Basic / Reversed fields ── */}
-          {cardType !== 'cloze' && (
+          {(cardType === 'basic' || cardType === 'basic-reversed' || cardType === 'basic-optional-reversed') && (
             <>
               <div className="space-y-2">
                 <Label htmlFor="front">Frente (Pergunta)</Label>
@@ -258,7 +266,6 @@ export function CreateFlashcardDialog({
               <div className="space-y-1.5">
                 <Label htmlFor="cloze-text">Texto com lacunas</Label>
 
-                {/* Quick-insert buttons */}
                 <div className="flex flex-wrap gap-1.5">
                   {[1, 2, 3, 4, 5].map((n) => (
                     <button
@@ -297,15 +304,18 @@ export function CreateFlashcardDialog({
                   className="resize-none font-mono text-sm"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Selecione texto e clique em <span className="font-mono">c1</span>, <span className="font-mono">c2</span>… para criar lacunas. Ou escreva <span className="font-mono">{'{{c1::resposta}}'}</span> manualmente.
+                  Selecione texto e clique em{' '}
+                  <span className="font-mono">c1</span>,{' '}
+                  <span className="font-mono">c2</span>… para criar lacunas. Ou escreva{' '}
+                  <span className="font-mono">{'{{c1::resposta}}'}</span> manualmente.
                 </p>
               </div>
 
-              {/* Live preview */}
               {parsedCloze.uniqueNumbers.length > 0 && (
                 <div className="space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    {parsedCloze.uniqueNumbers.length} {parsedCloze.uniqueNumbers.length === 1 ? 'card será criado' : 'cards serão criados'}
+                    {parsedCloze.uniqueNumbers.length}{' '}
+                    {parsedCloze.uniqueNumbers.length === 1 ? 'card será criado' : 'cards serão criados'}
                   </p>
                   <div className="space-y-1.5 max-h-36 overflow-y-auto">
                     {parsedCloze.uniqueNumbers.map((num) => (
@@ -314,9 +324,7 @@ export function CreateFlashcardDialog({
                         className="rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
                       >
                         <span className="text-xs font-mono text-muted-foreground mr-2">c{num}</span>
-                        <span
-                          dangerouslySetInnerHTML={{ __html: getClozeFront(clozeText, num) }}
-                        />
+                        <span dangerouslySetInnerHTML={{ __html: getClozeFront(clozeText, num) }} />
                       </div>
                     ))}
                   </div>
@@ -325,13 +333,19 @@ export function CreateFlashcardDialog({
 
               {clozeText.trim().length > 0 && !parsedCloze.hasValidCloze && (
                 <p className="text-xs text-destructive">
-                  Nenhuma lacuna encontrada. Use a sintaxe <span className="font-mono">{'{{c1::texto}}'}</span>.
+                  Nenhuma lacuna encontrada. Use a sintaxe{' '}
+                  <span className="font-mono">{'{{c1::texto}}'}</span>.
                 </p>
               )}
             </div>
           )}
 
-          {/* ── Feedback after "create another" ── */}
+          {/* ── Image Occlusion ── */}
+          {cardType === 'image-occlusion' && (
+            <ImageOcclusionEditor onComplete={handleOcclusionComplete} />
+          )}
+
+          {/* ── Feedback ── */}
           {isCreatingAnother && (
             <p className="text-sm text-green-600 dark:text-green-400">
               {lastCreatedCount > 1
@@ -340,23 +354,26 @@ export function CreateFlashcardDialog({
             </p>
           )}
 
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
-              Cancelar
-            </Button>
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={(e) => handleSubmit(e as any, true)}
-              disabled={!isValid()}
-            >
-              <Plus className="w-4 h-4 mr-1" />
-              Criar e adicionar outro
-            </Button>
-            <Button type="submit" disabled={!isValid()}>
-              {submitLabel}
-            </Button>
-          </DialogFooter>
+          {/* ── Footer — hidden for image occlusion (it has its own button) ── */}
+          {cardType !== 'image-occlusion' && (
+            <DialogFooter className="flex-col sm:flex-row gap-2">
+              <Button type="button" variant="outline" onClick={() => handleOpenChange(false)}>
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={(e) => handleSubmit(e as any, true)}
+                disabled={!isValid()}
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Criar e adicionar outro
+              </Button>
+              <Button type="submit" disabled={!isValid()}>
+                {submitLabel}
+              </Button>
+            </DialogFooter>
+          )}
         </form>
       </DialogContent>
     </Dialog>
