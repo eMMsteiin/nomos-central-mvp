@@ -170,8 +170,14 @@ export function useDeckSources(deckId: string | null) {
           storage_path: storagePath,
           file_type: fileType,
         },
-      }).then(({ error }) => {
-        if (error) console.error('Process error:', error);
+      }).then(({ data, error }) => {
+        if (error) {
+          const msg = (error as { message?: string })?.message || String(error);
+          console.error('Process error:', msg);
+          toast.error(`Erro ao processar: ${msg}`);
+        } else if (data?.error) {
+          toast.error(`Erro: ${data.error}`);
+        }
         loadSources();
       });
 
@@ -214,7 +220,15 @@ export function useDeckSources(deckId: string | null) {
         storage_path: source.storagePath,
         file_type: source.fileType,
       },
-    }).then(() => loadSources());
+    }).then(({ data, error }) => {
+      if (error) {
+        const msg = (error as { message?: string })?.message || String(error);
+        toast.error(`Erro ao processar: ${msg}`);
+      } else if (data?.error) {
+        toast.error(`Erro: ${data.error}`);
+      }
+      loadSources();
+    });
   };
 
   const generateFromSources = async (focus?: string, selectedSourceIds?: string[], cardType: string = 'basic'): Promise<Array<{ front: string; back: string }> | null> => {

@@ -330,9 +330,10 @@ serve(async (req) => {
       .download(storage_path);
 
     if (downloadError || !fileData) {
-      console.error('[process-deck-source] Download error:', downloadError?.message || 'No data');
-      await supabase.from('deck_sources').update({ status: 'error' }).eq('id', source_id);
-      return new Response(JSON.stringify({ error: 'Failed to download file' }), {
+      const dlErr = `Download falhou: ${downloadError?.message || 'sem dados'}`;
+      console.error('[process-deck-source] Download error:', dlErr);
+      await supabase.from('deck_sources').update({ status: 'error', extracted_text: dlErr }).eq('id', source_id);
+      return new Response(JSON.stringify({ error: dlErr }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
@@ -361,11 +362,9 @@ serve(async (req) => {
       }
     } catch (extractError) {
       const errorMsg = extractError instanceof Error ? extractError.message : String(extractError);
-      const errorStack = extractError instanceof Error ? extractError.stack : '';
       console.error(`[process-deck-source] Extraction failed for source ${source_id}:`, errorMsg);
-      console.error('[process-deck-source] Stack:', errorStack);
-      await supabase.from('deck_sources').update({ status: 'error' }).eq('id', source_id);
-      return new Response(JSON.stringify({ error: `Falha na extração: ${errorMsg}`, details: errorMsg }), {
+      await supabase.from('deck_sources').update({ status: 'error', extracted_text: errorMsg }).eq('id', source_id);
+      return new Response(JSON.stringify({ error: `Falha na extração: ${errorMsg}` }), {
         status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

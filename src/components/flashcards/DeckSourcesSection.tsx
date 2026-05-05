@@ -205,7 +205,9 @@ export function DeckSourcesSection({
                           <AlertCircle className="w-3 h-3" />
                           {wordCount < 100 && wordCount > 0
                             ? 'Pouco conteúdo encontrado'
-                            : 'Falha na extração'}
+                            : source.extractedText
+                              ? source.extractedText.slice(0, 80)
+                              : 'Falha na extração'}
                         </span>
                       )}
                     </div>
