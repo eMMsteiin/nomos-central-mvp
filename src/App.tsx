@@ -103,7 +103,7 @@ function AppLayout() {
   );
 }
 
-const VERSION = '08';
+const VERSION = '09';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

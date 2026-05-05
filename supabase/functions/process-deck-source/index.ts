@@ -35,13 +35,22 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-async function callGemini(body: unknown, apiKey: string, label: string): Promise<string> {
+const SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+];
+
+async function callGemini(body: Record<string, unknown>, apiKey: string, label: string, timeoutMs = 90000): Promise<string> {
+  const fullBody = { ...body, safetySettings: SAFETY_SETTINGS };
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 50000);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
-      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal }
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(fullBody), signal: controller.signal }
     );
     if (!response.ok) {
       const errText = await response.text();
@@ -49,10 +58,31 @@ async function callGemini(body: unknown, apiKey: string, label: string): Promise
     }
     const data = await response.json();
     const candidate = data.candidates?.[0];
-    const finishReason = candidate?.finishReason;
+    const finishReason: string | undefined = candidate?.finishReason;
     const text: string = candidate?.content?.parts?.[0]?.text || '';
-    if (!text) throw new Error(`${label} empty response (finishReason: ${finishReason || 'unknown'})`);
-    return text;
+
+    // MAX_TOKENS: if we got partial text, accept it. Only fail if truly empty.
+    if (text) {
+      if (finishReason === 'MAX_TOKENS') {
+        console.warn(`[${label}] finishReason=MAX_TOKENS — returning partial text (${text.length} chars)`);
+      }
+      return text;
+    }
+
+    // Empty text — surface as much diagnosis as possible.
+    const promptFeedback = data.promptFeedback;
+    const blockReason = promptFeedback?.blockReason;
+    const safetyRatings = candidate?.safetyRatings || promptFeedback?.safetyRatings;
+    const blockedRatings = Array.isArray(safetyRatings)
+      ? safetyRatings.filter((r: { blocked?: boolean }) => r.blocked).map((r: { category?: string }) => r.category).join(',')
+      : '';
+    const diagnosis = [
+      `finishReason=${finishReason || 'unknown'}`,
+      blockReason ? `blockReason=${blockReason}` : '',
+      blockedRatings ? `blockedCategories=${blockedRatings}` : '',
+    ].filter(Boolean).join(' | ');
+    console.error(`[${label}] empty response. ${diagnosis}. Full data:`, JSON.stringify(data).slice(0, 800));
+    throw new Error(`${label} empty response (${diagnosis})`);
   } finally {
     clearTimeout(timeout);
   }

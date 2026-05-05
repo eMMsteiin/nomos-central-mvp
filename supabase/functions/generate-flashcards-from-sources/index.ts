@@ -133,9 +133,18 @@ serve(async (req) => {
 
     const userMessage = `Analise o seguinte material e gere flashcards baseados EXCLUSIVAMENTE neste conteúdo:\n\n${combinedText}${truncated ? '\n\n[AVISO: Material foi truncado por ser muito extenso. Foque nos conceitos já presentes.]' : ''}`;
 
+    const SAFETY_SETTINGS = [
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+      { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+    ];
+
     const requestBody = {
       systemInstruction: { parts: [{ text: systemPrompt }] },
       contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+      safetySettings: SAFETY_SETTINGS,
       generationConfig: {
         maxOutputTokens: 16384,
         temperature: 0.7,
@@ -163,7 +172,7 @@ serve(async (req) => {
 
     const callGemini = async (): Promise<Array<{ front: string; back: string }>> => {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 50000);
+      const timeout = setTimeout(() => controller.abort(), 90000);
       try {
         const response = await fetch(
           `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
@@ -176,8 +185,22 @@ serve(async (req) => {
         const data = await response.json();
         const candidate = data.candidates?.[0];
         const rawText: string = candidate?.content?.parts?.[0]?.text || '';
-        const finishReason = candidate?.finishReason;
-        if (!rawText) throw new Error(`Gemini empty response (finishReason: ${finishReason || 'unknown'}, candidate: ${JSON.stringify(candidate)?.slice(0, 300)})`);
+        const finishReason: string | undefined = candidate?.finishReason;
+        if (!rawText) {
+          const promptFeedback = data.promptFeedback;
+          const blockReason = promptFeedback?.blockReason;
+          const safetyRatings = candidate?.safetyRatings || promptFeedback?.safetyRatings;
+          const blockedRatings = Array.isArray(safetyRatings)
+            ? safetyRatings.filter((r: { blocked?: boolean }) => r.blocked).map((r: { category?: string }) => r.category).join(',')
+            : '';
+          const diagnosis = [
+            `finishReason=${finishReason || 'unknown'}`,
+            blockReason ? `blockReason=${blockReason}` : '',
+            blockedRatings ? `blockedCategories=${blockedRatings}` : '',
+          ].filter(Boolean).join(' | ');
+          console.error('[generate-from-sources] empty response. Full data:', JSON.stringify(data).slice(0, 800));
+          throw new Error(`Gemini empty response (${diagnosis})`);
+        }
         let parsed;
         try {
           parsed = JSON.parse(rawText);
