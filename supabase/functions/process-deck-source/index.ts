@@ -37,7 +37,7 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
 
 async function callGemini(body: unknown, apiKey: string, label: string): Promise<string> {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 45000);
+  const timeout = setTimeout(() => controller.abort(), 50000);
   try {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
@@ -48,9 +48,10 @@ async function callGemini(body: unknown, apiKey: string, label: string): Promise
       throw new Error(`Gemini ${response.status}: ${errText.slice(0, 400)}`);
     }
     const data = await response.json();
-    const finishReason = data.candidates?.[0]?.finishReason;
-    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    if (!text) throw new Error(`Gemini empty response (finishReason: ${finishReason || 'unknown'})`);
+    const candidate = data.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const text: string = candidate?.content?.parts?.[0]?.text || '';
+    if (!text) throw new Error(`${label} empty response (finishReason: ${finishReason || 'unknown'})`);
     return text;
   } finally {
     clearTimeout(timeout);
@@ -67,7 +68,7 @@ async function extractTextFromImage(imageBytes: Uint8Array, mimeType: string, ap
         { inline_data: { mime_type: mimeType, data: base64 } },
       ],
     }],
-    generationConfig: { maxOutputTokens: 4000 },
+    generationConfig: { maxOutputTokens: 8000, thinkingConfig: { thinkingBudget: 0 } },
   };
   try {
     return await callGemini(body, apiKey, 'extractTextFromImage');
@@ -89,7 +90,7 @@ async function extractTextFromPdf(pdfBytes: Uint8Array, apiKey: string): Promise
         { inline_data: { mime_type: 'application/pdf', data: base64 } },
       ],
     }],
-    generationConfig: { maxOutputTokens: 16000 },
+    generationConfig: { maxOutputTokens: 24000, thinkingConfig: { thinkingBudget: 0 } },
   };
   let text: string;
   try {
@@ -334,7 +335,7 @@ serve(async (req) => {
       console.error(`[process-deck-source] Extraction failed for source ${source_id}:`, errorMsg);
       console.error('[process-deck-source] Stack:', errorStack);
       await supabase.from('deck_sources').update({ status: 'error' }).eq('id', source_id);
-      return new Response(JSON.stringify({ error: 'Não conseguimos ler este arquivo. Tente exportar como PDF ou tirar uma foto mais nítida.', details: errorMsg }), {
+      return new Response(JSON.stringify({ error: `Falha na extração: ${errorMsg}`, details: errorMsg }), {
         status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
