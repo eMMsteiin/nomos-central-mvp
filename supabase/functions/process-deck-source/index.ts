@@ -35,89 +35,70 @@ function uint8ArrayToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
+async function callGemini(body: unknown, apiKey: string, label: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 45000);
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,
+      { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: controller.signal }
+    );
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Gemini ${response.status}: ${errText.slice(0, 400)}`);
+    }
+    const data = await response.json();
+    const finishReason = data.candidates?.[0]?.finishReason;
+    const text: string = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    if (!text) throw new Error(`Gemini empty response (finishReason: ${finishReason || 'unknown'})`);
+    return text;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function extractTextFromImage(imageBytes: Uint8Array, mimeType: string, apiKey: string): Promise<string> {
   const base64 = uint8ArrayToBase64(imageBytes);
-  
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Extraia TODO o texto visível nesta imagem preservando estrutura. Se for slide, extraia título e bullets. Se for caderno manuscrito, transcreva fielmente. Retorne apenas o texto extraído, sem comentários adicionais.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:${mimeType};base64,${base64}`
-              }
-            }
-          ]
-        }
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: 'Extraia TODO o texto visível nesta imagem preservando estrutura. Se for slide, extraia título e bullets. Se for caderno manuscrito, transcreva fielmente. Retorne apenas o texto extraído, sem comentários adicionais.' },
+        { inline_data: { mime_type: mimeType, data: base64 } },
       ],
-      max_tokens: 4000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[process-deck-source] Vision API error:', response.status, errorText);
-    throw new Error(`Vision API error: ${response.status} - ${errorText}`);
+    }],
+    generationConfig: { maxOutputTokens: 4000 },
+  };
+  try {
+    return await callGemini(body, apiKey, 'extractTextFromImage');
+  } catch (err) {
+    console.warn('[process-deck-source] extractTextFromImage first attempt failed:', err instanceof Error ? err.message : err, '— retrying in 3s');
+    await new Promise(r => setTimeout(r, 3000));
+    return callGemini(body, apiKey, 'extractTextFromImage retry');
   }
-
-  const data = await response.json();
-  return data.choices?.[0]?.message?.content || '';
 }
 
 async function extractTextFromPdf(pdfBytes: Uint8Array, apiKey: string): Promise<string> {
   const base64 = uint8ArrayToBase64(pdfBytes);
   console.log(`[process-deck-source] PDF base64 length: ${base64.length} chars (~${Math.round(pdfBytes.length / 1024)}KB)`);
-  
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: 'Extraia TODO o texto deste documento PDF preservando a estrutura. Mantenha títulos, subtítulos, bullets e parágrafos. Retorne apenas o texto extraído.'
-            },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:application/pdf;base64,${base64}`
-              }
-            }
-          ]
-        }
+  const body = {
+    contents: [{
+      role: 'user',
+      parts: [
+        { text: 'Extraia TODO o texto deste documento PDF preservando a estrutura. Mantenha títulos, subtítulos, bullets e parágrafos. Retorne apenas o texto extraído.' },
+        { inline_data: { mime_type: 'application/pdf', data: base64 } },
       ],
-      max_tokens: 16000,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error('[process-deck-source] PDF extraction API error:', response.status, errorText);
-    throw new Error(`PDF extraction error: ${response.status} - ${errorText}`);
+    }],
+    generationConfig: { maxOutputTokens: 16000 },
+  };
+  let text: string;
+  try {
+    text = await callGemini(body, apiKey, 'extractTextFromPdf');
+  } catch (err) {
+    console.warn('[process-deck-source] extractTextFromPdf first attempt failed:', err instanceof Error ? err.message : err, '— retrying in 3s');
+    await new Promise(r => setTimeout(r, 3000));
+    text = await callGemini(body, apiKey, 'extractTextFromPdf retry');
   }
-
-  const data = await response.json();
-  const text = data.choices?.[0]?.message?.content || '';
   console.log(`[process-deck-source] PDF extraction returned ${text.length} chars`);
   return text;
 }
@@ -307,9 +288,9 @@ serve(async (req) => {
 
     console.log(`[process-deck-source] Processing source ${source_id}, type: ${file_type}, path: ${storage_path}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY not configured');
     }
 
     // Download file from storage
@@ -331,7 +312,7 @@ serve(async (req) => {
 
     try {
       if (file_type === 'pdf') {
-        extractedText = await extractTextFromPdf(fileBytes, LOVABLE_API_KEY);
+        extractedText = await extractTextFromPdf(fileBytes, GEMINI_API_KEY);
       } else if (file_type === 'image') {
         const ext = storage_path.split('.').pop()?.toLowerCase() || 'png';
         const mimeMap: Record<string, string> = {
@@ -339,7 +320,7 @@ serve(async (req) => {
           'heic': 'image/heic', 'webp': 'image/webp',
         };
         const mimeType = mimeMap[ext] || 'image/png';
-        extractedText = await extractTextFromImage(fileBytes, mimeType, LOVABLE_API_KEY);
+        extractedText = await extractTextFromImage(fileBytes, mimeType, GEMINI_API_KEY);
       } else if (file_type === 'pptx') {
         extractedText = await extractTextFromPptx(fileBytes);
       } else if (file_type === 'docx') {

@@ -103,11 +103,16 @@ function AppLayout() {
   );
 }
 
+const VERSION = '07';
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
       <Toaster />
       <Sonner />
+      <div className="fixed top-2 right-2 z-[9999] text-[10px] font-mono text-muted-foreground/50 pointer-events-none select-none">
+        v{VERSION}
+      </div>
       <BrowserRouter>
         <AuthProvider>
           <HiddenTabsProvider>

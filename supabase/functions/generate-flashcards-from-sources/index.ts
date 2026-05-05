@@ -45,12 +45,9 @@ EXEMPLOS de bons cards cloze:
 - front: "A Proclamação da República no Brasil ocorreu em {{c1::15 de novembro de 1889}}."
   back: "A Proclamação da República no Brasil ocorreu em 15 de novembro de 1889."
 
-${focus ? 'FOCO ESPECIAL: ' + focus : ''}
-
-Use a função generate_flashcards para retornar os flashcards.`;
+${focus ? 'FOCO ESPECIAL: ' + focus : ''}`;
   }
 
-  // Basic / Basic-Reversed
   return `Você é um especialista em criar flashcards para estudo eficiente.
 
 Sua tarefa é analisar o material fornecido pelo estudante e criar flashcards baseados EXCLUSIVAMENTE neste conteúdo.
@@ -68,9 +65,7 @@ QUALIDADE DOS CARDS:
 - Crie entre 5 e ${validMaxCards} cards dependendo do conteúdo
 - Cubra os conceitos mais importantes do material
 
-${focus ? 'FOCO ESPECIAL: ' + focus : ''}
-
-Use a função generate_flashcards para retornar os flashcards.`;
+${focus ? 'FOCO ESPECIAL: ' + focus : ''}`;
 }
 
 serve(async (req) => {
@@ -131,92 +126,81 @@ serve(async (req) => {
 
     console.log(`[generate-from-sources] ${combinedText.length} chars, ${sources.length} sources, card_type: ${card_type}, truncated: ${truncated}`);
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) throw new Error('LOVABLE_API_KEY not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
 
     const systemPrompt = buildSystemPrompt(card_type, validMaxCards, focus);
 
     const userMessage = `Analise o seguinte material e gere flashcards baseados EXCLUSIVAMENTE neste conteúdo:\n\n${combinedText}${truncated ? '\n\n[AVISO: Material foi truncado por ser muito extenso. Foque nos conceitos já presentes.]' : ''}`;
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userMessage },
-        ],
-        tools: [{
-          type: 'function',
-          function: {
-            name: 'generate_flashcards',
-            description: 'Gera flashcards estruturados a partir do material analisado',
-            parameters: {
-              type: 'object',
-              properties: {
-                flashcards: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      front: {
-                        type: 'string',
-                        description: card_type === 'cloze'
-                          ? 'Texto completo com lacunas marcadas usando {{c1::resposta}}, {{c2::resposta}}, etc.'
-                          : 'Pergunta ou conceito (frente do card)'
-                      },
-                      back: {
-                        type: 'string',
-                        description: card_type === 'cloze'
-                          ? 'Mesmo texto sem os marcadores de lacuna (texto puro completo)'
-                          : 'Resposta ou explicação (verso do card)'
-                      },
-                    },
-                    required: ['front', 'back'],
-                  },
+    const requestBody = {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userMessage }] }],
+      generationConfig: {
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'object',
+          properties: {
+            flashcards: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  front: { type: 'string' },
+                  back: { type: 'string' },
                 },
+                required: ['front', 'back'],
               },
-              required: ['flashcards'],
             },
           },
-        }],
-        tool_choice: { type: 'function', function: { name: 'generate_flashcards' } },
-      }),
-    });
+          required: ['flashcards'],
+        },
+      },
+    };
 
-    if (!response.ok) {
-      const status = response.status;
-      const errorText = await response.text();
-      console.error('[generate-from-sources] AI error:', status, errorText);
+    const callGemini = async (): Promise<Array<{ front: string; back: string }>> => {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 45000);
+      try {
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), signal: controller.signal }
+        );
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Gemini ${response.status}: ${errText.slice(0, 400)}`);
+        }
+        const data = await response.json();
+        const rawText: string = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        const finishReason = data.candidates?.[0]?.finishReason;
+        if (!rawText) throw new Error(`Gemini empty response (finishReason: ${finishReason || 'unknown'})`);
+        const parsed = JSON.parse(rawText);
+        const cards = Array.isArray(parsed) ? parsed : parsed.flashcards;
+        if (!Array.isArray(cards) || cards.length === 0) throw new Error('Parsed JSON has no flashcards array');
+        return cards;
+      } finally {
+        clearTimeout(timeout);
+      }
+    };
 
-      if (status === 429) {
-        return new Response(JSON.stringify({ error: 'Muitas requisições. Aguarde alguns segundos e tente novamente.' }), {
-          status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    let flashcards: Array<{ front: string; back: string }>;
+    try {
+      flashcards = await callGemini();
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn('[generate-from-sources] First attempt failed:', msg, '— retrying in 3s');
+      await new Promise(r => setTimeout(r, 3000));
+      try {
+        flashcards = await callGemini();
+      } catch (retryErr) {
+        const retryMsg = retryErr instanceof Error ? retryErr.message : String(retryErr);
+        console.error('[generate-from-sources] Retry also failed:', retryMsg);
+        return new Response(JSON.stringify({ error: 'Não foi possível gerar flashcards. Tente novamente.' }), {
+          status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (status === 402) {
-        return new Response(JSON.stringify({ error: 'Créditos esgotados. Adicione créditos à sua conta.' }), {
-          status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
-      throw new Error(`AI gateway error: ${status}`);
     }
-
-    const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-
-    if (!toolCall || toolCall.function.name !== 'generate_flashcards') {
-      return new Response(JSON.stringify({ error: 'Não foi possível gerar flashcards a partir das fontes.' }), {
-        status: 422, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    const result = JSON.parse(toolCall.function.arguments);
-    const flashcards = result.flashcards || [];
 
     if (flashcards.length === 0) {
       return new Response(JSON.stringify({ error: 'Não foi possível extrair flashcards das fontes. O conteúdo pode ser insuficiente.' }), {
