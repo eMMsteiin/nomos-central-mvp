@@ -1,9 +1,6 @@
-project_id = "bvqbnhisnwzqshkuucam"
+project_id = "nzylcotxxxcpzrxiafvt"
 
 [functions.fetch-ics]
-verify_jwt = false
-
-[functions.chat-nomos]
 verify_jwt = false
 
 [functions.generate-flashcards]
