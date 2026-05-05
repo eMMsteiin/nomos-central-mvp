@@ -170,11 +170,15 @@ export function useDeckSources(deckId: string | null) {
           storage_path: storagePath,
           file_type: fileType,
         },
-      }).then(({ data, error }) => {
+      }).then(async ({ data, error }) => {
         if (error) {
-          const msg = (error as { message?: string })?.message || String(error);
+          let msg = (error as { message?: string })?.message || String(error);
+          try {
+            const body = await (error as { context?: Response })?.context?.json?.();
+            if (body?.error) msg = body.error;
+          } catch {}
           console.error('Process error:', msg);
-          toast.error(`Erro ao processar: ${msg}`);
+          toast.error(`Erro: ${msg}`);
         } else if (data?.error) {
           toast.error(`Erro: ${data.error}`);
         }
@@ -220,10 +224,14 @@ export function useDeckSources(deckId: string | null) {
         storage_path: source.storagePath,
         file_type: source.fileType,
       },
-    }).then(({ data, error }) => {
+    }).then(async ({ data, error }) => {
       if (error) {
-        const msg = (error as { message?: string })?.message || String(error);
-        toast.error(`Erro ao processar: ${msg}`);
+        let msg = (error as { message?: string })?.message || String(error);
+        try {
+          const body = await (error as { context?: Response })?.context?.json?.();
+          if (body?.error) msg = body.error;
+        } catch {}
+        toast.error(`Erro: ${msg}`);
       } else if (data?.error) {
         toast.error(`Erro: ${data.error}`);
       }
