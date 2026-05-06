@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { FileText, Plus, MessageSquare } from 'lucide-react';
+import { FileText, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useSummaries } from '@/hooks/useSummaries';
 import { SummaryList } from '@/components/summaries/SummaryList';
 import { SummaryViewer } from '@/components/summaries/SummaryViewer';
 import { SummaryFilters } from '@/components/summaries/SummaryFilters';
+import { CreateSummaryDialog } from '@/components/summaries/CreateSummaryDialog';
 import { GenerateFlashcardsFromSummaryDialog } from '@/components/summaries/GenerateFlashcardsFromSummaryDialog';
 import { Summary, SummaryType } from '@/types/summary';
 import { toast } from 'sonner';
@@ -15,55 +16,13 @@ type ViewMode = 'list' | 'detail';
 
 const Resumos = () => {
   const navigate = useNavigate();
-  const { summaries, isLoading, deleteSummary, reloadSummaries } = useSummaries();
+  const { summaries, isLoading, deleteSummary, createSummary } = useSummaries();
   const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [selectedSummary, setSelectedSummary] = useState<Summary | null>(null);
   const [activeFilter, setActiveFilter] = useState<SummaryType | 'all'>('all');
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [flashcardDialogOpen, setFlashcardDialogOpen] = useState(false);
   const [summaryForFlashcards, setSummaryForFlashcards] = useState<Summary | null>(null);
-
-  // Listen for new summaries created via Chat NOMOS
-  useEffect(() => {
-    const handleSummariesUpdated = () => {
-      reloadSummaries();
-      
-      // Check if there's a new summary to auto-select
-      const newSummaryId = localStorage.getItem('nomos-new-summary-id');
-      if (newSummaryId) {
-        localStorage.removeItem('nomos-new-summary-id');
-        
-        // Wait for state update then auto-select
-        setTimeout(() => {
-          const stored = localStorage.getItem('nomos-summaries');
-          if (stored) {
-            const allSummaries = JSON.parse(stored);
-            const newSummary = allSummaries.find((s: Summary) => s.id === newSummaryId);
-            if (newSummary) {
-              setSelectedSummary(newSummary);
-              setViewMode('detail');
-            }
-          }
-        }, 100);
-      }
-    };
-
-    window.addEventListener('summariesUpdated', handleSummariesUpdated);
-    
-    // Check on mount if there's a new summary to show
-    const newSummaryId = localStorage.getItem('nomos-new-summary-id');
-    if (newSummaryId) {
-      localStorage.removeItem('nomos-new-summary-id');
-      const summary = summaries.find(s => s.id === newSummaryId);
-      if (summary) {
-        setSelectedSummary(summary);
-        setViewMode('detail');
-      }
-    }
-
-    return () => {
-      window.removeEventListener('summariesUpdated', handleSummariesUpdated);
-    };
-  }, [reloadSummaries, summaries]);
 
   const counts = {
     all: summaries.length,
@@ -84,9 +43,7 @@ const Resumos = () => {
   const handleDelete = (id: string) => {
     deleteSummary(id);
     toast.success('Resumo excluído');
-    if (selectedSummary?.id === id) {
-      handleBackToList();
-    }
+    if (selectedSummary?.id === id) handleBackToList();
   };
 
   const handleConvertToFlashcards = (summary: Summary) => {
@@ -94,26 +51,23 @@ const Resumos = () => {
     setFlashcardDialogOpen(true);
   };
 
-  const handleFlashcardsGenerated = (deckId: string, cardCount: number) => {
+  const handleFlashcardsGenerated = (_deckId: string, cardCount: number) => {
     setFlashcardDialogOpen(false);
-    toast.success(`${cardCount} flashcards criados com sucesso!`, {
-      description: 'Você será redirecionado para o baralho.',
-    });
-    
-    // Navigate to flashcards page
-    setTimeout(() => {
-      navigate('/flashcards');
-    }, 500);
+    toast.success(`${cardCount} flashcards criados com sucesso!`);
+    setTimeout(() => navigate('/flashcards'), 500);
   };
 
-  const handleCreateNew = () => {
-    toast.info('Use o Chat NOMOS para criar resumos', {
-      description: 'O Chat NOMOS cria resumos automaticamente após suas sessões de estudo.',
-      action: {
-        label: 'Ir para Chat',
-        onClick: () => navigate('/chat'),
-      },
+  const handleSummaryCreated = (data: { title: string; content: string; subject: string; type: SummaryType; sourceType: string }) => {
+    const newSummary = createSummary({
+      title: data.title,
+      content: data.content,
+      subject: data.subject,
+      type: data.type,
+      sourceType: data.sourceType as any,
     });
+    toast.success('Resumo criado com sucesso!');
+    setSelectedSummary(newSummary);
+    setViewMode('detail');
   };
 
   if (isLoading) {
@@ -124,7 +78,6 @@ const Resumos = () => {
     );
   }
 
-  // Detail view
   if (viewMode === 'detail' && selectedSummary) {
     return (
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
@@ -143,13 +96,8 @@ const Resumos = () => {
     );
   }
 
-  // Check if we only have demo summaries (no real ones from chat)
-  const hasRealSummaries = summaries.some(s => s.sourceType === 'chat');
-
-  // List view
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto">
-      {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -163,49 +111,18 @@ const Resumos = () => {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold">Resumos</h1>
               <p className="text-muted-foreground">
-                {summaries.length} {summaries.length === 1 ? 'resumo' : 'resumos'} • Consolidação de aprendizado
+                {summaries.length} {summaries.length === 1 ? 'resumo' : 'resumos'} · Consolidação de aprendizado
               </p>
             </div>
           </div>
 
-          <Button onClick={handleCreateNew} className="gap-2">
+          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
             <Plus className="w-4 h-4" />
             Novo resumo
           </Button>
         </div>
       </motion.div>
 
-      {/* Info banner about Chat NOMOS - show only if no real summaries yet */}
-      {!hasRealSummaries && (
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-6 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20"
-        >
-          <div className="flex items-center gap-3">
-            <MessageSquare className="w-8 h-8 text-primary flex-shrink-0" />
-            <div>
-              <p className="font-medium">
-                O Chat NOMOS cria resumos para você automaticamente!
-              </p>
-              <p className="text-sm text-muted-foreground">
-                Após sessões de estudo, ele sugere consolidar seu aprendizado com resumos personalizados gerados por IA.
-              </p>
-            </div>
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => navigate('/chat')}
-              className="ml-auto flex-shrink-0"
-            >
-              Ir para Chat
-            </Button>
-          </div>
-        </motion.div>
-      )}
-
-      {/* Filters */}
       {summaries.length > 0 && (
         <div className="mb-6">
           <SummaryFilters
@@ -216,17 +133,21 @@ const Resumos = () => {
         </div>
       )}
 
-      {/* Summary list */}
       <SummaryList
         summaries={summaries}
         filter={activeFilter}
         onView={handleViewSummary}
         onDelete={handleDelete}
         onConvertToFlashcards={handleConvertToFlashcards}
-        onCreateNew={handleCreateNew}
+        onCreateNew={() => setCreateDialogOpen(true)}
       />
 
-      {/* Flashcard generation dialog */}
+      <CreateSummaryDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        onCreated={handleSummaryCreated}
+      />
+
       <GenerateFlashcardsFromSummaryDialog
         open={flashcardDialogOpen}
         onOpenChange={setFlashcardDialogOpen}

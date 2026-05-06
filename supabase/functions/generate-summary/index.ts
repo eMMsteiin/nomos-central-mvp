@@ -6,114 +6,90 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+const SAFETY_SETTINGS = [
+  { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' },
+  { category: 'HARM_CATEGORY_CIVIC_INTEGRITY', threshold: 'BLOCK_NONE' },
+];
+
 const ESSENTIAL_SYSTEM_PROMPT = `Você é um assistente especializado em criar resumos de estudo concisos e eficazes.
 
-OBJETIVO: Criar um RESUMO ESSENCIAL baseado ESPECIFICAMENTE nas perguntas e respostas da conversa de estudo.
-
-REGRA CRÍTICA:
-- Se houver uma conversa de estudo fornecida, você DEVE responder a CADA pergunta que o aluno fez
-- O resumo deve refletir EXATAMENTE o que foi discutido, não um resumo genérico do tema
-- Organize por tópico/pergunta quando apropriado
+OBJETIVO: Criar um RESUMO ESSENCIAL sobre o tema fornecido.
 
 FORMATO DO RESUMO:
 - Use bullets claros e diretos (•)
-- 5-10 pontos principais (baseados nas perguntas feitas)
+- 5-10 pontos principais
 - Cada ponto deve ser autocontido e compreensível
 - Use negrito para termos importantes
-- Inclua exemplos práticos quando mencionados na conversa
+- Inclua exemplos práticos quando relevante
 - Mantenha linguagem simples e acessível
 
 ESTRUTURA:
 ## [Título do Tema]
 
-**[Tópico/Pergunta 1]:**
-• [Resposta organizada em bullets]
+**[Tópico 1]:**
+• [Ponto principal]
 
-**[Tópico/Pergunta 2]:**
-• [Resposta organizada em bullets]
-
-...
+**[Tópico 2]:**
+• [Ponto principal]
 
 **Para lembrar:**
-💡 [Uma frase-síntese que conecta os principais pontos discutidos]
+💡 [Uma frase-síntese]
 
 Responda APENAS com o resumo formatado em Markdown, sem explicações adicionais.`;
 
 const EXAM_SYSTEM_PROMPT = `Você é um assistente especializado em criar resumos focados em preparação para provas.
 
-OBJETIVO: Criar um RESUMO PARA PROVA baseado ESPECIFICAMENTE nas perguntas e respostas da conversa de estudo.
-
-REGRA CRÍTICA:
-- Se houver uma conversa de estudo fornecida, você DEVE cobrir CADA tópico/pergunta discutida
-- O resumo deve refletir EXATAMENTE o que foi estudado, focando no que pode cair na prova
-- Transforme as perguntas do aluno em possíveis questões de prova
+OBJETIVO: Criar um RESUMO PARA PROVA sobre o tema fornecido.
 
 FORMATO DO RESUMO:
-- Foque em O QUE CAI NA PROVA baseado no que foi discutido
-- Inclua comparações e contrastes (muito cobrados em provas)
-- Transforme as dúvidas do aluno em perguntas prováveis
+- Foque em O QUE CAI NA PROVA
+- Inclua comparações e contrastes
+- Transforme conceitos em possíveis perguntas de prova
 - Use tabelas para comparações quando útil
 - Destaque fórmulas, definições e conceitos cobráveis
 
 ESTRUTURA:
 ## [Tema] - Foco para Prova
 
-**Definições importantes (baseadas na conversa):**
+**Definições importantes:**
 • **[Termo]**: [definição concisa]
-...
 
-**O que estudamos:**
-• [Tópico 1 da conversa - resumido para prova]
-• [Tópico 2 da conversa - resumido para prova]
-...
-
-**Comparações frequentes:**
-| Aspecto | Conceito A | Conceito B |
-|---------|-----------|-----------|
-...
+**Pontos principais:**
+• [Conceito 1 resumido para prova]
+• [Conceito 2 resumido para prova]
 
 **Perguntas prováveis na prova:**
-❓ [Pergunta baseada no que o aluno perguntou] → [Resposta curta]
-❓ [Outra pergunta baseada na conversa] → [Resposta curta]
+❓ [Pergunta] → [Resposta curta]
 
 **Armadilhas comuns:**
-⚠️ [Erro comum relacionado ao que foi estudado]
+⚠️ [Erro comum a evitar]
 
 Responda APENAS com o resumo formatado em Markdown, sem explicações adicionais.`;
 
-// Helper function to verify user authentication
 async function verifyUser(req: Request): Promise<{ userId: string } | { error: string; status: number }> {
   const authHeader = req.headers.get('Authorization');
-  if (!authHeader) {
-    return { error: 'Authorization header missing', status: 401 };
-  }
+  if (!authHeader) return { error: 'Authorization header missing', status: 401 };
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-  
-  // Create client with user's auth token
-  const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-    global: { headers: { Authorization: authHeader } }
-  });
+  const supabase = createClient(
+    Deno.env.get("SUPABASE_URL")!,
+    Deno.env.get("SUPABASE_ANON_KEY")!,
+    { global: { headers: { Authorization: authHeader } } }
+  );
 
   const { data: { user }, error } = await supabase.auth.getUser();
-  
-  if (error || !user) {
-    console.error('[generate-summary] Auth error:', error);
-    return { error: 'Unauthorized', status: 401 };
-  }
-
+  if (error || !user) return { error: 'Unauthorized', status: 401 };
   return { userId: user.id };
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    // Verify authentication
     const authResult = await verifyUser(req);
     if ('error' in authResult) {
       return new Response(JSON.stringify({ error: authResult.error }), {
@@ -121,130 +97,89 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-    
-    console.log('[generate-summary] Authenticated user:', authResult.userId);
 
     const { subject, type, sourceContent, sourceType } = await req.json();
-    
-    // Input validation
-    if (!subject || subject.length < 2) {
-      return new Response(JSON.stringify({ error: 'Subject is required' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    if (subject.length > 200) {
-      return new Response(JSON.stringify({ error: 'Subject too long. Limit: 200 characters.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    if (sourceContent && sourceContent.length > 50000) {
-      return new Response(JSON.stringify({ error: 'Source content too long. Limit: 50,000 characters.' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-    
-    console.log('[generate-summary] Received request:', { subject, type, sourceType, contentLength: sourceContent?.length });
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    if (!subject || subject.length < 2) {
+      return new Response(JSON.stringify({ error: 'Informe o assunto do resumo.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
+    if (subject.length > 200) {
+      return new Response(JSON.stringify({ error: 'Assunto muito longo. Máximo 200 caracteres.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    if (sourceContent && sourceContent.length > 50000) {
+      return new Response(JSON.stringify({ error: 'Conteúdo muito longo. Máximo 50.000 caracteres.' }), {
+        status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) throw new Error('GEMINI_API_KEY not configured');
 
     const systemPrompt = type === 'exam' ? EXAM_SYSTEM_PROMPT : ESSENTIAL_SYSTEM_PROMPT;
-    
-    // Build a more specific prompt when we have conversation content
-    const hasConversation = sourceContent && sourceContent.includes('Conversa de Estudo');
-    
-    const userPrompt = sourceContent 
-      ? hasConversation
-        ? `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}".
 
-IMPORTANTE: Abaixo está a conversa de estudo entre o aluno e o assistente. 
-Você DEVE criar um resumo que responda TODAS as perguntas específicas que o aluno fez durante a conversa.
-NÃO crie um resumo genérico sobre o tema - o resumo deve refletir exatamente o que foi discutido.
+    const userPrompt = sourceContent
+      ? `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}" baseado no seguinte conteúdo:\n\n${sourceContent}`
+      : `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}". Use seu conhecimento para criar um resumo útil e didático sobre este tema.`;
 
-${sourceContent}`
-        : `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}" baseado no seguinte conteúdo de estudo:\n\n${sourceContent}`
-      : `Crie um resumo ${type === 'exam' ? 'para prova' : 'essencial'} sobre "${subject}". Use seu conhecimento para criar um resumo útil sobre este tema.`;
-
-    console.log('[generate-summary] Calling Lovable AI...');
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
+    const requestBody = {
+      systemInstruction: { parts: [{ text: systemPrompt }] },
+      contents: [{ role: 'user', parts: [{ text: userPrompt }] }],
+      safetySettings: SAFETY_SETTINGS,
+      generationConfig: {
+        maxOutputTokens: 4000,
+        temperature: 0.7,
+        thinkingConfig: { thinkingBudget: 0 },
       },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        max_tokens: 2000,
-      }),
-    });
+    };
 
-    if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Please try again later." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    let content: string;
+    try {
+      const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody), signal: controller.signal }
+      );
+      clearTimeout(timeout);
+
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`Gemini ${response.status}: ${errText.slice(0, 300)}`);
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      console.error('[generate-summary] AI gateway error:', response.status, errorText);
-      throw new Error(`AI gateway error: ${response.status}`);
+
+      const data = await response.json();
+      content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      if (!content) throw new Error('Gemini retornou resposta vazia.');
+    } catch (err) {
+      clearTimeout(timeout);
+      throw err;
     }
 
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
-
-    if (!content) {
-      throw new Error("No content generated");
-    }
-
-    console.log('[generate-summary] Generated content length:', content.length);
-
-    // Generate a title from the content (first line without # or first 50 chars)
     const lines = content.split('\n').filter((l: string) => l.trim());
     let title = lines[0]?.replace(/^#+\s*/, '').trim() || `Resumo: ${subject}`;
-    if (title.length > 60) {
-      title = title.substring(0, 57) + '...';
-    }
+    if (title.length > 60) title = title.substring(0, 57) + '...';
 
-    const result = {
+    return new Response(JSON.stringify({
       title,
       content,
       subject,
       type,
-      sourceType: sourceType || 'chat',
-    };
-
-    console.log('[generate-summary] Success:', { title, subject, type });
-
-    return new Response(JSON.stringify(result), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      sourceType: sourceType || 'manual',
+    }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
     console.error('[generate-summary] Error:', error);
-    return new Response(JSON.stringify({ 
-      error: error instanceof Error ? error.message : "Unknown error" 
+    return new Response(JSON.stringify({
+      error: error instanceof Error ? error.message : 'Erro ao gerar resumo',
     }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
