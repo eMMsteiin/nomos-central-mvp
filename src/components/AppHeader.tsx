@@ -20,7 +20,7 @@ export function AppHeader() {
   const navigate = useNavigate();
 
   return (
-    <header className="border-b border-border px-4 py-3 flex items-center justify-between bg-background">
+    <header className="nomos-header border-b border-border px-4 py-3 flex items-center justify-between bg-background">
       <div className="flex items-center gap-3">
         {/* Mobile sidebar trigger */}
         {isMobile && (

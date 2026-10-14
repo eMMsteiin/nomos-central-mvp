@@ -12,6 +12,24 @@
     <!-- PWA Manifest -->
     <link rel="manifest" href="/manifest.json" />
 
+    <!-- Template visual: aplica o tema salvo antes do React carregar (evita "piscar").
+         O padrão aqui deve ser o mesmo de DEFAULT_THEME_ID em src/themes/index.ts -->
+    <script>
+      (function () {
+        var id = "soft-futurism";
+        try {
+          var stored = localStorage.getItem("nomos-theme");
+          if (stored) id = stored;
+        } catch (e) {}
+        document.documentElement.setAttribute("data-theme", id);
+      })();
+    </script>
+
+    <!-- Fonte do template Soft Futurism -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
     <!-- Theme colors -->
     <meta name="theme-color" content="#0A0A0A" />
     <meta name="theme-color" content="#0A0A0A" media="(prefers-color-scheme: dark)" />

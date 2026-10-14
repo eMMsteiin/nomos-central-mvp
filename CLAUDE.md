@@ -43,7 +43,9 @@ No test suite is configured.
 
 **Flashcard system:** Anki-compatible with SM-2 algorithm. Cards have learning, review, and relearn states. Note types (`src/types/note.ts`) define custom fields and card templates; the template renderer expands them into flashcard front/back. Cloze deletions use `{{text}}` syntax.
 
-**Styling:** Tailwind with CSS variables for theming. Dark mode via the `dark` CSS class. Custom sidebar and accent color tokens are defined in `tailwind.config.ts` and `src/index.css`. Always use CSS variable-based color tokens (e.g. `bg-background`, `text-foreground`) rather than hardcoded Tailwind palette values.
+**Styling:** Tailwind with CSS variables for theming. Dark mode via the `dark` CSS class. Always use CSS variable-based color tokens (e.g. `bg-background`, `text-foreground`) rather than hardcoded Tailwind palette values.
+
+**Templates (visual themes):** each template is a CSS file in `src/themes/<id>.css` that only defines tokens under `[data-theme="<id>"]`; the active one is set on `<html data-theme>` by `ThemeProvider` (`src/contexts/ThemeContext.tsx`, persisted in `localStorage` key `nomos-theme`, default in `src/themes/index.ts`) and picked in Configurações > Templates (`TemplatesPanel`). `minimalista.css` is a frozen snapshot of the original design — never edit it to experiment; add a new template instead (see the header of `src/themes/index.ts`). Shape tokens (button radius, card shadow, ...) are consumed through `nomos-*` hook classes in `src/themes/base.css`. The Tailwind `neutral` palette reads `--neutral-*` variables so templates can retint hardcoded `*-neutral-*` classes.
 
 **TypeScript:** Strict mode is OFF (`noImplicitAny` and `strictNullChecks` disabled). The Supabase types file at `src/integrations/supabase/types.ts` is auto-generated — regenerate it via the Supabase CLI rather than editing it.
 

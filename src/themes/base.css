@@ -1,0 +1,49 @@
+/* ============================================================
+   BASE DO SISTEMA DE TEMPLATES
+   ------------------------------------------------------------
+   Ganchos (classes nomos-*) que os componentes usam para que um
+   template possa mudar a "forma" da interface (raio dos botões,
+   sombras, bordas...) apenas redefinindo variáveis CSS.
+
+   Importante: este arquivo é importado ANTES do index.css, então
+   qualquer classe utilitária do Tailwind (rounded-full, shadow-md,
+   border-0 ...) continua vencendo estes ganchos quando usada de
+   propósito num componente.
+
+   Os valores de fallback (2º argumento do var()) reproduzem o
+   visual Minimalista original, então nada muda se um template
+   não definir a variável.
+   ============================================================ */
+
+.nomos-btn {
+  border-radius: var(--btn-radius, 0px);
+}
+
+.nomos-btn-primary {
+  background-image: var(--btn-primary-bg, none);
+  box-shadow: var(--btn-primary-shadow, none);
+}
+
+.nomos-btn-primary:hover {
+  filter: var(--btn-primary-hover-filter, none);
+}
+
+.nomos-btn-outline {
+  border-width: var(--btn-outline-border-width, 0px);
+}
+
+.nomos-card {
+  box-shadow: var(--card-shadow, none);
+  border-width: var(--card-border-width, 0px);
+  background-image: var(--card-bg-image, none);
+}
+
+.nomos-field {
+  border-width: var(--field-border-width, 0px);
+  box-shadow: var(--field-shadow, none);
+  background-image: var(--field-bg-image, none);
+}
+
+.nomos-field:focus-visible {
+  box-shadow: var(--field-focus-shadow, none);
+}

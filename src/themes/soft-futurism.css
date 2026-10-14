@@ -1,0 +1,269 @@
+/* ============================================================
+   TEMPLATE: SOFT FUTURISM  (id: "soft-futurism")
+   ------------------------------------------------------------
+   Uma visão de futuro mais amigável e sofisticada.
+   - Gradientes suaves (aurora pastel no fundo, gradiente violeta nos CTAs)
+   - Cores bem definidas: violeta (primária), pêssego, menta e céu (apoio)
+   - Formas arredondadas, sombras difusas tingidas de violeta
+   - Nada de elementos "tech" agressivos: sem neon, grids, glitch,
+     fontes monoespaçadas ou contornos duros.
+   Tipografia: Plus Jakarta Sans (carregada em index.html).
+   ============================================================ */
+
+[data-theme="soft-futurism"] {
+  --background: 255 100% 98.5%;         /* Névoa lavanda */
+  --foreground: 255 35% 17%;            /* Índigo profundo (tinta) */
+
+  --card: 0 0% 100%;
+  --card-foreground: 255 35% 17%;
+
+  --popover: 0 0% 100%;
+  --popover-foreground: 255 35% 17%;
+
+  --primary: 252 85% 62%;               /* Violeta definido */
+  --primary-foreground: 0 0% 100%;
+
+  --secondary: 255 70% 96%;
+  --secondary-foreground: 255 35% 17%;
+
+  --muted: 255 55% 95.5%;
+  --muted-foreground: 255 16% 40%;
+
+  --accent: 262 90% 95%;                /* Violeta bem claro */
+  --accent-foreground: 255 60% 38%;
+
+  --destructive: 350 78% 56%;           /* Rosa-vermelho suave */
+  --destructive-foreground: 0 0% 100%;
+
+  --border: 255 45% 92%;
+  --input: 255 40% 90%;
+  --ring: 252 85% 66%;
+
+  --radius: 1rem;
+
+  --sidebar-background: 255 100% 99%;
+  --sidebar-foreground: 255 35% 17%;
+  --sidebar-primary: 252 85% 62%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 262 90% 95%;
+  --sidebar-accent-foreground: 255 60% 38%;
+  --sidebar-border: 255 45% 93%;
+  --sidebar-ring: 252 85% 66%;
+
+  --active-bg: 262 90% 95%;
+  --active-border: 252 85% 62%;
+
+  /* Cores de apoio (para novos componentes / destaques) */
+  --sf-peach: 20 100% 82%;
+  --sf-mint: 160 65% 72%;
+  --sf-sky: 200 95% 78%;
+  --sf-rose: 330 90% 82%;
+
+  /* Gradientes */
+  --sf-gradient: linear-gradient(135deg, hsl(250 85% 62%) 0%, hsl(278 80% 60%) 60%, hsl(305 72% 58%) 100%);
+  --sf-gradient-soft: linear-gradient(135deg, hsl(252 100% 96%) 0%, hsl(300 100% 97%) 100%);
+
+  /* Sombras difusas, tingidas de violeta */
+  --sf-shadow-sm: 0 1px 2px hsl(255 50% 40% / 0.05), 0 6px 18px -8px hsl(255 60% 50% / 0.14);
+  --sf-shadow-md: 0 2px 4px hsl(255 50% 40% / 0.05), 0 16px 36px -14px hsl(255 70% 50% / 0.26);
+
+  /* Fundo "aurora": manchas pastel de luz sobre a névoa lavanda */
+  --page-backdrop:
+    radial-gradient(56rem 38rem at 4% -10%, hsl(262 92% 87% / 0.85), transparent 64%),
+    radial-gradient(50rem 36rem at 102% 0%, hsl(200 96% 86% / 0.80), transparent 64%),
+    radial-gradient(48rem 38rem at 80% 110%, hsl(22 100% 88% / 0.85), transparent 64%),
+    radial-gradient(40rem 30rem at -6% 102%, hsl(160 75% 86% / 0.65), transparent 64%);
+
+  /* Tokens estruturais (ver base.css) */
+  --btn-radius: 9999px;
+  --btn-primary-bg: var(--sf-gradient);
+  --btn-primary-shadow: 0 8px 20px -8px hsl(255 85% 55% / 0.55);
+  --btn-primary-hover-filter: brightness(1.06) saturate(1.05);
+  --btn-outline-border-width: 1px;
+  --card-shadow: var(--sf-shadow-sm);
+  --card-border-width: 1px;
+  --card-bg-image: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(255 100% 99%) 100%);
+  --field-border-width: 1px;
+  --field-shadow: 0 1px 2px hsl(255 50% 40% / 0.04);
+  --field-focus-shadow: 0 0 0 3px hsl(252 85% 66% / 0.18);
+  --field-bg-image: linear-gradient(hsl(0 0% 100% / 0.7), hsl(0 0% 100% / 0.7));
+
+  /* Escala "neutral" retingida de lavanda-ardósia (afeta bg-neutral-*, text-neutral-*...) */
+  --neutral-50: 249 248 253;
+  --neutral-100: 241 239 250;
+  --neutral-200: 229 226 245;
+  --neutral-300: 208 204 232;
+  --neutral-400: 158 153 192;
+  --neutral-500: 112 107 152;
+  --neutral-600: 84 79 122;
+  --neutral-700: 63 58 100;
+  --neutral-800: 43 39 76;
+  --neutral-900: 30 27 58;
+  --neutral-950: 19 17 40;
+
+  font-family: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+}
+
+[data-theme="soft-futurism"].dark {
+  --background: 250 38% 8.5%;
+  --foreground: 255 40% 95%;
+
+  --card: 252 32% 12.5%;
+  --card-foreground: 255 40% 95%;
+
+  --popover: 252 32% 12.5%;
+  --popover-foreground: 255 40% 95%;
+
+  --primary: 262 95% 74%;
+  --primary-foreground: 250 40% 12%;
+
+  --secondary: 252 28% 17%;
+  --secondary-foreground: 255 40% 95%;
+
+  --muted: 252 28% 16%;
+  --muted-foreground: 255 18% 66%;
+
+  --accent: 255 40% 20%;
+  --accent-foreground: 262 90% 86%;
+
+  --destructive: 350 85% 66%;
+  --destructive-foreground: 250 40% 12%;
+
+  --border: 252 28% 19%;
+  --input: 252 28% 21%;
+  --ring: 262 95% 74%;
+
+  --sidebar-background: 250 38% 10%;
+  --sidebar-foreground: 255 40% 95%;
+  --sidebar-primary: 262 95% 74%;
+  --sidebar-primary-foreground: 250 40% 12%;
+  --sidebar-accent: 255 40% 20%;
+  --sidebar-accent-foreground: 262 90% 86%;
+  --sidebar-border: 252 28% 18%;
+  --sidebar-ring: 262 95% 74%;
+
+  --active-bg: 255 40% 20%;
+  --active-border: 262 95% 74%;
+
+  --sf-shadow-sm: 0 1px 2px hsl(250 60% 4% / 0.4), 0 6px 18px -8px hsl(250 70% 4% / 0.6);
+  --sf-shadow-md: 0 2px 4px hsl(250 60% 4% / 0.4), 0 16px 36px -14px hsl(250 70% 4% / 0.7);
+
+  --page-backdrop:
+    radial-gradient(52rem 34rem at 6% -8%, hsl(262 70% 30% / 0.45), transparent 62%),
+    radial-gradient(46rem 32rem at 100% 2%, hsl(210 80% 28% / 0.40), transparent 62%),
+    radial-gradient(44rem 34rem at 78% 108%, hsl(330 60% 28% / 0.35), transparent 62%);
+
+  --card-bg-image: linear-gradient(180deg, hsl(252 32% 14%) 0%, hsl(252 32% 11.5%) 100%);
+  --field-bg-image: linear-gradient(hsl(252 30% 10% / 0.6), hsl(252 30% 10% / 0.6));
+  --btn-primary-shadow: 0 8px 22px -8px hsl(262 95% 60% / 0.55);
+}
+
+/* ---------- Regras globais do template (escopo: <html data-theme>) ---------- */
+
+[data-theme="soft-futurism"] body {
+  background-image: var(--page-backdrop);
+  background-attachment: fixed;
+}
+
+[data-theme="soft-futurism"] h1,
+[data-theme="soft-futurism"] h2,
+[data-theme="soft-futurism"] h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+[data-theme="soft-futurism"] ::selection {
+  background: hsl(252 85% 62% / 0.2);
+}
+
+/* Botão primário com gradiente: texto sempre branco */
+[data-theme="soft-futurism"] .nomos-btn-primary {
+  color: hsl(0 0% 100%);
+  font-weight: 500;
+  transition: filter 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+[data-theme="soft-futurism"] .nomos-btn-primary:hover {
+  transform: translateY(-1px);
+}
+
+/* Cabeçalho e barra lateral: vidro fosco por cima da aurora */
+[data-theme="soft-futurism"] .nomos-header {
+  background-color: hsl(var(--background) / 0.55);
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+[data-theme="soft-futurism"] [data-sidebar="sidebar"] {
+  background-color: hsl(var(--sidebar-background) / 0.6);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+/* Item ativo da sidebar: pílula violeta clara (NavLink marca aria-current) */
+[data-theme="soft-futurism"] [data-sidebar="menu-button"][aria-current="page"],
+[data-theme="soft-futurism"] [data-sidebar="menu-button"] [aria-current="page"],
+[data-theme="soft-futurism"] [data-sidebar="menu-button"][data-active="true"] {
+  background-color: hsl(var(--sidebar-accent));
+  color: hsl(var(--sidebar-accent-foreground));
+  border-radius: 0.875rem;
+}
+
+/* Botões de ação do Caderno (hoje fixos em bg-neutral-900 + text-white) usam o gradiente da marca */
+[data-theme="soft-futurism"] .bg-neutral-900.text-white {
+  background-image: var(--sf-gradient);
+  box-shadow: 0 8px 20px -8px hsl(255 85% 55% / 0.55);
+}
+
+/* Páginas que pintam fundo próprio deixam a aurora aparecer */
+[data-theme="soft-futurism"] .nomos-page {
+  background-color: transparent;
+}
+
+/* Quadro de lembretes (cork board) e barras de rolagem em tons lavanda */
+[data-theme="soft-futurism"] .cork-board {
+  background: hsl(255 60% 96.5%);
+  border-radius: 1.25rem;
+}
+
+[data-theme="soft-futurism"] .cork-board::before {
+  background-image: none;
+}
+
+[data-theme="soft-futurism"] .cork-board::after {
+  background: hsl(255 45% 90%);
+  border-radius: 1.4rem;
+}
+
+[data-theme="soft-futurism"].dark .cork-board {
+  background: hsl(252 30% 12%);
+}
+
+[data-theme="soft-futurism"].dark .cork-board::after {
+  background: hsl(252 28% 20%);
+}
+
+[data-theme="soft-futurism"] ::-webkit-scrollbar-thumb {
+  background: hsl(255 35% 82%);
+}
+
+[data-theme="soft-futurism"] ::-webkit-scrollbar-thumb:hover {
+  background: hsl(255 40% 70%);
+}
+
+[data-theme="soft-futurism"].dark ::-webkit-scrollbar-thumb {
+  background: hsl(252 25% 30%);
+}
+
+[data-theme="soft-futurism"].dark ::-webkit-scrollbar-thumb:hover {
+  background: hsl(252 30% 42%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-theme="soft-futurism"] .nomos-btn-primary {
+    transition: none;
+  }
+  [data-theme="soft-futurism"] .nomos-btn-primary:hover {
+    transform: none;
+  }
+}

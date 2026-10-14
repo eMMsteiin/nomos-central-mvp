@@ -1,11 +1,12 @@
 import { Outlet, NavLink, useLocation } from 'react-router-dom';
-import { Settings, Plug, Focus } from 'lucide-react';
+import { Settings, Plug, Focus, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFocusMode } from '@/hooks/useFocusMode';
 
 const navItems = [
   { to: '/configuracoes', icon: Settings, label: 'Geral', end: true },
   { to: '/configuracoes/modo-foco', icon: Focus, label: 'Modo Foco' },
+  { to: '/configuracoes/templates', icon: Palette, label: 'Templates' },
   { to: '/configuracoes/integracoes', icon: Plug, label: 'Integrações' },
 ];
 

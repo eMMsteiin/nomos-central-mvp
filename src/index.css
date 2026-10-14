@@ -94,102 +94,12 @@ textarea,
   background: transparent;
 }
 
-/* NOMOS Design System - Ultra Minimalist
-   Paleta: Preto, Branco, 3 tons de cinza
-   Tipografia: system-ui (Inter-like)
-   Filosofia: A interface deve desaparecer enquanto o usuário pensa.
-*/
-
-@layer base {
-  :root {
-    /* Paleta Minimalista Monocromática */
-    --background: 0 0% 100%;              /* Branco puro */
-    --foreground: 0 0% 8%;                /* Preto suave */
-
-    --card: 0 0% 100%;                    /* Branco */
-    --card-foreground: 0 0% 8%;           /* Preto suave */
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 8%;
-
-    --primary: 0 0% 8%;                   /* Preto */
-    --primary-foreground: 0 0% 100%;      /* Branco */
-
-    --secondary: 0 0% 96%;                /* Cinza muito claro */
-    --secondary-foreground: 0 0% 8%;      /* Preto */
-
-    --muted: 0 0% 96%;                    /* Cinza claro */
-    --muted-foreground: 0 0% 45%;         /* Cinza médio */
-
-    --accent: 0 0% 96%;                   /* Cinza claro */
-    --accent-foreground: 0 0% 8%;         /* Preto */
-
-    --destructive: 0 0% 30%;              /* Cinza escuro (sem vermelho) */
-    --destructive-foreground: 0 0% 100%;
-
-    --border: 0 0% 95%;                   /* Borda quase invisível */
-    --input: 0 0% 95%;
-    --ring: 0 0% 8%;                      /* Preto */
-
-    --radius: 0.375rem;                   /* Bordas mais sutis */
-
-    --sidebar-background: 0 0% 100%;      /* Branco */
-    --sidebar-foreground: 0 0% 8%;        /* Preto */
-    --sidebar-primary: 0 0% 8%;           /* Preto */
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 0 0% 96%;           /* Cinza claro */
-    --sidebar-accent-foreground: 0 0% 8%;
-    --sidebar-border: 0 0% 92%;           /* Borda suave */
-    --sidebar-ring: 0 0% 8%;
-
-    /* Estados ativos - minimalistas */
-    --active-bg: 0 0% 96%;
-    --active-border: 0 0% 8%;
-  }
-
-  .dark {
-    /* Dark Mode - Minimalista */
-    --background: 0 0% 6%;                /* Preto profundo */
-    --foreground: 0 0% 95%;               /* Branco suave */
-
-    --card: 0 0% 8%;                      /* Preto card */
-    --card-foreground: 0 0% 95%;
-
-    --popover: 0 0% 8%;
-    --popover-foreground: 0 0% 95%;
-
-    --primary: 0 0% 95%;                  /* Branco */
-    --primary-foreground: 0 0% 6%;        /* Preto */
-
-    --secondary: 0 0% 12%;                /* Cinza escuro */
-    --secondary-foreground: 0 0% 95%;
-
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 55%;         /* Cinza médio */
-
-    --accent: 0 0% 12%;
-    --accent-foreground: 0 0% 95%;
-
-    --destructive: 0 0% 70%;              /* Cinza claro */
-    --destructive-foreground: 0 0% 6%;
-
-    --border: 0 0% 10%;
-    --input: 0 0% 10%;
-    --ring: 0 0% 95%;
-    
-    --sidebar-background: 0 0% 6%;
-    --sidebar-foreground: 0 0% 95%;
-    --sidebar-primary: 0 0% 95%;
-    --sidebar-primary-foreground: 0 0% 6%;
-    --sidebar-accent: 0 0% 12%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 15%;
-    --sidebar-ring: 0 0% 95%;
-
-    --active-bg: 0 0% 12%;
-    --active-border: 0 0% 95%;
-  }
-}
+/* NOMOS Design System
+   Os tokens de cor/raio/etc. (--background, --primary, --radius ...) NÃO ficam mais
+   aqui: cada template vive em src/themes/<id>.css e é escolhido em
+   Configurações > Templates (atributo data-theme no <html>).
+   O template Minimalista (o design original) está congelado em
+   src/themes/minimalista.css. */
 
 @layer base {
   * {

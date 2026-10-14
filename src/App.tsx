@@ -10,6 +10,7 @@ import { HiddenTabsProvider } from "@/contexts/HiddenTabsContext";
 import { CanvaSessionProvider } from "@/contexts/CanvaSessionContext";
 import { ExternalToolsProvider, useExternalTools } from "@/contexts/ExternalToolsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { FocusModeProvider } from "@/contexts/FocusModeContext";
 import { FocusSidebar } from "@/components/canva/FocusSidebar";
 import { FocusStatusBar } from "@/components/focus/FocusStatusBar";
@@ -28,6 +29,7 @@ import CadernoDevTest from "./pages/CadernoDevTest";
 import Flashcards from "./pages/Flashcards";
 import ModoFoco from "./pages/ModoFoco";
 import FocusSettingsPanel from "./components/configuracoes/FocusSettingsPanel";
+import TemplatesPanel from "./components/configuracoes/TemplatesPanel";
 import PrimeirosPassos from "./pages/PrimeirosPassos";
 import Configuracoes from "./pages/Configuracoes";
 import ConfiguracoesIntegracoes from "./pages/ConfiguracoesIntegracoes";
@@ -80,6 +82,7 @@ function MainContent() {
             <Route path="/projetos/primeiros-passos" element={<PrimeirosPassos />} />
             <Route path="/configuracoes" element={<Configuracoes />}>
               <Route path="modo-foco" element={<FocusSettingsPanel />} />
+              <Route path="templates" element={<TemplatesPanel />} />
               <Route path="integracoes" element={<ConfiguracoesIntegracoes />} />
             </Route>
             <Route path="*" element={<NotFound />} />
@@ -107,26 +110,28 @@ const VERSION = '13';
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <div className="fixed top-2 right-2 z-[9999] text-[10px] font-mono text-muted-foreground/50 pointer-events-none select-none">
-        v{VERSION}
-      </div>
-      <BrowserRouter>
-        <AuthProvider>
-          <HiddenTabsProvider>
-            <CanvaSessionProvider>
-              <FocusModeProvider>
-                <ExternalToolsProvider>
-                  <AppLayout />
-                </ExternalToolsProvider>
-              </FocusModeProvider>
-            </CanvaSessionProvider>
-          </HiddenTabsProvider>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <div className="fixed top-2 right-2 z-[9999] text-[10px] font-mono text-muted-foreground/50 pointer-events-none select-none">
+          v{VERSION}
+        </div>
+        <BrowserRouter>
+          <AuthProvider>
+            <HiddenTabsProvider>
+              <CanvaSessionProvider>
+                <FocusModeProvider>
+                  <ExternalToolsProvider>
+                    <AppLayout />
+                  </ExternalToolsProvider>
+                </FocusModeProvider>
+              </CanvaSessionProvider>
+            </HiddenTabsProvider>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </ThemeProvider>
   </QueryClientProvider>
 );
 

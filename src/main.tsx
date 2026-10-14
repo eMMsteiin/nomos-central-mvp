@@ -1,6 +1,11 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
+// Templates visuais: tokens de cada tema + ganchos. Devem vir ANTES do index.css
+// para que as classes utilitárias do Tailwind continuem vencendo os ganchos.
+import "./themes/minimalista.css";
+import "./themes/soft-futurism.css";
+import "./themes/base.css";
 import "./index.css";
 
 // Service Worker: registrar apenas em produção e fora de iframe/preview Lovable.

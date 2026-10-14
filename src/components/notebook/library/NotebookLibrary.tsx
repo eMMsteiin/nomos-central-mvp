@@ -181,7 +181,7 @@ export function NotebookLibrary() {
   };
 
   return (
-    <div ref={contentRef} className="min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
+    <div ref={contentRef} className="nomos-page min-h-screen bg-white dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100">
       <div className="max-w-7xl mx-auto p-6">
         <AnimatePresence mode="wait">
           {isSelectionMode ? (
