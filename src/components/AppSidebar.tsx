@@ -41,6 +41,7 @@ import { useTaskCounts } from "@/hooks/useTaskCounts";
 import { useHiddenTabs } from "@/hooks/useHiddenTabs";
 import { useExternalTools } from "@/contexts/ExternalToolsContext";
 import { isKnownBlockedSite } from "@/utils/externalToolsEmbed";
+import { FEATURES } from "@/config/features";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,9 +59,9 @@ const menuItems = [
   { title: "Em breve", url: "/em-breve", icon: CalendarClock, canHide: true },
   { title: "Lembretes", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
   
-  { title: "Caderno", url: "/caderno", icon: Book, canHide: true },
+  { title: "Caderno", url: "/caderno", icon: Book, canHide: true, enabled: FEATURES.caderno },
   { title: "Flashcards", url: "/flashcards", icon: Layers, canHide: true },
-  { title: "Resumos", url: "/resumos", icon: FileText, canHide: true },
+  { title: "Resumos", url: "/resumos", icon: FileText, canHide: true, enabled: FEATURES.resumos },
   { title: "Concluído", url: "/concluido", icon: CheckCircle2, canHide: true },
 ];
 
@@ -125,7 +126,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems
-                .filter(item => !isTabHidden(item.url))
+                .filter(item => item.enabled !== false && !isTabHidden(item.url))
                 .map((item) => {
                   const active = isActive(item.url);
                   const count = getCount(item.url);
@@ -203,6 +204,7 @@ export function AppSidebar() {
         </SidebarGroup>
 
         {/* External Tools Section */}
+        {FEATURES.ferramentas && (
         <SidebarGroup className="px-2 mt-4">
           <SidebarGroupLabel className="flex items-center justify-between text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2">
             <span>Ferramentas</span>
@@ -374,6 +376,7 @@ export function AppSidebar() {
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
+        )}
       </SidebarContent>
 
       {/* Footer */}

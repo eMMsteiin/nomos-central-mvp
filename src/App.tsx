@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/AppSidebar";
 import { AppHeader } from "@/components/AppHeader";
@@ -11,6 +11,7 @@ import { CanvaSessionProvider } from "@/contexts/CanvaSessionContext";
 import { ExternalToolsProvider, useExternalTools } from "@/contexts/ExternalToolsContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
+import { FEATURES } from "@/config/features";
 import { FocusModeProvider } from "@/contexts/FocusModeContext";
 import { FocusSidebar } from "@/components/canva/FocusSidebar";
 import { FocusStatusBar } from "@/components/focus/FocusStatusBar";
@@ -67,13 +68,13 @@ function MainContent() {
             <Route path="/" element={<Index />} />
             <Route path="/hoje" element={<Hoje />} />
             <Route path="/em-breve" element={<EmBreve />} />
-            <Route path="/resumos" element={<Resumos />} />
+            <Route path="/resumos" element={FEATURES.resumos ? <Resumos /> : <Navigate to="/" replace />} />
             <Route path="/concluido" element={<Concluido />} />
             <Route path="/lembretes-rapidos" element={<LembretesRapidos />} />
-            <Route path="/caderno" element={<Caderno />} />
-            <Route path="/caderno/:notebookId" element={<NotebookView />} />
+            <Route path="/caderno" element={FEATURES.caderno ? <Caderno /> : <Navigate to="/" replace />} />
+            <Route path="/caderno/:notebookId" element={FEATURES.caderno ? <NotebookView /> : <Navigate to="/" replace />} />
             
-            <Route path="/caderno-dev-test" element={<CadernoDevTest />} />
+            <Route path="/caderno-dev-test" element={FEATURES.caderno ? <CadernoDevTest /> : <Navigate to="/" replace />} />
             
             <Route path="/flashcards" element={<Flashcards />} />
             <Route path="/modo-foco" element={<ModoFoco />} />
