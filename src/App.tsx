@@ -12,6 +12,7 @@ import { ExternalToolsProvider, useExternalTools } from "@/contexts/ExternalTool
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { FEATURES } from "@/config/features";
+import { TasksSync } from "@/components/TasksSync";
 import { FocusModeProvider } from "@/contexts/FocusModeContext";
 import { FocusSidebar } from "@/components/canva/FocusSidebar";
 import { FocusStatusBar } from "@/components/focus/FocusStatusBar";
@@ -19,6 +20,7 @@ import { ExternalToolsTabs } from "@/components/tools/ExternalToolsTabs";
 import { ExternalToolView } from "@/components/tools/ExternalToolView";
 import Index from "./pages/Index";
 import Hoje from "./pages/Hoje";
+import MinhaTrilha from "./pages/MinhaTrilha";
 import EmBreve from "./pages/EmBreve";
 import Resumos from "./pages/Resumos";
 import Concluido from "./pages/Concluido";
@@ -67,6 +69,7 @@ function MainContent() {
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/hoje" element={<Hoje />} />
+            <Route path="/trilha" element={FEATURES.trilha ? <MinhaTrilha /> : <Navigate to="/" replace />} />
             <Route path="/em-breve" element={<EmBreve />} />
             <Route path="/resumos" element={FEATURES.resumos ? <Resumos /> : <Navigate to="/" replace />} />
             <Route path="/concluido" element={<Concluido />} />
@@ -98,6 +101,7 @@ function MainContent() {
 function AppLayout() {
   return (
     <SidebarProvider defaultOpen={true}>
+      <TasksSync />
       <div className="flex min-h-screen w-full">
         <AppSidebar />
         <MainContent />

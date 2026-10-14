@@ -2,6 +2,7 @@ import { Outlet, NavLink, useLocation } from 'react-router-dom';
 import { Settings, Plug, Focus, Palette } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFocusMode } from '@/hooks/useFocusMode';
+import ProfilePanel from '@/components/configuracoes/ProfilePanel';
 
 const navItems = [
   { to: '/configuracoes', icon: Settings, label: 'Geral', end: true },
@@ -52,11 +53,8 @@ export default function Configuracoes() {
               Personalize sua experiência
             </p>
             
-            <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">
-                Em breve
-              </p>
-            </div>
+            <h2 className="text-sm font-medium mb-4">Perfil</h2>
+            <ProfilePanel />
           </div>
         ) : (
           <Outlet />

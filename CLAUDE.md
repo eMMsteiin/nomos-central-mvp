@@ -41,6 +41,10 @@ No test suite is configured.
 | `src/integrations/supabase/types.ts` | Auto-generated Supabase DB schema types — do not edit manually |
 | `src/integrations/supabase/client.ts` | Supabase JS client singleton |
 
+**Tasks (Supabase is the source of truth):** all reads/writes of tasks go through `src/lib/tasks/` (`store.ts`, `mapping.ts`, `outbox.ts`). `localStorage["nomos.tasks.today"]` is only a local mirror (instant load/offline); `writeTasks`/`addTasks`/`patchTask`/`removeTask` update it and queue a diff to `public.tasks`; `<TasksSync />` (mounted in `AppLayout`) runs `syncTasks()` on load/online/visible: flush outbox → one-time import of legacy local tasks (backup kept in `nomos.tasks.backup-pre-supabase`) → pull. Never write `nomos.tasks.today` directly. Completing a task sets `completed: true` (it no longer deletes); the Concluído page lists them.
+
+**Profile & Trilha:** `profiles` (optional name/institution/course, edited in Configurações > Geral) and `trilha_ciclos` (Minha Trilha: pergunta → experimento → tarefa → reflexão, `/trilha`) are private per user via RLS. They are accessed through `src/lib/supabaseUntyped.ts` until `types.ts` is regenerated. The migrations `supabase/migrations/20261014*` (tasks.course, profiles, trilha_ciclos) must be applied to the database BEFORE deploying code that uses them; the UI shows a "migration pendente" notice if a table is missing. Feature switches live in `src/config/features.ts`.
+
 **Flashcard system:** Anki-compatible with SM-2 algorithm. Cards have learning, review, and relearn states. Note types (`src/types/note.ts`) define custom fields and card templates; the template renderer expands them into flashcard front/back. Cloze deletions use `{{text}}` syntax.
 
 **Styling:** Tailwind with CSS variables for theming. Dark mode via the `dark` CSS class. Always use CSS variable-based color tokens (e.g. `bg-background`, `text-foreground`) rather than hardcoded Tailwind palette values.

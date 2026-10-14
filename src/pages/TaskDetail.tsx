@@ -26,6 +26,7 @@ import { useTaskBlocks } from '@/hooks/useTaskBlocks';
 import { TaskBlockList } from '@/components/task/TaskBlockList';
 import { toast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { removeTask } from '@/lib/tasks/store';
 
 const TaskDetail = () => {
   const { id } = useParams<{ id: string }>();
@@ -145,15 +146,9 @@ const TaskDetail = () => {
   };
 
   const handleDelete = () => {
-    // Delete from localStorage
-    const STORAGE_KEY = 'nomos.tasks.today';
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const tasks = JSON.parse(stored);
-      const updated = tasks.filter((t: { id: string }) => t.id !== id);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      window.dispatchEvent(new Event('tasksUpdated'));
-    }
+    // Remove do espelho local e do Supabase (via fila de envio)
+    removeTask(id);
+    window.dispatchEvent(new Event('tasksUpdated'));
     
     toast({
       title: 'Tarefa excluída',

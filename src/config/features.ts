@@ -5,11 +5,13 @@
  * redireciona para a página inicial. O código e os dados continuam
  * intactos — para reativar, basta trocar para `true`.
  */
-export const FEATURES: Record<"resumos" | "caderno" | "ferramentas", boolean> = {
+export const FEATURES: Record<"resumos" | "caderno" | "ferramentas" | "trilha", boolean> = {
   /** Aba "Resumos" (/resumos) */
   resumos: false,
   /** Aba "Caderno" (/caderno, /caderno/:id) */
   caderno: false,
+  /** Aba "Minha Trilha" (/trilha) — precisa da migration trilha_ciclos aplicada */
+  trilha: true,
   /** Seção "Ferramentas" da barra lateral (ferramentas externas do usuário) */
   ferramentas: false,
 };

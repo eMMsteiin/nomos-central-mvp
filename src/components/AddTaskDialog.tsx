@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Task } from '@/types/task';
+import { addTasks } from '@/lib/tasks/store';
 import { extractTimeFromText } from '@/services/timeExtractor';
 import { extractDateFromText, formatDetectedDate, categorizeByDetectedDate } from '@/services/dateExtractor';
 import { useToast } from '@/hooks/use-toast';
@@ -22,7 +23,6 @@ interface AddTaskDialogProps {
   defaultText?: string;
 }
 
-const STORAGE_KEY = "nomos.tasks.today";
 
 const DURATION_PRESETS = [
   { value: 25, label: '25min' },
@@ -73,13 +73,7 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
     // Blocos de estudo sempre vão para "hoje"
     const finalCategory = taskType === 'study-block' ? 'hoje' : categorizeByDetectedDate(finalDate);
 
-    // Gerar UUID para consistência com Supabase
     const taskId = crypto.randomUUID();
-    const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
-    
-    if (!localStorage.getItem('nomos.device.id')) {
-      localStorage.setItem('nomos.device.id', deviceId);
-    }
 
     const newTask: Task = {
       id: taskId,
@@ -101,40 +95,11 @@ export function AddTaskDialog({ open, onOpenChange, defaultText = '' }: AddTaskD
       }),
     };
 
-    // Get existing tasks from localStorage
-    const existingTasks = localStorage.getItem(STORAGE_KEY);
-    const tasks: Task[] = existingTasks ? JSON.parse(existingTasks) : [];
-    
-    // Add new task
-    const updatedTasks = [newTask, ...tasks];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updatedTasks));
+    // Grava no espelho local e enfileira o envio ao Supabase
+    addTasks([newTask]);
 
     // Dispatch event to notify other components
     window.dispatchEvent(new Event('tasksUpdated'));
-
-    // Sincronizar com Supabase em background
-    try {
-      const { supabase } = await import('@/integrations/supabase/client');
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      await supabase.from('tasks').insert({
-        id: taskId,
-        device_id: deviceId,
-        user_id: userId,
-        text: cleanText,
-        due_date: finalDate ? new Date(finalDate).toISOString() : null,
-        due_time: finalTime || null,
-        priority: priority,
-        category: finalCategory,
-        source_type: 'manual',
-        completed: false,
-        type: taskType === 'study-block' ? 'study-block' : 'task',
-        duration_minutes: taskType === 'study-block' ? durationMinutes : null,
-        focus_subject: taskType === 'study-block' ? cleanText : null,
-      });
-    } catch (err) {
-      console.error('Erro ao sincronizar tarefa com Supabase:', err);
-    }
 
     // Mostrar toast informando onde a tarefa foi criada
     const isStudyBlock = taskType === 'study-block';

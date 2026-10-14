@@ -7,8 +7,8 @@ import { Calendar as CalendarIcon, Clock, Pencil } from "lucide-react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { EditTaskDialog } from "@/components/EditTaskDialog";
+import { patchTask, readTasks } from "@/lib/tasks/store";
 
-const STORAGE_KEY = "nomos.tasks.today";
 
 const EmBreve = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -17,17 +17,8 @@ const EmBreve = () => {
   
   useEffect(() => {
     const loadTasks = () => {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const allTasks: Task[] = JSON.parse(stored);
-        
-        // Filtrar apenas tarefas futuras (> 7 dias) e não completas
-        const futureTasks = allTasks.filter(t => 
-          !t.completed && t.category === 'em-breve'
-        );
-        
-        setTasks(futureTasks);
-      }
+      // Filtrar apenas tarefas futuras (> 7 dias) e não completas
+      setTasks(readTasks().filter(t => !t.completed && t.category === 'em-breve'));
     };
 
     loadTasks();
@@ -57,29 +48,15 @@ const EmBreve = () => {
   const datesWithTasks = Object.keys(tasksByDate).map(dateStr => new Date(dateStr));
   
   const completeTask = (taskId: string) => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const allTasks: Task[] = JSON.parse(stored);
-      const updated = allTasks.map(t => 
-        t.id === taskId ? { ...t, completed: true } : t
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setTasks(updated.filter(t => !t.completed && t.category === 'em-breve'));
-      window.dispatchEvent(new Event('tasksUpdated'));
-    }
+    patchTask(taskId, { completed: true });
+    setTasks(readTasks().filter(t => !t.completed && t.category === 'em-breve'));
+    window.dispatchEvent(new Event('tasksUpdated'));
   };
 
   const handleEditTask = (updatedTask: Task) => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const allTasks: Task[] = JSON.parse(stored);
-      const updated = allTasks.map(t => 
-        t.id === updatedTask.id ? updatedTask : t
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      setTasks(updated.filter(t => !t.completed && t.category === 'em-breve'));
-      window.dispatchEvent(new Event('tasksUpdated'));
-    }
+    patchTask(updatedTask.id, updatedTask);
+    setTasks(readTasks().filter(t => !t.completed && t.category === 'em-breve'));
+    window.dispatchEvent(new Event('tasksUpdated'));
   };
   
   return (

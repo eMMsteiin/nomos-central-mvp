@@ -20,7 +20,8 @@ import {
   ExternalLink,
   Trash2,
   MonitorPlay,
-  Ban
+  Ban,
+  Compass
 } from "lucide-react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
@@ -56,6 +57,7 @@ import { ToolIcon } from "@/components/tools/ToolIcon";
 const menuItems = [
   { title: "Entrada", url: "/", icon: Inbox, canHide: false },
   { title: "Hoje", url: "/hoje", icon: Calendar, canHide: true },
+  { title: "Minha Trilha", url: "/trilha", icon: Compass, canHide: true, enabled: FEATURES.trilha },
   { title: "Em breve", url: "/em-breve", icon: CalendarClock, canHide: true },
   { title: "Lembretes", url: "/lembretes-rapidos", icon: StickyNote, canHide: true },
   

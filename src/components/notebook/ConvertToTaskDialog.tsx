@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { TimePickerPopover } from '@/components/task/TimePickerPopover';
 import { DatePickerPopover } from '@/components/task/DatePickerPopover';
 import { supabase } from '@/integrations/supabase/client';
+import { addTasks } from '@/lib/tasks/store';
 
 interface ConvertToTaskDialogProps {
   open: boolean;
@@ -84,15 +85,6 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
   };
 
   const createTask = async () => {
-    const STORAGE_KEY = 'nomos.tasks.today';
-    const existing = localStorage.getItem(STORAGE_KEY);
-    const tasks: Task[] = existing ? JSON.parse(existing) : [];
-
-    const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
-    if (!localStorage.getItem('nomos.device.id')) {
-      localStorage.setItem('nomos.device.id', deviceId);
-    }
-
     // Criar uma tarefa para cada destino selecionado
     const newTasks: Task[] = destinations.map((dest) => ({
       id: crypto.randomUUID(),
@@ -106,31 +98,9 @@ export function ConvertToTaskDialog({ open, onOpenChange, annotationText }: Conv
       category: dest,
     }));
 
-    localStorage.setItem(STORAGE_KEY, JSON.stringify([...newTasks, ...tasks]));
+    // Grava no espelho local e enfileira o envio ao Supabase
+    addTasks(newTasks);
     window.dispatchEvent(new Event('tasksUpdated'));
-
-    // Sincronizar com Supabase em background
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const userId = session?.user?.id;
-      for (const newTask of newTasks) {
-        await supabase.from('tasks').insert({
-          id: newTask.id,
-          device_id: deviceId,
-          user_id: userId,
-          text: newTask.text,
-          description: newTask.description,
-          due_date: date ? new Date(date).toISOString() : null,
-          due_time: time || null,
-          priority: priority,
-          category: newTask.category,
-          source_type: 'manual',
-          completed: false,
-        });
-      }
-    } catch (err) {
-      console.error('Erro ao sincronizar tarefa com Supabase:', err);
-    }
 
     const destText = destinations.length === 2 
       ? 'Hoje e Entrada' 

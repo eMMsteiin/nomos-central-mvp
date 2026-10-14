@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { patchTask } from '@/lib/tasks/store';
 import { useDeviceId } from './useDeviceId';
 import { 
   Task, 
@@ -185,29 +186,9 @@ export function useTaskDetail(taskId: string) {
     const updatedTask = { ...task, ...updates };
     setTask(updatedTask);
 
-    // Use task.id directly (now it's always UUID)
-    if (isSynced) {
-      await supabase
-        .from('tasks')
-        .update({
-          text: updatedTask.text,
-          description: updatedTask.description || null,
-          due_date: updatedTask.dueDate ? new Date(updatedTask.dueDate).toISOString() : null,
-          due_time: updatedTask.dueTime || null,
-          priority: updatedTask.priority || 'baixa',
-          completed: updatedTask.completed || false,
-        })
-        .eq('id', task.id);
-    }
-
-    // Also update localStorage
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const tasks: Task[] = JSON.parse(stored);
-      const updated = tasks.map(t => t.id === taskId ? { ...t, ...updates } : t);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      window.dispatchEvent(new Event('tasksUpdated'));
-    }
+    // Uma única escrita: espelho local + Supabase (via fila de envio)
+    patchTask(task.id, updates);
+    window.dispatchEvent(new Event('tasksUpdated'));
   };
 
   // Subtask operations

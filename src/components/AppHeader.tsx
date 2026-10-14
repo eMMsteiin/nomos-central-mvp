@@ -12,12 +12,15 @@ import { ToolsDialog } from "@/components/ToolsDialog";
 import { useState } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useProfile } from "@/hooks/useProfile";
 
 export function AppHeader() {
   const [isToolsDialogOpen, setIsToolsDialogOpen] = useState(false);
   const isMobile = useIsMobile();
   const { toggleSidebar } = useSidebar();
   const navigate = useNavigate();
+  const { profile } = useProfile();
+  const displayName = profile.displayName || "Emmanuel";
 
   return (
     <header className="nomos-header border-b border-border px-4 py-3 flex items-center justify-between bg-background">
@@ -42,9 +45,9 @@ export function AppHeader() {
               className="gap-2 px-2 text-sm font-normal"
             >
               <span className="h-6 w-6 rounded-full bg-foreground text-background flex items-center justify-center text-xs font-medium">
-                E
+                {displayName.charAt(0).toUpperCase()}
               </span>
-              <span className="hidden sm:inline">Emmanuel</span>
+              <span className="hidden sm:inline">{displayName}</span>
             </Button>
           </DropdownMenuTrigger>
           

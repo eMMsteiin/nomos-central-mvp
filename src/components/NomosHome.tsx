@@ -18,9 +18,7 @@ import { StudyBlockItem } from "@/components/StudyBlockItem";
 import { AddTaskDialog } from "@/components/AddTaskDialog";
 import { TimePickerPopover } from "@/components/task/TimePickerPopover";
 import { DatePickerPopover } from "@/components/task/DatePickerPopover";
-import { supabase } from "@/integrations/supabase/client";
-
-const STORAGE_KEY = "nomos.tasks.today";
+import { addTasks, patchTask, readTasks, writeTasks } from "@/lib/tasks/store";
 
 // Helper function to format task date with smart labels and status
 const formatTaskDate = (date: Date | string | undefined): { 
@@ -101,49 +99,26 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     });
   };
 
-  // Load tasks from localStorage on mount
+  // Carrega o espelho local das tarefas (o Supabase é sincronizado por <TasksSync />)
   useEffect(() => {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      try {
-        setTasks(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse tasks from localStorage", e);
-      }
-    }
+    setTasks(readTasks());
   }, []);
 
-  // Listen for tasksUpdated event to reload tasks from localStorage
+  // Recarrega quando outra tela (ou a sincronização) atualizar as tarefas
   useEffect(() => {
-    const handleTasksUpdated = () => {
-      console.log('[NomosHome] Evento tasksUpdated recebido!');
-      const stored = localStorage.getItem(STORAGE_KEY);
-      console.log('[NomosHome] localStorage raw (primeiros 500 chars):', stored?.substring(0, 500));
-      
-      if (stored) {
-        try {
-          const parsed = JSON.parse(stored);
-          const studyBlocks = parsed.filter((t: Task) => t.type === 'study-block');
-          console.log('[NomosHome] Tasks carregadas:', parsed.length, '| Study blocks:', studyBlocks.length);
-          console.log('[NomosHome] Study blocks encontrados:', studyBlocks);
-          setTasks(parsed);
-        } catch (e) {
-          console.error("[NomosHome] Erro ao parsear tasks:", e);
-        }
-      }
-    };
+    const handleTasksUpdated = () => setTasks(readTasks());
 
     window.addEventListener('tasksUpdated', handleTasksUpdated);
     return () => window.removeEventListener('tasksUpdated', handleTasksUpdated);
   }, []);
 
-  // Save tasks to localStorage whenever they change (skip initial mount)
+  // Persiste mudanças de estado (ex.: cronômetro de bloco de estudo); só o que mudou vai ao Supabase
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       return;
     }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+    writeTasks(tasks);
   }, [tasks]);
 
   // Mutex para evitar criação duplicada por duplo submit
@@ -170,14 +145,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         finalCategory = filterMode;
       }
 
-      // Gerar UUID para consistência com Supabase
       const taskId = crypto.randomUUID();
-      const deviceId = localStorage.getItem('nomos.device.id') || 'device_' + crypto.randomUUID();
-      
-      // Salvar deviceId se não existir
-      if (!localStorage.getItem('nomos.device.id')) {
-        localStorage.setItem('nomos.device.id', deviceId);
-      }
 
       const newTask: Task = {
         id: taskId,
@@ -194,39 +162,16 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
         isCanvaTask: isCanvaRelatedTask(cleanText),
       };
 
-      // Persistir localmente primeiro
-      const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const nextTasks = [newTask, ...storedTasks];
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+      // Grava no espelho local e enfileira o envio ao Supabase
+      addTasks([newTask]);
 
-      setTasks(nextTasks);
+      setTasks(readTasks());
       setInputValue("");
       setPriority('baixa');
       setManualTime(undefined);
       setManualDate(undefined);
 
       window.dispatchEvent(new Event('tasksUpdated'));
-
-      // Sincronizar com Supabase imediatamente (em background)
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const userId = session?.user?.id;
-        await supabase.from('tasks').insert({
-          id: taskId,
-          device_id: deviceId,
-          user_id: userId,
-          text: cleanText,
-          due_date: finalDate ? new Date(finalDate).toISOString() : null,
-          due_time: finalTime || null,
-          priority: priority,
-          category: finalCategory,
-          source_type: 'manual',
-          completed: false,
-          is_canva_task: isCanvaRelatedTask(cleanText),
-        });
-      } catch (err) {
-        console.error('Erro ao sincronizar tarefa com Supabase:', err);
-      }
     } finally {
       isCreatingTask.current = false;
     }
@@ -234,7 +179,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
 
   const handleImport = (events: ICSEvent[]) => {
     const importedTasks: Task[] = events.map(event => ({
-      id: event.id,
+      id: crypto.randomUUID(),
       text: event.title,
       description: event.description,
       createdAt: new Date().toISOString(),
@@ -248,11 +193,9 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       isCanvaTask: isCanvaRelatedTask(event.title),
     }));
 
-    const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-    const nextTasks = [...importedTasks, ...storedTasks];
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+    addTasks(importedTasks);
 
-    setTasks(nextTasks);
+    setTasks(readTasks());
     window.dispatchEvent(new Event('tasksUpdated'));
   };
 
@@ -266,12 +209,10 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     setCompletingTasks((prev) => new Set(prev).add(taskId));
 
     setTimeout(() => {
-      // Persistir ANTES de atualizar state
-      const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const nextTasks = storedTasks.filter((t) => t.id !== taskId);
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+      // Concluir não apaga: marca como concluída (aparece em "Concluído")
+      patchTask(taskId, { completed: true });
 
-      setTasks(nextTasks);
+      setTasks(readTasks());
       setCompletingTasks((prev) => {
         const next = new Set(prev);
         next.delete(taskId);
@@ -287,14 +228,9 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
     setCompletingTasks((prev) => new Set(prev).add(taskId));
 
     setTimeout(() => {
-      // Persistir ANTES de atualizar state
-      const storedTasks: Task[] = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      const nextTasks = storedTasks.map((t) => 
-        t.id === taskId ? { ...t, completed: true } : t
-      );
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextTasks));
+      patchTask(taskId, { completed: true });
 
-      setTasks(nextTasks);
+      setTasks(readTasks());
       setCompletingTasks((prev) => {
         const next = new Set(prev);
         next.delete(taskId);
@@ -308,11 +244,7 @@ const NomosHome = ({ filterMode = 'all' }: NomosHomeProps) => {
       prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
     );
     
-    const allTasks = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
-    const updated = allTasks.map((t: Task) =>
-      t.id === updatedTask.id ? updatedTask : t
-    );
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    patchTask(updatedTask.id, updatedTask);
     window.dispatchEvent(new Event("tasksUpdated"));
   };
 
